@@ -1,7 +1,8 @@
 use crate::error::Result;
 use crate::model::IndexStats;
-use crate::ports::{GraphStore, FileSystem, GitProvider};
+use crate::ports::{FileSystem, GitProvider, GraphStore};
 
+#[allow(dead_code)]
 pub struct IndexUseCase<S, F, G> {
     store: S,
     fs: F,
