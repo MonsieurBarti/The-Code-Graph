@@ -2,7 +2,7 @@ use std::path::Path;
 
 use domain::model::SymbolNode;
 
-use crate::{Export, JavaScriptParser, LanguageParser, ParseResult, RawImport, TypeScriptParser};
+use crate::{Export, GoParser, JavaScriptParser, LanguageParser, ParseResult, PythonParser, RawImport, RustParser, TypeScriptParser};
 
 /// Parse TypeScript source and return the result.
 pub fn parse_ts(source: &str) -> ParseResult {
@@ -17,6 +17,30 @@ pub fn parse_js(source: &str) -> ParseResult {
     let parser = JavaScriptParser::new();
     parser
         .parse(source.as_bytes(), Path::new("test.js"))
+        .expect("parse failed")
+}
+
+/// Parse Rust source and return the result.
+pub fn parse_rust(source: &str) -> ParseResult {
+    let parser = RustParser::new();
+    parser
+        .parse(source.as_bytes(), Path::new("test.rs"))
+        .expect("parse failed")
+}
+
+/// Parse Python source and return the result.
+pub fn parse_python(source: &str) -> ParseResult {
+    let parser = PythonParser::new();
+    parser
+        .parse(source.as_bytes(), Path::new("test.py"))
+        .expect("parse failed")
+}
+
+/// Parse Go source and return the result.
+pub fn parse_go(source: &str) -> ParseResult {
+    let parser = GoParser::new();
+    parser
+        .parse(source.as_bytes(), Path::new("test.go"))
         .expect("parse failed")
 }
 

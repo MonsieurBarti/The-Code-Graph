@@ -3,7 +3,7 @@ use std::path::Path;
 
 use domain::model::Language;
 
-use crate::{JavaScriptParser, LanguageParser, TypeScriptParser};
+use crate::{GoParser, JavaScriptParser, LanguageParser, PythonParser, RustParser, TypeScriptParser};
 
 /// Registry of language parsers with extension-based dispatch.
 pub struct ParserRegistry {
@@ -20,6 +20,9 @@ impl ParserRegistry {
         };
         registry.register(Box::new(TypeScriptParser::new()));
         registry.register(Box::new(JavaScriptParser::new()));
+        registry.register(Box::new(RustParser::new()));
+        registry.register(Box::new(PythonParser::new()));
+        registry.register(Box::new(GoParser::new()));
         registry
     }
 
@@ -102,9 +105,27 @@ mod tests {
     }
 
     #[test]
-    fn parser_for_rs_returns_none() {
+    fn parser_for_rs_file() {
         let registry = ParserRegistry::new();
-        assert!(registry.parser_for_file(Path::new("foo.rs")).is_none());
+        let parser = registry.parser_for_file(Path::new("foo.rs"));
+        assert!(parser.is_some());
+        assert_eq!(parser.unwrap().language(), Language::Rust);
+    }
+
+    #[test]
+    fn parser_for_py_file() {
+        let registry = ParserRegistry::new();
+        let parser = registry.parser_for_file(Path::new("foo.py"));
+        assert!(parser.is_some());
+        assert_eq!(parser.unwrap().language(), Language::Python);
+    }
+
+    #[test]
+    fn parser_for_go_file() {
+        let registry = ParserRegistry::new();
+        let parser = registry.parser_for_file(Path::new("foo.go"));
+        assert!(parser.is_some());
+        assert_eq!(parser.unwrap().language(), Language::Go);
     }
 
     #[test]
@@ -121,18 +142,51 @@ mod tests {
     }
 
     #[test]
-    fn parser_for_language_rust_returns_none() {
+    fn parser_for_language_rust() {
         let registry = ParserRegistry::new();
-        assert!(registry.parser_for_language(Language::Rust).is_none());
+        let parser = registry.parser_for_language(Language::Rust);
+        assert!(parser.is_some());
     }
 
     #[test]
-    fn supported_extensions_contains_all_four() {
+    fn supported_extensions_contains_all_five_languages() {
         let registry = ParserRegistry::new();
         let exts = registry.supported_extensions();
+        // TypeScript + JavaScript
         assert!(exts.contains(&"ts"));
         assert!(exts.contains(&"tsx"));
         assert!(exts.contains(&"js"));
         assert!(exts.contains(&"jsx"));
+        // Rust
+        assert!(exts.contains(&"rs"));
+        // Python
+        assert!(exts.contains(&"py"));
+        // Go
+        assert!(exts.contains(&"go"));
+    }
+
+    #[test]
+    fn registry_is_thread_safe() {
+        use std::sync::Arc;
+        use std::thread;
+
+        let registry = Arc::new(ParserRegistry::new());
+        let r1 = Arc::clone(&registry);
+        let r2 = Arc::clone(&registry);
+
+        let t1 = thread::spawn(move || {
+            let parser = r1.parser_for_file(Path::new("foo.rs"));
+            assert!(parser.is_some());
+            assert_eq!(parser.unwrap().language(), Language::Rust);
+        });
+
+        let t2 = thread::spawn(move || {
+            let parser = r2.parser_for_file(Path::new("foo.py"));
+            assert!(parser.is_some());
+            assert_eq!(parser.unwrap().language(), Language::Python);
+        });
+
+        t1.join().expect("thread 1 panicked");
+        t2.join().expect("thread 2 panicked");
     }
 }

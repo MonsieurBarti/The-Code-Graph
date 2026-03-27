@@ -7,7 +7,7 @@ use tree_sitter_language::LanguageFn;
 use domain::error::CodeGraphError;
 use domain::model::{Edge, EdgeKind, Language, Location, SymbolKind, SymbolNode, Visibility};
 
-use crate::{LanguageParser, ParseResult};
+use crate::{Export, ImportName, LanguageParser, ParseResult, RawImport};
 
 thread_local! {
     static RUST_PARSER: RefCell<Parser> = RefCell::new(Parser::new());
@@ -72,6 +72,8 @@ fn extract_all(
 ) -> domain::error::Result<ParseResult> {
     let mut symbols = Vec::new();
     let mut edges = Vec::new();
+    let mut imports = Vec::new();
+    let mut exports = Vec::new();
     let file_path = path.to_string_lossy().to_string();
     let root = tree.root_node();
     let mut cursor = root.walk();
@@ -143,6 +145,25 @@ fn extract_all(
             "impl_item" => {
                 extract_impl(source, &file_path, child, &mut symbols, &mut edges);
             }
+            "use_declaration" => {
+                extract_use_declaration(source, child, &mut imports, &mut exports);
+            }
+            "mod_item" => {
+                // Only capture file module declarations (no body); inline modules are skipped.
+                if child.child_by_field_name("body").is_none() {
+                    if let Some(name) = node_name(source, child) {
+                        let line = child.start_position().row + 1;
+                        imports.push(RawImport {
+                            specifier: format!("mod::{name}"),
+                            names: Vec::new(),
+                            is_type_only: false,
+                            is_side_effect: false,
+                            is_namespace: false,
+                            line,
+                        });
+                    }
+                }
+            }
             _ => {}
         }
         // Consumed by the item above — reset for next
@@ -152,8 +173,8 @@ fn extract_all(
     Ok(ParseResult {
         symbols,
         edges,
-        imports: Vec::new(),
-        exports: Vec::new(),
+        imports,
+        exports,
     })
 }
 
@@ -407,6 +428,292 @@ fn extract_impl(
             }
         }
         pending_attrs.clear();
+    }
+}
+
+// ---------------------------------------------------------------------------
+// use_declaration helpers
+// ---------------------------------------------------------------------------
+
+/// Extract RawImport (and optionally an Export for `pub use`) from a single
+/// `use_declaration` node.
+fn extract_use_declaration(
+    source: &[u8],
+    node: Node,
+    imports: &mut Vec<RawImport>,
+    exports: &mut Vec<Export>,
+) {
+    let line = node.start_position().row + 1;
+
+    // Detect `pub use` — presence of visibility_modifier child
+    let is_pub_use = {
+        let mut cur = node.walk();
+        let result = node.children(&mut cur)
+            .any(|c| c.kind() == "visibility_modifier");
+        result
+    };
+
+    // The `argument` field contains the actual use path
+    let argument = match node.child_by_field_name("argument") {
+        Some(a) => a,
+        None => return,
+    };
+
+    process_use_argument(source, argument, &[], line, is_pub_use, imports, exports);
+}
+
+/// Recursively process a use argument node, accumulating path prefix segments.
+/// `prefix_parts` are the path components gathered so far from ancestor scoped
+/// identifiers / scoped_use_lists.
+fn process_use_argument(
+    source: &[u8],
+    node: Node,
+    prefix_parts: &[String],
+    line: usize,
+    is_pub_use: bool,
+    imports: &mut Vec<RawImport>,
+    exports: &mut Vec<Export>,
+) {
+    match node.kind() {
+        // `use foo::bar::baz` — scoped_identifier with optional nested scoped_identifier
+        "scoped_identifier" => {
+            let parts = flatten_scoped_identifier(source, node);
+            let specifier = parts.join("::");
+            let name = parts.last().cloned().unwrap_or_default();
+            emit_import_and_maybe_export(
+                specifier,
+                vec![ImportName { name, alias: None, is_type: false }],
+                false,
+                line,
+                is_pub_use,
+                imports,
+                exports,
+            );
+        }
+
+        // `use foo::*` or `use foo::bar::*`
+        // use_wildcard embeds an optional path as its first named child (no field name).
+        "use_wildcard" => {
+            // Find the path embedded in the wildcard node: any named child that is
+            // a path-like node (scoped_identifier, identifier, crate, self, super).
+            let embedded_parts: Vec<String> = {
+                let mut cur = node.walk();
+                node.children(&mut cur)
+                    .filter(|c| {
+                        matches!(
+                            c.kind(),
+                            "scoped_identifier"
+                                | "identifier"
+                                | "crate"
+                                | "self"
+                                | "super"
+                        )
+                    })
+                    .flat_map(|c| flatten_path_node(source, c))
+                    .collect()
+            };
+
+            let specifier = if !embedded_parts.is_empty() {
+                embedded_parts.join("::")
+            } else {
+                // fallback: prefix from outer scoped_use_list context
+                prefix_parts.join("::")
+            };
+
+            emit_import_and_maybe_export(
+                specifier,
+                Vec::new(),
+                true, // is_namespace
+                line,
+                is_pub_use,
+                imports,
+                exports,
+            );
+        }
+
+        // `use foo::{A, B}` — scoped_use_list
+        "scoped_use_list" => {
+            // path field gives the prefix, list field contains the use_list
+            let path_parts: Vec<String> = match node.child_by_field_name("path") {
+                Some(p) => flatten_path_node(source, p),
+                None => prefix_parts.to_vec(),
+            };
+
+            let list = match node.child_by_field_name("list") {
+                Some(l) => l,
+                None => return,
+            };
+
+            let mut list_cursor = list.walk();
+            for item in list.children(&mut list_cursor) {
+                if !item.is_named() {
+                    continue;
+                }
+                process_use_argument(
+                    source,
+                    item,
+                    &path_parts,
+                    line,
+                    is_pub_use,
+                    imports,
+                    exports,
+                );
+            }
+        }
+
+        // `use foo as bar`
+        "use_as_clause" => {
+            let path_node = node.child_by_field_name("path");
+            let alias_node = node.child_by_field_name("alias");
+
+            let (specifier, name) = match path_node {
+                Some(p) => {
+                    let parts = flatten_path_node(source, p);
+                    let name = parts.last().cloned().unwrap_or_default();
+                    (parts.join("::"), name)
+                }
+                None => (prefix_parts.join("::"), String::new()),
+            };
+
+            let alias = alias_node
+                .and_then(|a| a.utf8_text(source).ok())
+                .map(|s| s.to_string());
+
+            emit_import_and_maybe_export(
+                specifier,
+                vec![ImportName { name, alias, is_type: false }],
+                false,
+                line,
+                is_pub_use,
+                imports,
+                exports,
+            );
+        }
+
+        // Simple identifier: `use foo` (bare, inside a use_list)
+        "identifier" | "crate" | "self" | "super" => {
+            if let Ok(text) = node.utf8_text(source) {
+                let mut parts = prefix_parts.to_vec();
+                let name = text.to_string();
+                parts.push(name.clone());
+                let specifier = parts.join("::");
+                emit_import_and_maybe_export(
+                    specifier,
+                    vec![ImportName { name, alias: None, is_type: false }],
+                    false,
+                    line,
+                    is_pub_use,
+                    imports,
+                    exports,
+                );
+            }
+        }
+
+        // use_list: `{ A, B, C }` — iterate children
+        "use_list" => {
+            let mut list_cursor = node.walk();
+            for item in node.children(&mut list_cursor) {
+                if !item.is_named() {
+                    continue;
+                }
+                process_use_argument(
+                    source,
+                    item,
+                    prefix_parts,
+                    line,
+                    is_pub_use,
+                    imports,
+                    exports,
+                );
+            }
+        }
+
+        _ => {}
+    }
+}
+
+/// Build a RawImport and optionally an Export (for `pub use`).
+fn emit_import_and_maybe_export(
+    specifier: String,
+    names: Vec<ImportName>,
+    is_namespace: bool,
+    line: usize,
+    is_pub_use: bool,
+    imports: &mut Vec<RawImport>,
+    exports: &mut Vec<Export>,
+) {
+    if is_pub_use {
+        // For each re-exported name, emit an Export
+        for n in &names {
+            exports.push(Export {
+                name: n.alias.clone().unwrap_or_else(|| n.name.clone()),
+                local_name: Some(n.name.clone()),
+                is_default: false,
+                is_type_only: false,
+                is_reexport: true,
+                source_specifier: Some(specifier.clone()),
+            });
+        }
+        if is_namespace {
+            exports.push(Export {
+                name: String::new(),
+                local_name: None,
+                is_default: false,
+                is_type_only: false,
+                is_reexport: true,
+                source_specifier: Some(specifier.clone()),
+            });
+        }
+    }
+
+    imports.push(RawImport {
+        specifier,
+        names,
+        is_type_only: false,
+        is_side_effect: false,
+        is_namespace,
+        line,
+    });
+}
+
+/// Flatten a `scoped_identifier` node into its constituent path segments.
+/// e.g. `crate::auth::validate` → ["crate", "auth", "validate"]
+fn flatten_scoped_identifier(source: &[u8], node: Node) -> Vec<String> {
+    let mut parts = Vec::new();
+    flatten_scoped_identifier_into(source, node, &mut parts);
+    parts
+}
+
+fn flatten_scoped_identifier_into(source: &[u8], node: Node, parts: &mut Vec<String>) {
+    // path field can be another scoped_identifier, crate, self, super, identifier
+    if let Some(path) = node.child_by_field_name("path") {
+        match path.kind() {
+            "scoped_identifier" => flatten_scoped_identifier_into(source, path, parts),
+            _ => {
+                if let Ok(text) = path.utf8_text(source) {
+                    parts.push(text.to_string());
+                }
+            }
+        }
+    }
+    if let Some(name) = node.child_by_field_name("name") {
+        if let Ok(text) = name.utf8_text(source) {
+            parts.push(text.to_string());
+        }
+    }
+}
+
+/// Flatten any path-like node (identifier, scoped_identifier, crate, self, super)
+/// into path segments.
+fn flatten_path_node(source: &[u8], node: Node) -> Vec<String> {
+    match node.kind() {
+        "scoped_identifier" => flatten_scoped_identifier(source, node),
+        "identifier" | "crate" | "self" | "super" => node
+            .utf8_text(source)
+            .ok()
+            .map(|s| vec![s.to_string()])
+            .unwrap_or_default(),
+        _ => Vec::new(),
     }
 }
 
@@ -861,6 +1168,115 @@ impl Counter {
         assert_eq!(methods.len(), 3);
         let child_of_count = result.edges.iter().filter(|e| e.kind == EdgeKind::ChildOf).count();
         assert_eq!(child_of_count, 3);
+    }
+
+    // -----------------------------------------------------------------------
+    // AC11: use crate::auth::validate → RawImport
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn ac11_use_scoped_identifier_extracts_raw_import() {
+        let result = parse_rust("use crate::auth::validate;");
+        assert_eq!(result.imports.len(), 1);
+        let imp = &result.imports[0];
+        assert_eq!(imp.specifier, "crate::auth::validate");
+        assert_eq!(imp.names.len(), 1);
+        assert_eq!(imp.names[0].name, "validate");
+        assert!(!imp.is_namespace);
+    }
+
+    #[test]
+    fn use_simple_identifier_extracts_raw_import() {
+        let result = parse_rust("use std::fmt;");
+        assert_eq!(result.imports.len(), 1);
+        let imp = &result.imports[0];
+        assert_eq!(imp.specifier, "std::fmt");
+        assert_eq!(imp.names[0].name, "fmt");
+    }
+
+    // -----------------------------------------------------------------------
+    // AC12: pub use self::greetings::hello → reexport
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn ac12_pub_use_creates_reexport_export_entry() {
+        let result = parse_rust("pub use self::greetings::hello;");
+        assert_eq!(result.imports.len(), 1);
+        let imp = &result.imports[0];
+        assert_eq!(imp.specifier, "self::greetings::hello");
+
+        // Should also create an Export entry with is_reexport = true
+        assert_eq!(result.exports.len(), 1);
+        let exp = &result.exports[0];
+        assert!(exp.is_reexport);
+        assert_eq!(exp.source_specifier.as_deref(), Some("self::greetings::hello"));
+        assert_eq!(exp.name, "hello");
+    }
+
+    // -----------------------------------------------------------------------
+    // use_wildcard → is_namespace = true
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn use_wildcard_sets_is_namespace() {
+        let result = parse_rust("use foo::bar::*;");
+        assert_eq!(result.imports.len(), 1);
+        let imp = &result.imports[0];
+        assert!(imp.is_namespace);
+        assert_eq!(imp.specifier, "foo::bar");
+    }
+
+    // -----------------------------------------------------------------------
+    // use_list / scoped_use_list → multiple names
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn use_scoped_list_extracts_multiple_names() {
+        let result = parse_rust("use foo::{A, B};");
+        // Each item in the list becomes its own RawImport
+        assert_eq!(result.imports.len(), 2);
+        let specifiers: Vec<_> = result.imports.iter().map(|i| i.specifier.as_str()).collect();
+        assert!(specifiers.contains(&"foo::A"), "expected foo::A, got {specifiers:?}");
+        assert!(specifiers.contains(&"foo::B"), "expected foo::B, got {specifiers:?}");
+    }
+
+    // -----------------------------------------------------------------------
+    // use_as_clause → alias
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn use_as_clause_extracts_alias() {
+        let result = parse_rust("use foo as bar;");
+        assert_eq!(result.imports.len(), 1);
+        let imp = &result.imports[0];
+        assert_eq!(imp.specifier, "foo");
+        assert_eq!(imp.names.len(), 1);
+        assert_eq!(imp.names[0].name, "foo");
+        assert_eq!(imp.names[0].alias.as_deref(), Some("bar"));
+    }
+
+    // -----------------------------------------------------------------------
+    // AC13: mod submodule; → captured with "mod::" prefix
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn ac13_mod_declaration_captured_with_mod_prefix() {
+        let result = parse_rust("mod submodule;");
+        assert_eq!(result.imports.len(), 1);
+        let imp = &result.imports[0];
+        assert_eq!(imp.specifier, "mod::submodule");
+        assert!(imp.names.is_empty());
+    }
+
+    #[test]
+    fn inline_mod_not_captured_as_import() {
+        let result = parse_rust("mod inline { fn inner() {} }");
+        // The inline mod has a body, so it must not generate an import entry
+        assert!(
+            result.imports.is_empty(),
+            "inline mod should not produce an import, got: {:?}",
+            result.imports
+        );
     }
 
     // -----------------------------------------------------------------------
