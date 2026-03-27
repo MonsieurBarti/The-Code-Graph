@@ -43,6 +43,7 @@ pub trait GitProvider: Send + Sync {
     fn diff_hunks(&self, from: &str, to: Option<&str>) -> Result<Vec<DiffHunk>>;
     fn changed_files(&self, from: &str, to: &str) -> Result<Vec<PathBuf>>;
     fn current_head(&self) -> Result<String>;
+    fn modified_files(&self) -> Result<Vec<PathBuf>>;
 }
 
 /// Filesystem abstraction for reading source files.

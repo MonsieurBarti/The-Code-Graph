@@ -35,7 +35,13 @@ pub fn run_index(args: &IndexArgs, output_format: OutputFormat) -> Result<()> {
     let parser = RayonParseProvider::new();
 
     let use_case = IndexUseCase::new(store, parser, fs, git);
-    let stats = use_case.full_index(&root)?;
+    let stats = if let Some(files) = &args.files {
+        use_case.incremental_files(&root, files.clone())?
+    } else if args.incremental {
+        use_case.incremental_index(&root)?
+    } else {
+        use_case.full_index(&root)?
+    };
 
     print(&stats, output_format);
 
@@ -47,29 +53,134 @@ mod tests {
     use super::*;
     use std::fs;
 
-    #[test]
-    fn index_on_fixture_project_creates_db() {
-        let tmp = tempfile::tempdir().unwrap();
-        let root = tmp.path();
-
-        // Create a minimal git repo
+    fn setup_git_repo(root: &std::path::Path) {
         std::process::Command::new("git")
             .args(["init"])
             .current_dir(root)
             .output()
             .unwrap();
+        std::process::Command::new("git")
+            .args(["config", "user.email", "test@test.com"])
+            .current_dir(root)
+            .output()
+            .unwrap();
+        std::process::Command::new("git")
+            .args(["config", "user.name", "Test"])
+            .current_dir(root)
+            .output()
+            .unwrap();
+    }
 
-        // Create a TypeScript fixture
+    #[test]
+    fn index_on_fixture_project_creates_db() {
+        let tmp = tempfile::tempdir().unwrap();
+        let root = tmp.path();
+        setup_git_repo(root);
+
         let src = root.join("src");
         fs::create_dir_all(&src).unwrap();
         fs::write(src.join("main.ts"), "export function hello(): void {}\nexport class Greeter {}").unwrap();
         fs::write(src.join("util.ts"), "export function add(a: number, b: number): number { return a + b; }").unwrap();
 
-        let args = IndexArgs { path: Some(root.to_path_buf()) };
+        let args = IndexArgs { path: Some(root.to_path_buf()), incremental: false, files: None };
         let result = run_index(&args, OutputFormat::Compact);
         assert!(result.is_ok(), "index failed: {:?}", result.err());
 
         let db_path = root.join(".code-graph").join("graph.db");
         assert!(db_path.exists(), "graph.db should exist");
+    }
+
+    #[test]
+    fn index_incremental_updates_changed_files() {
+        let tmp = tempfile::tempdir().unwrap();
+        let root = tmp.path();
+        setup_git_repo(root);
+
+        let src = root.join("src");
+        fs::create_dir_all(&src).unwrap();
+        fs::write(src.join("main.ts"), "export function hello(): void {}").unwrap();
+
+        // Full index first
+        let args = IndexArgs { path: Some(root.to_path_buf()), incremental: false, files: None };
+        run_index(&args, OutputFormat::Compact).unwrap();
+
+        // Commit the file so git status shows it as clean
+        std::process::Command::new("git")
+            .args(["add", "."])
+            .current_dir(root)
+            .output()
+            .unwrap();
+        std::process::Command::new("git")
+            .args(["commit", "-m", "initial"])
+            .current_dir(root)
+            .output()
+            .unwrap();
+
+        // Modify file
+        fs::write(src.join("main.ts"), "export function hello(): void {}\nexport function world(): void {}").unwrap();
+
+        // Incremental index
+        let args = IndexArgs { path: Some(root.to_path_buf()), incremental: true, files: None };
+        let result = run_index(&args, OutputFormat::Compact);
+        assert!(result.is_ok(), "incremental index failed: {:?}", result.err());
+    }
+
+    #[test]
+    fn index_incremental_with_no_changes() {
+        let tmp = tempfile::tempdir().unwrap();
+        let root = tmp.path();
+        setup_git_repo(root);
+
+        let src = root.join("src");
+        fs::create_dir_all(&src).unwrap();
+        fs::write(src.join("main.ts"), "export function hello(): void {}").unwrap();
+
+        // Full index first
+        let args = IndexArgs { path: Some(root.to_path_buf()), incremental: false, files: None };
+        run_index(&args, OutputFormat::Compact).unwrap();
+
+        // Commit everything
+        std::process::Command::new("git")
+            .args(["add", "."])
+            .current_dir(root)
+            .output()
+            .unwrap();
+        std::process::Command::new("git")
+            .args(["commit", "-m", "initial"])
+            .current_dir(root)
+            .output()
+            .unwrap();
+
+        // Incremental with no changes
+        let args = IndexArgs { path: Some(root.to_path_buf()), incremental: true, files: None };
+        let result = run_index(&args, OutputFormat::Compact);
+        assert!(result.is_ok(), "incremental no-op failed: {:?}", result.err());
+    }
+
+    #[test]
+    fn index_files_updates_specific_files() {
+        let tmp = tempfile::tempdir().unwrap();
+        let root = tmp.path();
+        setup_git_repo(root);
+
+        let src = root.join("src");
+        fs::create_dir_all(&src).unwrap();
+        fs::write(src.join("main.ts"), "export function hello(): void {}").unwrap();
+
+        // Full index first
+        let args = IndexArgs { path: Some(root.to_path_buf()), incremental: false, files: None };
+        run_index(&args, OutputFormat::Compact).unwrap();
+
+        // Modify file
+        fs::write(src.join("main.ts"), "export function hello(): void {}\nexport function bar(): void {}").unwrap();
+
+        // Index specific files
+        let args = IndexArgs {
+            path: Some(root.to_path_buf()),
+            incremental: false,
+            files: Some(vec![std::path::PathBuf::from("src/main.ts")]),
+        };
+        let result = run_index(&args, OutputFormat::Compact);
+        assert!(result.is_ok(), "index --files failed: {:?}", result.err());
     }
 }

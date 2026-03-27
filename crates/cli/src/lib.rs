@@ -22,7 +22,7 @@ pub fn run(cli: Cli) -> Result<()> {
         Commands::Callees(args) => commands::callees::run_callees(args, output_format),
         Commands::Search(args) => commands::search::run_search(args, output_format),
         Commands::Stats => commands::stats::run_stats(output_format),
-        Commands::Watch => commands::stubs::not_implemented("watch"),
+        Commands::Watch(args) => commands::watch::run_watch(args),
         Commands::Setup => commands::stubs::not_implemented("setup"),
         Commands::Eval => commands::stubs::not_implemented("eval"),
     }

@@ -9,6 +9,7 @@ pub mod search;
 pub mod stats;
 pub mod impact;
 pub mod diff;
+pub mod watch;
 
 use clap::{Parser, Subcommand, ArgAction};
 
@@ -56,7 +57,7 @@ pub enum Commands {
     /// Show graph statistics
     Stats,
     /// Watch for file changes and re-index
-    Watch,
+    Watch(WatchArgs),
     /// Initialize project configuration
     Setup,
     /// Run evaluation suite
@@ -68,6 +69,14 @@ pub struct IndexArgs {
     /// Path to the project root (defaults to auto-detect)
     #[arg(long)]
     pub path: Option<std::path::PathBuf>,
+
+    /// Incremental update (only re-index changed files)
+    #[arg(long)]
+    pub incremental: bool,
+
+    /// Specific files to re-index (implies --incremental)
+    #[arg(long, value_delimiter = ',')]
+    pub files: Option<Vec<std::path::PathBuf>>,
 }
 
 #[derive(clap::Args)]
@@ -119,6 +128,29 @@ pub struct CallersArgs {
 pub struct CalleesArgs {
     /// Qualified name of the symbol
     pub qualified_name: String,
+}
+
+#[derive(clap::Args)]
+pub struct WatchArgs {
+    /// Run as background daemon
+    #[arg(long)]
+    pub daemon: bool,
+
+    /// Show daemon status
+    #[arg(long)]
+    pub status: bool,
+
+    /// Stop running daemon
+    #[arg(long)]
+    pub stop: bool,
+
+    /// Internal flag: marks this process as the daemon child
+    #[arg(long, hide = true)]
+    pub daemon_internal: bool,
+
+    /// Path to the project root (defaults to auto-detect)
+    #[arg(long)]
+    pub path: Option<std::path::PathBuf>,
 }
 
 #[derive(clap::Args)]
@@ -175,6 +207,9 @@ mod tests {
             vec!["code-graph", "search", "foo"],
             vec!["code-graph", "stats"],
             vec!["code-graph", "watch"],
+            vec!["code-graph", "watch", "--daemon"],
+            vec!["code-graph", "watch", "--status"],
+            vec!["code-graph", "watch", "--stop"],
             vec!["code-graph", "setup"],
             vec!["code-graph", "eval"],
         ];

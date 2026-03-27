@@ -124,11 +124,17 @@ impl ParseProvider for MockParseProvider {
 /// Mock FileSystem for testing.
 pub struct MockFileSystem {
     pub files: Vec<(PathBuf, String)>,
+    pub hashes: Vec<(PathBuf, String)>,
 }
 
 impl MockFileSystem {
     pub fn new(files: Vec<(PathBuf, String)>) -> Self {
-        Self { files }
+        Self { files, hashes: vec![] }
+    }
+
+    pub fn with_hashes(mut self, hashes: Vec<(PathBuf, String)>) -> Self {
+        self.hashes = hashes;
+        self
     }
 }
 
@@ -151,13 +157,39 @@ impl crate::ports::FileSystem for MockFileSystem {
             .ok_or_else(|| crate::error::CodeGraphError::Other(format!("file not found: {}", path.display())))
     }
 
-    fn file_hash(&self, _path: &Path) -> Result<String> {
+    fn file_hash(&self, path: &Path) -> Result<String> {
+        if !self.hashes.is_empty() {
+            return self.hashes.iter()
+                .find(|(p, _)| p == path)
+                .map(|(_, h)| h.clone())
+                .ok_or_else(|| crate::error::CodeGraphError::Other(
+                    format!("file not found: {}", path.display())
+                ));
+        }
         Ok("mock_hash".to_string())
     }
 }
 
 /// Mock GitProvider for testing.
-pub struct MockGitProvider;
+pub struct MockGitProvider {
+    pub modified: Vec<PathBuf>,
+}
+
+impl Default for MockGitProvider {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl MockGitProvider {
+    pub fn new() -> Self {
+        Self { modified: vec![] }
+    }
+
+    pub fn with_modified(files: Vec<PathBuf>) -> Self {
+        Self { modified: files }
+    }
+}
 
 impl crate::ports::GitProvider for MockGitProvider {
     fn current_head(&self) -> Result<String> {
@@ -170,5 +202,9 @@ impl crate::ports::GitProvider for MockGitProvider {
 
     fn diff_hunks(&self, _from: &str, _to: Option<&str>) -> Result<Vec<DiffHunk>> {
         Ok(vec![])
+    }
+
+    fn modified_files(&self) -> Result<Vec<PathBuf>> {
+        Ok(self.modified.clone())
     }
 }
