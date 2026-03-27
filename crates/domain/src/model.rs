@@ -316,7 +316,7 @@ impl QualifiedName {
     }
 
     pub fn symbol_path(&self) -> &str {
-        self.0.splitn(2, "::").nth(1).unwrap_or_default()
+        self.0.split_once("::").map(|(_, s)| s).unwrap_or_default()
     }
 
     pub fn as_str(&self) -> &str {
