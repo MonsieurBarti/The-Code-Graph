@@ -6,6 +6,7 @@ use domain::error::{CodeGraphError, Result};
 pub struct CodeGraphConfig {
     pub index: Option<IndexConfig>,
     pub search: Option<SearchConfig>,
+    pub watch: Option<WatchConfig>,
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]
@@ -16,6 +17,11 @@ pub struct IndexConfig {
 #[derive(Debug, Clone, Default, Deserialize)]
 pub struct SearchConfig {
     pub max_results: Option<usize>,
+}
+
+#[derive(Debug, Clone, Default, Deserialize)]
+pub struct WatchConfig {
+    pub debounce_ms: Option<u64>,
 }
 
 pub fn load_config(project_root: &Path) -> Result<CodeGraphConfig> {

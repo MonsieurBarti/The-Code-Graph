@@ -1,18 +1,13 @@
 # State — Milestone
 
 ## Progress
-- Slices: 6/9 completed
-- Tasks: 74/74 completed
+- Slices: 2/4 completed
+- Tasks: 13/13 completed
 
 ## Slices
 | Slice | Status | Tasks | Progress |
 |---|---|---|---|
 | Eval Framework & CI/CD | open | 0/0 | 0% |
 | Agent Integration | open | 0/0 | 0% |
-| Incremental Updates & Watch Daemon | open | 0/0 | 0% |
-| Query Commands | shipped | 13/13 | 100% |
-| CLI Foundation & Index Command | shipped | 15/15 | 100% |
-| Language Parsers & Import Resolution | shipped | 11/11 | 100% |
-| Tree-Sitter Parser Infrastructure | shipped | 7/7 | 100% |
-| SQLite Storage Layer | shipped | 7/7 | 100% |
-| Workspace Scaffold & Domain Model | shipped | 8/8 | 100% |
+| Incremental Updates & Watch Daemon | shipped (#8) | 13/13 | 100% |
+| Query Commands | closed (#7) | 13/13 | 100% |

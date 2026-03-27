@@ -3,6 +3,9 @@ use domain::model::Confidence;
 use storage::SqliteStore;
 use std::path::PathBuf;
 use crate::project::find_project_root;
+use crate::adapters::fs::RealFileSystem;
+use crate::adapters::git::ShellGitProvider;
+use crate::adapters::parse::RayonParseProvider;
 
 pub fn open_graph() -> Result<(SqliteStore, PathBuf)> {
     let cwd = std::env::current_dir().map_err(|e| {
@@ -15,6 +18,16 @@ pub fn open_graph() -> Result<(SqliteStore, PathBuf)> {
     }
     let store = SqliteStore::open(&db_path)
         .map_err(|e| CodeGraphError::Storage(format!("{e}")))?;
+
+    // Lazy freshness check — skips if daemon is running
+    let data_dir = root.join(".code-graph");
+    let fs = RealFileSystem;
+    let git = ShellGitProvider::new(root.clone());
+    let parser = RayonParseProvider::new();
+    if let Err(e) = watch::freshness::ensure_fresh(&store, &parser, &fs, &git, &root, &data_dir) {
+        tracing::debug!("freshness check skipped: {e}");
+    }
+
     Ok((store, root))
 }
 

@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use domain::error::{CodeGraphError, Result};
@@ -27,7 +27,7 @@ impl ShellGitProvider {
             ));
         }
 
-        Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
+        Ok(String::from_utf8_lossy(&output.stdout).trim_end().to_string())
     }
 }
 
@@ -111,6 +111,39 @@ fn parse_diff_output(output: &str) -> Result<Vec<DiffHunk>> {
     Ok(hunks)
 }
 
+const SUPPORTED_EXTENSIONS: &[&str] = &["ts", "tsx", "js", "jsx", "rs", "py", "go"];
+
+fn has_supported_extension(path: &Path) -> bool {
+    path.extension()
+        .and_then(|e| e.to_str())
+        .is_some_and(|e| SUPPORTED_EXTENSIONS.contains(&e))
+}
+
+fn parse_git_status(output: &str) -> Vec<PathBuf> {
+    output
+        .lines()
+        .filter(|line| line.len() >= 4) // "XY <path>" minimum
+        .filter_map(|line| {
+            let status = &line[..2];
+            let rest = &line[3..]; // skip "XY "
+
+            // Handle renames: "R  old -> new" or "RM old -> new"
+            let path_str = if status.starts_with('R') {
+                rest.split(" -> ").last().unwrap_or(rest)
+            } else {
+                rest
+            };
+
+            let path = PathBuf::from(path_str.trim());
+            if has_supported_extension(&path) {
+                Some(path)
+            } else {
+                None
+            }
+        })
+        .collect()
+}
+
 impl GitProvider for ShellGitProvider {
     fn current_head(&self) -> Result<String> {
         self.run_git(&["rev-parse", "HEAD"])
@@ -131,6 +164,11 @@ impl GitProvider for ShellGitProvider {
             Some(r) => self.run_git(&["diff", "--unified=0", from, r])?,
         };
         parse_diff_output(&output)
+    }
+
+    fn modified_files(&self) -> Result<Vec<PathBuf>> {
+        let output = self.run_git(&["status", "--porcelain"])?;
+        Ok(parse_git_status(&output))
     }
 }
 
@@ -258,6 +296,67 @@ rename to new.rs
     fn parse_empty_output() {
         let hunks = parse_diff_output("").unwrap();
         assert!(hunks.is_empty());
+    }
+
+    // --- parse_git_status tests ---
+
+    #[test]
+    fn parse_git_status_modified_file() {
+        let output = " M src/main.rs\n";
+        let files = parse_git_status(output);
+        assert_eq!(files, vec![PathBuf::from("src/main.rs")]);
+    }
+
+    #[test]
+    fn parse_git_status_untracked_file() {
+        let output = "?? new_file.ts\n";
+        let files = parse_git_status(output);
+        assert_eq!(files, vec![PathBuf::from("new_file.ts")]);
+    }
+
+    #[test]
+    fn parse_git_status_deleted_file() {
+        let output = " D deleted.rs\n";
+        let files = parse_git_status(output);
+        assert_eq!(files, vec![PathBuf::from("deleted.rs")]);
+    }
+
+    #[test]
+    fn parse_git_status_both_modified() {
+        let output = "MM both.ts\n";
+        let files = parse_git_status(output);
+        assert_eq!(files, vec![PathBuf::from("both.ts")]);
+    }
+
+    #[test]
+    fn parse_git_status_rename_uses_new_name() {
+        let output = "R  old.rs -> new.rs\n";
+        let files = parse_git_status(output);
+        assert_eq!(files, vec![PathBuf::from("new.rs")]);
+    }
+
+    #[test]
+    fn parse_git_status_multi_line_mixed() {
+        let output = " M src/main.rs\n?? new_file.ts\nA  added.py\n D deleted.go\n";
+        let files = parse_git_status(output);
+        assert_eq!(files.len(), 4);
+        assert!(files.contains(&PathBuf::from("src/main.rs")));
+        assert!(files.contains(&PathBuf::from("new_file.ts")));
+        assert!(files.contains(&PathBuf::from("added.py")));
+        assert!(files.contains(&PathBuf::from("deleted.go")));
+    }
+
+    #[test]
+    fn parse_git_status_empty_output() {
+        let files = parse_git_status("");
+        assert!(files.is_empty());
+    }
+
+    #[test]
+    fn parse_git_status_filters_unsupported_extensions() {
+        let output = " M readme.md\n M config.json\n M src/main.rs\n";
+        let files = parse_git_status(output);
+        assert_eq!(files, vec![PathBuf::from("src/main.rs")]);
     }
 
     #[test]
