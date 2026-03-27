@@ -10,6 +10,7 @@ pub mod stats;
 pub mod impact;
 pub mod diff;
 pub mod setup;
+pub mod setup_helpers;
 pub mod watch;
 
 use clap::{Parser, Subcommand, ArgAction};
