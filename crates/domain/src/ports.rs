@@ -17,6 +17,17 @@ pub trait GraphStore: Send + Sync {
     fn remove_file(&self, path: &Path) -> Result<()>;
     fn remove_symbols_in_file(&self, path: &Path) -> Result<()>;
     fn stats(&self) -> Result<GraphStats>;
+
+    /// Store a file and all its symbols and edges atomically.
+    fn store_file_data(
+        &self,
+        file: &FileNode,
+        symbols: &[SymbolNode],
+        edges: &[Edge],
+    ) -> Result<()>;
+
+    /// Remove all data associated with a file: file row, symbols, and related edges.
+    fn remove_file_data(&self, path: &Path) -> Result<()>;
 }
 
 /// Full-text search over symbols.
