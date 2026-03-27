@@ -62,6 +62,8 @@ impl SqliteStore {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use domain::model::*;
+    use domain::ports::{GraphStore, SearchIndex};
 
     fn assert_send_sync<T: Send + Sync>() {}
 
@@ -115,11 +117,77 @@ mod tests {
             let conn = store.conn().unwrap();
             conn.pragma_update(None, "user_version", 99).unwrap();
         }
-        // Re-run ensure_schema on same connection with version 99
         let conn = store.conn().unwrap();
         let result = schema::ensure_schema(&conn);
         assert!(result.is_err());
         let err_msg = format!("{}", result.unwrap_err());
         assert!(err_msg.contains("unsupported schema version"));
+    }
+
+    // --- Integration tests (T07) ---
+
+    #[test]
+    fn fts5_trigger_sync_on_store_file_data() {
+        let store = SqliteStore::open_in_memory().unwrap();
+        let file = FileNode { path: "a.rs".into(), language: Language::Rust, hash: "h".into() };
+        let sym = SymbolNode {
+            name: "BatchSymbol".into(),
+            qualified_name: "a.rs::BatchSymbol".into(),
+            kind: SymbolKind::Function,
+            location: Location { file: "a.rs".into(), line_start: 1, line_end: 5, col_start: 0, col_end: 0 },
+            visibility: Visibility::Public, is_exported: true, is_async: false, is_test: false,
+            decorators: vec![], signature: None,
+        };
+        store.store_file_data(&file, &[sym], &[]).unwrap();
+        let results = store.search("BatchSymbol", 10).unwrap();
+        assert_eq!(results.len(), 1);
+    }
+
+    #[test]
+    fn cascade_delete_removes_from_fts() {
+        let store = SqliteStore::open_in_memory().unwrap();
+        let file = FileNode { path: "a.rs".into(), language: Language::Rust, hash: "h".into() };
+        let sym = SymbolNode {
+            name: "Doomed".into(),
+            qualified_name: "a.rs::Doomed".into(),
+            kind: SymbolKind::Class,
+            location: Location { file: "a.rs".into(), line_start: 1, line_end: 5, col_start: 0, col_end: 0 },
+            visibility: Visibility::Public, is_exported: true, is_async: false, is_test: false,
+            decorators: vec![], signature: None,
+        };
+        store.store_file_data(&file, &[sym], &[]).unwrap();
+        store.remove_file("a.rs".as_ref()).unwrap();
+        assert!(store.search("Doomed", 10).unwrap().is_empty());
+    }
+
+    #[test]
+    fn concurrent_reads_do_not_deadlock() {
+        use std::thread;
+        let store = SqliteStore::open_in_memory().unwrap();
+        let file = FileNode { path: "a.rs".into(), language: Language::Rust, hash: "h".into() };
+        store.upsert_file(&file).unwrap();
+
+        let s1 = store.clone();
+        let s2 = store.clone();
+        let t1 = thread::spawn(move || s1.all_files().unwrap());
+        let t2 = thread::spawn(move || s2.stats().unwrap());
+        t1.join().unwrap();
+        t2.join().unwrap();
+    }
+
+    #[test]
+    fn store_file_data_atomicity() {
+        let store = SqliteStore::open_in_memory().unwrap();
+        let file = FileNode { path: "a.rs".into(), language: Language::Rust, hash: "h".into() };
+        let sym = SymbolNode {
+            name: "X".into(), qualified_name: "a.rs::X".into(),
+            kind: SymbolKind::Function,
+            location: Location { file: "a.rs".into(), line_start: 1, line_end: 2, col_start: 0, col_end: 0 },
+            visibility: Visibility::Public, is_exported: false, is_async: false, is_test: false,
+            decorators: vec![], signature: None,
+        };
+        store.store_file_data(&file, &[sym], &[]).unwrap();
+        assert!(store.get_file("a.rs".as_ref()).unwrap().is_some());
+        assert!(store.get_symbol("a.rs::X").unwrap().is_some());
     }
 }

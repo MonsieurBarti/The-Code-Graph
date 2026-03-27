@@ -145,6 +145,7 @@ pub(crate) fn visibility_from_str(s: &str) -> Result<Visibility> {
 // NonParsedKind
 // ---------------------------------------------------------------------------
 
+#[allow(dead_code)]
 pub(crate) fn non_parsed_kind_to_str(k: &NonParsedKind) -> &'static str {
     match k {
         NonParsedKind::Doc => "doc",
@@ -155,6 +156,7 @@ pub(crate) fn non_parsed_kind_to_str(k: &NonParsedKind) -> &'static str {
     }
 }
 
+#[allow(dead_code)]
 pub(crate) fn non_parsed_kind_from_str(s: &str) -> Result<NonParsedKind> {
     match s {
         "doc" => Ok(NonParsedKind::Doc),
