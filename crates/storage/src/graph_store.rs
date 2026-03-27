@@ -8,6 +8,65 @@ use domain::ports::GraphStore;
 use crate::mapping::*;
 use crate::SqliteStore;
 
+impl SqliteStore {
+    fn query_symbols(
+        &self,
+        stmt: &mut rusqlite::CachedStatement<'_>,
+        params: impl rusqlite::Params,
+    ) -> Result<Vec<SymbolNode>> {
+        let rows = stmt
+            .query_map(params, |row| {
+                Ok((
+                    row.get::<_, String>(0)?,
+                    row.get::<_, String>(1)?,
+                    row.get::<_, String>(2)?,
+                    row.get::<_, String>(3)?,
+                    row.get::<_, i64>(4)?,
+                    row.get::<_, i64>(5)?,
+                    row.get::<_, i64>(6)?,
+                    row.get::<_, i64>(7)?,
+                    row.get::<_, String>(8)?,
+                    row.get::<_, i32>(9)?,
+                    row.get::<_, i32>(10)?,
+                    row.get::<_, i32>(11)?,
+                    row.get::<_, Option<String>>(12)?,
+                    row.get::<_, Option<String>>(13)?,
+                ))
+            })
+            .map_err(map_rusqlite_error)?;
+        let mut symbols = Vec::new();
+        for row in rows {
+            let (qn, name, kind, file, ls, le, cs, ce, vis, exp, asy, tst, dec, sig) =
+                row.map_err(map_rusqlite_error)?;
+            let decorators: Vec<String> = match dec {
+                Some(ref s) => serde_json::from_str(s).map_err(|e| {
+                    domain::error::CodeGraphError::Storage(e.to_string())
+                })?,
+                None => vec![],
+            };
+            symbols.push(SymbolNode {
+                qualified_name: qn,
+                name,
+                kind: symbol_kind_from_str(&kind)?,
+                location: Location {
+                    file: file.into(),
+                    line_start: ls as usize,
+                    line_end: le as usize,
+                    col_start: cs as usize,
+                    col_end: ce as usize,
+                },
+                visibility: visibility_from_str(&vis)?,
+                is_exported: exp != 0,
+                is_async: asy != 0,
+                is_test: tst != 0,
+                decorators,
+                signature: sig,
+            });
+        }
+        Ok(symbols)
+    }
+}
+
 fn now_epoch() -> i64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -369,6 +428,37 @@ impl GraphStore for SqliteStore {
             .execute(rusqlite::params![path.to_str().unwrap_or_default()])
             .map_err(map_rusqlite_error)?;
         Ok(())
+    }
+
+    fn find_by_name(&self, pattern: &str) -> Result<Vec<SymbolNode>> {
+        let conn = self.conn()?;
+        // Phase 1: exact match on name
+        let mut stmt = conn
+            .prepare_cached(
+                "SELECT qualified_name, name, kind, file_path,
+                        line_start, line_end, col_start, col_end,
+                        visibility, is_exported, is_async, is_test,
+                        decorators, signature
+                 FROM symbols WHERE name = ?1",
+            )
+            .map_err(map_rusqlite_error)?;
+        let exact = self.query_symbols(&mut stmt, rusqlite::params![pattern])?;
+        if !exact.is_empty() {
+            return Ok(exact);
+        }
+        // Phase 2: prefix fallback (escape LIKE metacharacters)
+        let escaped = pattern.replace('\\', "\\\\").replace('%', "\\%").replace('_', "\\_");
+        let prefix_pattern = format!("{escaped}%");
+        let mut stmt = conn
+            .prepare_cached(
+                "SELECT qualified_name, name, kind, file_path,
+                        line_start, line_end, col_start, col_end,
+                        visibility, is_exported, is_async, is_test,
+                        decorators, signature
+                 FROM symbols WHERE name LIKE ?1 ESCAPE '\\'",
+            )
+            .map_err(map_rusqlite_error)?;
+        self.query_symbols(&mut stmt, rusqlite::params![&prefix_pattern])
     }
 
     fn stats(&self) -> Result<GraphStats> {
@@ -749,5 +839,99 @@ mod tests {
         assert_eq!(got.signature, sym.signature);
         assert_eq!(got.location.line_start, sym.location.line_start);
         assert_eq!(got.location.line_end, sym.location.line_end);
+    }
+
+    // --- find_by_name (T04) ---
+
+    fn make_named_symbol(name: &str, qn: &str) -> SymbolNode {
+        SymbolNode {
+            name: name.into(),
+            qualified_name: qn.into(),
+            kind: SymbolKind::Function,
+            location: Location {
+                file: "src/main.rs".into(),
+                line_start: 1,
+                line_end: 10,
+                col_start: 0,
+                col_end: 1,
+            },
+            visibility: Visibility::Public,
+            is_exported: true,
+            is_async: false,
+            is_test: false,
+            decorators: vec![],
+            signature: None,
+        }
+    }
+
+    #[test]
+    fn find_by_name_exact_match() {
+        let store = test_store();
+        store.upsert_file(&sample_file()).unwrap();
+        store.upsert_symbol(&make_named_symbol("foo", "src/main.rs::foo")).unwrap();
+        store.upsert_symbol(&make_named_symbol("foobar", "src/main.rs::foobar")).unwrap();
+        store.upsert_symbol(&make_named_symbol("bar", "src/main.rs::bar")).unwrap();
+
+        let results = store.find_by_name("foo").unwrap();
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].name, "foo");
+    }
+
+    #[test]
+    fn find_by_name_prefix_fallback() {
+        let store = test_store();
+        store.upsert_file(&sample_file()).unwrap();
+        store.upsert_symbol(&make_named_symbol("foobar", "src/main.rs::foobar")).unwrap();
+        store.upsert_symbol(&make_named_symbol("foobaz", "src/main.rs::foobaz")).unwrap();
+
+        let results = store.find_by_name("foo").unwrap();
+        assert_eq!(results.len(), 2);
+        let mut names: Vec<&str> = results.iter().map(|s| s.name.as_str()).collect();
+        names.sort();
+        assert_eq!(names, vec!["foobar", "foobaz"]);
+    }
+
+    #[test]
+    fn find_by_name_no_match() {
+        let store = test_store();
+        let results = store.find_by_name("nonexistent").unwrap();
+        assert!(results.is_empty());
+    }
+
+    #[test]
+    fn find_by_name_case_sensitive() {
+        // The exact-match phase (=) is case-sensitive, so "Foo" != "foo".
+        // However, SQLite LIKE is case-insensitive for ASCII, so the
+        // prefix fallback matches "foo" when searching "Foo".
+        let store = test_store();
+        store.upsert_file(&sample_file()).unwrap();
+        store.upsert_symbol(&make_named_symbol("foo", "src/main.rs::foo")).unwrap();
+
+        // Exact match skipped (case-sensitive =), but prefix LIKE catches it
+        let results = store.find_by_name("Foo").unwrap();
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].name, "foo");
+    }
+
+    #[test]
+    fn find_by_name_escapes_like_metacharacters() {
+        let store = test_store();
+        store.upsert_file(&sample_file()).unwrap();
+        store.upsert_symbol(&make_named_symbol("__init__", "src/main.rs::__init__")).unwrap();
+        store.upsert_symbol(&make_named_symbol("__init_extra", "src/main.rs::__init_extra")).unwrap();
+        store.upsert_symbol(&make_named_symbol("axbycz", "src/main.rs::axbycz")).unwrap();
+
+        // Exact match for __init__
+        let results = store.find_by_name("__init__").unwrap();
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].name, "__init__");
+
+        // Prefix search for "__init" should match both __init__ and __init_extra,
+        // but NOT "axbycz" (underscore must not act as single-char wildcard)
+        let results = store.find_by_name("__init").unwrap();
+        assert_eq!(results.len(), 2);
+        let mut names: Vec<&str> = results.iter().map(|s| s.name.as_str()).collect();
+        names.sort();
+        assert_eq!(names, vec!["__init__", "__init_extra"]);
     }
 }

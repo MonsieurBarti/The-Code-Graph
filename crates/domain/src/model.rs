@@ -210,7 +210,7 @@ pub struct SearchResult {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Reference {
-    pub source: String,
+    pub symbol: String,
     pub edge_kind: EdgeKind,
     pub location: Option<Location>,
 }
@@ -518,7 +518,7 @@ mod tests {
         assert_roundtrip!(ImpactTarget::Symbol("s".into()), ImpactTarget);
         assert_roundtrip!(TraversalResult { node: "n".into(), depth: 1, path: vec![], edge_kind: EdgeKind::Calls }, TraversalResult);
         assert_roundtrip!(SearchResult { qualified_name: "f::s".into(), name: "s".into(), kind: SymbolKind::Function, file_path: "f".into(), score: 1.0 }, SearchResult);
-        assert_roundtrip!(Reference { source: "s".into(), edge_kind: EdgeKind::Calls, location: None }, Reference);
+        assert_roundtrip!(Reference { symbol: "s".into(), edge_kind: EdgeKind::Calls, location: None }, Reference);
         assert_roundtrip!(IndexStats { files_indexed: 1, symbols_extracted: 2, edges_created: 3, duration: std::time::Duration::from_secs(1) }, IndexStats);
         assert_roundtrip!(GraphStats { files: 1, symbols: 2, edges: 3 }, GraphStats);
         assert_roundtrip!(DiffHunk { file: "f".into(), old_start: 1, old_count: 2, new_start: 1, new_count: 3 }, DiffHunk);

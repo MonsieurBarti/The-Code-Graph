@@ -4,7 +4,7 @@ use crate::model::*;
 use crate::ports::{GraphStore, SearchIndex, FileData, ParseProvider};
 
 /// In-memory implementation of GraphStore + SearchIndex for testing.
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct InMemoryGraphStore {
     files: Vec<FileNode>,
     symbols: Vec<SymbolNode>,
@@ -52,6 +52,19 @@ impl GraphStore for InMemoryGraphStore {
     fn remove_symbols_in_file(&self, _path: &Path) -> Result<()> { Ok(()) }
     fn stats(&self) -> Result<GraphStats> {
         Ok(GraphStats { files: self.files.len(), symbols: self.symbols.len(), edges: self.edges.len() })
+    }
+    fn find_by_name(&self, pattern: &str) -> Result<Vec<SymbolNode>> {
+        let exact: Vec<SymbolNode> = self.symbols.iter()
+            .filter(|s| s.name == pattern)
+            .cloned()
+            .collect();
+        if !exact.is_empty() {
+            return Ok(exact);
+        }
+        Ok(self.symbols.iter()
+            .filter(|s| s.name.starts_with(pattern))
+            .cloned()
+            .collect())
     }
 
     fn store_file_data(
@@ -155,7 +168,7 @@ impl crate::ports::GitProvider for MockGitProvider {
         Ok(vec![])
     }
 
-    fn diff_hunks(&self, _from: &str, _to: &str) -> Result<Vec<DiffHunk>> {
+    fn diff_hunks(&self, _from: &str, _to: Option<&str>) -> Result<Vec<DiffHunk>> {
         Ok(vec![])
     }
 }
