@@ -1,6 +1,14 @@
 pub mod index;
 pub mod stubs;
 pub mod helpers;
+pub mod find;
+pub mod refs;
+pub mod callers;
+pub mod callees;
+pub mod search;
+pub mod stats;
+pub mod impact;
+pub mod diff;
 
 use clap::{Parser, Subcommand, ArgAction};
 
