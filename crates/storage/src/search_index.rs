@@ -13,8 +13,9 @@ impl SearchIndex for SqliteStore {
 
         let conn = self.conn()?;
 
-        // Append * for prefix matching
-        let fts_query = format!("{query}*");
+        // Quote the query to prevent FTS5 syntax injection, then append * for prefix matching
+        let sanitized = query.replace('"', "\"\"");
+        let fts_query = format!("\"{sanitized}\"*");
 
         let mut stmt = conn
             .prepare_cached(

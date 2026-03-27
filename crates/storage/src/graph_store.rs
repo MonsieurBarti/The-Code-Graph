@@ -396,20 +396,38 @@ impl GraphStore for SqliteStore {
             .transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)
             .map_err(map_rusqlite_error)?;
 
+        let path_str = file.path.to_str().unwrap_or_default();
+
+        // Remove stale edges referencing this file's existing symbols
+        tx.prepare_cached(
+            "DELETE FROM edges
+             WHERE source_qualified IN (SELECT qualified_name FROM symbols WHERE file_path = ?1)
+                OR target_qualified IN (SELECT qualified_name FROM symbols WHERE file_path = ?1)",
+        )
+        .map_err(map_rusqlite_error)?
+        .execute(rusqlite::params![path_str])
+        .map_err(map_rusqlite_error)?;
+
+        // Remove stale symbols for this file
+        tx.prepare_cached("DELETE FROM symbols WHERE file_path = ?1")
+            .map_err(map_rusqlite_error)?
+            .execute(rusqlite::params![path_str])
+            .map_err(map_rusqlite_error)?;
+
         // Upsert file
         tx.prepare_cached(
             "INSERT OR REPLACE INTO files (path, language, hash, updated_at) VALUES (?1, ?2, ?3, ?4)",
         )
         .map_err(map_rusqlite_error)?
         .execute(rusqlite::params![
-            file.path.to_str().unwrap_or_default(),
+            path_str,
             language_to_str(&file.language),
             &file.hash,
             now_epoch(),
         ])
         .map_err(map_rusqlite_error)?;
 
-        // Upsert each symbol
+        // Insert each symbol
         for symbol in symbols {
             let decorators_json =
                 serde_json::to_string(&symbol.decorators).map_err(|e| {
@@ -686,6 +704,8 @@ mod tests {
             signature: None,
         };
         store.store_file_data(&file, &[sym2], &[]).unwrap();
+        // Old symbol must be gone, new one present
+        assert!(store.get_symbol("src/main.rs::foo").unwrap().is_none());
         assert!(store.get_symbol("src/main.rs::bar").unwrap().is_some());
     }
 
