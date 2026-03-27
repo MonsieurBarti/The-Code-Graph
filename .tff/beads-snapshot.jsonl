@@ -22,7 +22,7 @@
 {"id":"The-Code-Graph-xhh.1.9","label":"tff:slice","title":"Eval Framework & CI/CD","status":"open","design":"","deps":{"blocks":[],"validates":[]},"kvs":{},"snapshot_ts":"2026-03-27T14:41:04Z"}
 {"id":"The-Code-Graph-xhh.1.8","label":"tff:slice","title":"Agent Integration","status":"open","design":"","deps":{"blocks":[],"validates":[]},"kvs":{},"snapshot_ts":"2026-03-27T14:41:04Z"}
 {"id":"The-Code-Graph-xhh.1.7","label":"tff:slice","title":"Incremental Updates & Watch Daemon","status":"open","design":"","deps":{"blocks":[],"validates":[]},"kvs":{},"snapshot_ts":"2026-03-27T14:41:04Z"}
-{"id":"The-Code-Graph-xhh.1.6","label":"tff:slice","title":"Query Commands","status":"in_review","design":"","deps":{"blocks":[],"validates":[]},"kvs":{"pr":"#7"},"snapshot_ts":"2026-03-27T15:44:10Z"}
+{"id":"The-Code-Graph-xhh.1.6","label":"tff:slice","title":"Query Commands","status":"closed","design":"","deps":{"blocks":[],"validates":[]},"kvs":{"pr":"#7"},"snapshot_ts":"2026-03-27T16:00:00Z"}
 {"id":"The-Code-Graph-xhh.1.5","label":"tff:slice","title":"CLI Foundation & Index Command","status":"closed","design":"","deps":{"blocks":[],"validates":[]},"kvs":{},"snapshot_ts":"2026-03-27T14:41:04Z"}
 {"id":"The-Code-Graph-xhh.1.4","label":"tff:slice","title":"Language Parsers & Import Resolution","status":"closed","design":"","deps":{"blocks":[],"validates":[]},"kvs":{},"snapshot_ts":"2026-03-27T14:41:04Z"}
 {"id":"The-Code-Graph-xhh.1.3","label":"tff:slice","title":"Tree-Sitter Parser Infrastructure","status":"closed","design":"","deps":{"blocks":[],"validates":[]},"kvs":{},"snapshot_ts":"2026-03-27T14:41:04Z"}
