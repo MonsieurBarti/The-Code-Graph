@@ -2,7 +2,7 @@
   "scenarios": [
     {
       "repo": "ripgrep",
-      "description": "Symbol impact of Stats struct — trait implementations for arithmetic and serialization",
+      "description": "Changing the Stats struct should affect its trait implementations (Add, AddAssign, Serialize)",
       "target": "crates/printer/src/stats.rs::Stats",
       "depth": 3,
       "confidence": "high",
@@ -16,7 +16,7 @@
     },
     {
       "repo": "ripgrep",
-      "description": "Symbol impact of Glob struct — trait implementations for Display, Hash, FromStr",
+      "description": "Changing the Glob struct should affect its PartialEq, Hash, Display, and FromStr implementations",
       "target": "crates/globset/src/glob.rs::Glob",
       "depth": 3,
       "confidence": "high",
@@ -29,7 +29,7 @@
     },
     {
       "repo": "ripgrep",
-      "description": "Symbol impact of ignore Error — error trait implementations and conversions",
+      "description": "Changing the ignore Error enum should affect its Clone, std::error::Error, Display, and From implementations",
       "target": "crates/ignore/src/lib.rs::Error",
       "depth": 3,
       "confidence": "high",
@@ -42,7 +42,7 @@
     },
     {
       "repo": "ripgrep",
-      "description": "Symbol impact of CommandError — error Display, Error, and From implementations",
+      "description": "Changing CommandError should affect its std::error::Error, Display, and From<io::Error> implementations",
       "target": "crates/cli/src/process.rs::CommandError",
       "depth": 3,
       "confidence": "high",
@@ -54,39 +54,24 @@
     },
     {
       "repo": "ripgrep",
-      "description": "File-level impact of search module — all search worker types and methods",
-      "target": "crates/core/search.rs",
+      "description": "Changing CommandReader should affect its Drop and io::Read trait implementations",
+      "target": "crates/cli/src/process.rs::CommandReader",
       "depth": 3,
-      "confidence": "all",
+      "confidence": "high",
       "expected_affected": [
-        "crates/core/search.rs::Config",
-        "crates/core/search.rs::Config.default",
-        "crates/core/search.rs::SearchWorkerBuilder",
-        "crates/core/search.rs::SearchWorkerBuilder.new",
-        "crates/core/search.rs::SearchWorkerBuilder.build",
-        "crates/core/search.rs::SearchResult",
-        "crates/core/search.rs::SearchResult.has_match",
-        "crates/core/search.rs::SearchResult.stats",
-        "crates/core/search.rs::PatternMatcher",
-        "crates/core/search.rs::Printer"
+        "crates/cli/src/process.rs::Drop",
+        "crates/cli/src/process.rs::io::Read"
       ]
     },
     {
       "repo": "ripgrep",
-      "description": "File-level impact of glob module — glob matching types and strategies",
-      "target": "crates/globset/src/glob.rs",
+      "description": "Changing HyperlinkFormat should affect its FromStr and Display trait implementations",
+      "target": "crates/printer/src/hyperlink.rs::HyperlinkFormat",
       "depth": 3,
-      "confidence": "all",
+      "confidence": "high",
       "expected_affected": [
-        "crates/globset/src/glob.rs::MatchStrategy",
-        "crates/globset/src/glob.rs::Glob",
-        "crates/globset/src/glob.rs::GlobMatcher",
-        "crates/globset/src/glob.rs::GlobStrategic",
-        "crates/globset/src/glob.rs::GlobBuilder",
-        "crates/globset/src/glob.rs::PartialEq",
-        "crates/globset/src/glob.rs::std::hash::Hash",
-        "crates/globset/src/glob.rs::std::fmt::Display",
-        "crates/globset/src/glob.rs::std::str::FromStr"
+        "crates/printer/src/hyperlink.rs::std::str::FromStr",
+        "crates/printer/src/hyperlink.rs::std::fmt::Display"
       ]
     }
   ]

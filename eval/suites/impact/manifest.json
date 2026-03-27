@@ -27,6 +27,12 @@
       "url": "https://github.com/fastapi/fastapi",
       "revision": "0.115.0",
       "languages": ["python"]
+    },
+    {
+      "name": "go-stdlib",
+      "url": "https://github.com/golang/go",
+      "revision": "go1.23.0",
+      "languages": ["go"]
     }
   ]
 }

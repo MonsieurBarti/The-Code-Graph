@@ -2,118 +2,87 @@
   "scenarios": [
     {
       "repo": "trpc",
-      "description": "File-level impact of TRPCError module — error types and utility chain",
+      "description": "File-level impact of TRPCError module — error class and utility functions",
       "target": "packages/server/src/unstable-core-do-not-import/error/TRPCError.ts",
       "depth": 3,
-      "confidence": "all",
+      "confidence": "high",
       "expected_affected": [
         "packages/server/src/unstable-core-do-not-import/error/TRPCError.ts::UnknownCauseError",
         "packages/server/src/unstable-core-do-not-import/error/TRPCError.ts::getCauseFromUnknown",
         "packages/server/src/unstable-core-do-not-import/error/TRPCError.ts::getTRPCErrorFromUnknown",
-        "packages/server/src/unstable-core-do-not-import/error/TRPCError.ts::TRPCError",
-        "packages/server/src/unstable-core-do-not-import/rpc/codes.ts",
-        "packages/server/src/unstable-core-do-not-import/utils.ts",
-        "packages/server/src/unstable-core-do-not-import/rpc/codes.ts::TRPC_ERROR_CODES_BY_KEY",
-        "packages/server/src/unstable-core-do-not-import/rpc/codes.ts::TRPC_ERROR_CODES_BY_NUMBER",
-        "packages/server/src/unstable-core-do-not-import/rpc/codes.ts::TRPC_ERROR_CODE_NUMBER",
-        "packages/server/src/unstable-core-do-not-import/rpc/codes.ts::TRPC_ERROR_CODE_KEY"
+        "packages/server/src/unstable-core-do-not-import/error/TRPCError.ts::TRPCError"
       ]
     },
     {
       "repo": "trpc",
-      "description": "File-level impact of createTRPCClient — client creation and proxy types",
+      "description": "File-level impact of createTRPCClient — client creation, proxy types, and resolvers",
       "target": "packages/client/src/createTRPCClient.ts",
       "depth": 3,
-      "confidence": "all",
+      "confidence": "high",
       "expected_affected": [
-        "packages/client/src/createTRPCClient.ts::inferRouterClient",
-        "packages/client/src/createTRPCClient.ts::CreateTRPCClient",
-        "packages/client/src/createTRPCClient.ts::untypedClientSymbol",
-        "packages/client/src/createTRPCClient.ts::TRPCClient",
-        "packages/client/src/createTRPCClient.ts::ResolverDef",
-        "packages/client/src/createTRPCClient.ts::coerceAsyncGeneratorToIterable",
-        "packages/client/src/createTRPCClient.ts::Resolver",
-        "packages/client/src/createTRPCClient.ts::SubscriptionResolver",
-        "packages/client/src/createTRPCClient.ts::DecorateProcedure",
-        "packages/client/src/createTRPCClient.ts::DecoratedProcedureRecord",
-        "packages/client/src/createTRPCClient.ts::clientCallTypeMap",
-        "packages/client/src/createTRPCClient.ts::clientCallTypeToProcedureType",
-        "packages/client/src/createTRPCClient.ts::createTRPCClientProxy",
         "packages/client/src/createTRPCClient.ts::createTRPCClient",
-        "packages/client/src/createTRPCClient.ts::getUntypedClient"
+        "packages/client/src/createTRPCClient.ts::createTRPCClientProxy",
+        "packages/client/src/createTRPCClient.ts::CreateTRPCClient",
+        "packages/client/src/createTRPCClient.ts::TRPCClient",
+        "packages/client/src/createTRPCClient.ts::DecorateProcedure",
+        "packages/client/src/createTRPCClient.ts::DecoratedProcedureRecord"
       ]
     },
     {
       "repo": "trpc",
-      "description": "File-level impact of initTRPC — server initialization with deep import chain",
+      "description": "File-level impact of initTRPC — server initialization builder and config types",
       "target": "packages/server/src/unstable-core-do-not-import/initTRPC.ts",
       "depth": 3,
-      "confidence": "all",
+      "confidence": "high",
       "expected_affected": [
-        "packages/server/src/unstable-core-do-not-import/initTRPC.ts::inferErrorFormatterShape",
+        "packages/server/src/unstable-core-do-not-import/initTRPC.ts::initTRPC",
+        "packages/server/src/unstable-core-do-not-import/initTRPC.ts::TRPCBuilder",
         "packages/server/src/unstable-core-do-not-import/initTRPC.ts::RuntimeConfigOptions",
         "packages/server/src/unstable-core-do-not-import/initTRPC.ts::ContextCallback",
-        "packages/server/src/unstable-core-do-not-import/initTRPC.ts::TRPCBuilder",
-        "packages/server/src/unstable-core-do-not-import/initTRPC.ts::initTRPC",
-        "packages/server/src/unstable-core-do-not-import/error/formatter.ts",
-        "packages/server/src/unstable-core-do-not-import/middleware.ts",
-        "packages/server/src/unstable-core-do-not-import/procedureBuilder.ts",
-        "packages/server/src/unstable-core-do-not-import/rootConfig.ts",
-        "packages/server/src/unstable-core-do-not-import/router.ts",
-        "packages/server/src/unstable-core-do-not-import/transformer.ts",
-        "packages/server/src/unstable-core-do-not-import/types.ts"
+        "packages/server/src/unstable-core-do-not-import/initTRPC.ts::inferErrorFormatterShape"
       ]
     },
     {
       "repo": "trpc",
-      "description": "File-level impact of TRPCClientError — error propagation across client boundary",
+      "description": "File-level impact of TRPCClientError — client error types and guards",
       "target": "packages/client/src/TRPCClientError.ts",
       "depth": 3,
-      "confidence": "all",
+      "confidence": "high",
       "expected_affected": [
-        "packages/client/src/TRPCClientError.ts::inferErrorShape",
+        "packages/client/src/TRPCClientError.ts::TRPCClientError",
         "packages/client/src/TRPCClientError.ts::TRPCClientErrorBase",
         "packages/client/src/TRPCClientError.ts::TRPCClientErrorLike",
         "packages/client/src/TRPCClientError.ts::isTRPCClientError",
         "packages/client/src/TRPCClientError.ts::isTRPCErrorResponse",
-        "packages/client/src/TRPCClientError.ts::getMessageFromUnknownError",
-        "packages/client/src/TRPCClientError.ts::TRPCClientError"
+        "packages/client/src/TRPCClientError.ts::getMessageFromUnknownError"
       ]
     },
     {
       "repo": "trpc",
-      "description": "File-level impact of client barrel export — transitive re-export chain",
-      "target": "packages/client/src/index.ts",
+      "description": "File-level impact of RPC envelopes — request/response message protocol types",
+      "target": "packages/server/src/unstable-core-do-not-import/rpc/envelopes.ts",
       "depth": 3,
-      "confidence": "all",
+      "confidence": "high",
       "expected_affected": [
-        "packages/client/src/createTRPCUntypedClient.ts",
-        "packages/client/src/createTRPCClient.ts",
-        "packages/client/src/getFetch.ts",
-        "packages/client/src/TRPCClientError.ts",
-        "packages/client/src/links.ts",
-        "packages/client/src/internals/types.ts",
-        "packages/client/src/createTRPCClient.ts::createTRPCClient",
-        "packages/client/src/createTRPCClient.ts::CreateTRPCClient",
-        "packages/client/src/TRPCClientError.ts::TRPCClientError"
+        "packages/server/src/unstable-core-do-not-import/rpc/envelopes.ts::TRPCErrorShape",
+        "packages/server/src/unstable-core-do-not-import/rpc/envelopes.ts::TRPCErrorResponse",
+        "packages/server/src/unstable-core-do-not-import/rpc/envelopes.ts::TRPCSuccessResponse",
+        "packages/server/src/unstable-core-do-not-import/rpc/envelopes.ts::TRPCResponse",
+        "packages/server/src/unstable-core-do-not-import/rpc/envelopes.ts::TRPCRequestMessage",
+        "packages/server/src/unstable-core-do-not-import/rpc/envelopes.ts::TRPCResponseMessage"
       ]
     },
     {
       "repo": "trpc",
-      "description": "File-level impact of httpSubscriptionLink — subscription link import chain",
+      "description": "File-level impact of httpSubscriptionLink — SSE subscription link types",
       "target": "packages/client/src/links/httpSubscriptionLink.ts",
       "depth": 3,
-      "confidence": "all",
+      "confidence": "high",
       "expected_affected": [
-        "packages/client/src/links/httpSubscriptionLink.ts::urlWithConnectionParams",
-        "packages/client/src/links/httpSubscriptionLink.ts::HTTPSubscriptionLinkOptions",
-        "packages/client/src/links/httpSubscriptionLink.ts::codes5xx",
         "packages/client/src/links/httpSubscriptionLink.ts::httpSubscriptionLink",
-        "packages/client/src/internals/inputWithTrackedEventId.ts",
-        "packages/client/src/internals/signals.ts",
-        "packages/client/src/TRPCClientError.ts",
-        "packages/client/src/links/internals/subscriptions.ts",
-        "packages/client/src/links/internals/httpUtils.ts"
+        "packages/client/src/links/httpSubscriptionLink.ts::HTTPSubscriptionLinkOptions",
+        "packages/client/src/links/httpSubscriptionLink.ts::urlWithConnectionParams",
+        "packages/client/src/links/httpSubscriptionLink.ts::codes5xx"
       ]
     }
   ]

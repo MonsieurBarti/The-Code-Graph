@@ -2,88 +2,66 @@
   "scenarios": [
     {
       "repo": "fastapi",
-      "description": "Symbol impact of FastAPI class — extends Starlette base class",
-      "target": "fastapi/applications.py::FastAPI",
+      "description": "File param inherits Form -> Body -> FieldInfo chain in params module",
+      "target": "fastapi/params.py::File",
       "depth": 3,
       "confidence": "high",
       "expected_affected": [
-        "fastapi/applications.py::Starlette"
-      ]
-    },
-    {
-      "repo": "fastapi",
-      "description": "Symbol impact of APIRouter — extends starlette Router",
-      "target": "fastapi/routing.py::APIRouter",
-      "depth": 3,
-      "confidence": "high",
-      "expected_affected": [
-        "fastapi/routing.py::routing.Router"
-      ]
-    },
-    {
-      "repo": "fastapi",
-      "description": "Symbol impact of HTTPException — extends StarletteHTTPException",
-      "target": "fastapi/exceptions.py::HTTPException",
-      "depth": 3,
-      "confidence": "high",
-      "expected_affected": [
-        "fastapi/exceptions.py::StarletteHTTPException"
-      ]
-    },
-    {
-      "repo": "fastapi",
-      "description": "Symbol impact of Body param — extends FieldInfo for request body validation",
-      "target": "fastapi/params.py::Body",
-      "depth": 3,
-      "confidence": "high",
-      "expected_affected": [
-        "fastapi/params.py::FieldInfo"
-      ]
-    },
-    {
-      "repo": "fastapi",
-      "description": "File-level impact of exceptions module — all exception types and their base classes",
-      "target": "fastapi/exceptions.py",
-      "depth": 3,
-      "confidence": "all",
-      "expected_affected": [
-        "fastapi/exceptions.py::HTTPException",
-        "fastapi/exceptions.py::WebSocketException",
-        "fastapi/exceptions.py::RequestErrorModel",
-        "fastapi/exceptions.py::WebSocketErrorModel",
-        "fastapi/exceptions.py::FastAPIError",
-        "fastapi/exceptions.py::ValidationException",
-        "fastapi/exceptions.py::RequestValidationError",
-        "fastapi/exceptions.py::WebSocketRequestValidationError",
-        "fastapi/exceptions.py::ResponseValidationError",
-        "fastapi/exceptions.py::StarletteHTTPException",
-        "fastapi/exceptions.py::StarletteWebSocketException",
-        "fastapi/exceptions.py::RuntimeError",
-        "fastapi/exceptions.py::Exception"
-      ]
-    },
-    {
-      "repo": "fastapi",
-      "description": "File-level impact of params module — parameter types and compat layer",
-      "target": "fastapi/params.py",
-      "depth": 3,
-      "confidence": "all",
-      "expected_affected": [
-        "fastapi/params.py::_Unset",
-        "fastapi/params.py::ParamTypes",
-        "fastapi/params.py::Param",
-        "fastapi/params.py::Path",
-        "fastapi/params.py::Query",
-        "fastapi/params.py::Header",
-        "fastapi/params.py::Cookie",
-        "fastapi/params.py::Body",
         "fastapi/params.py::Form",
-        "fastapi/params.py::File",
-        "fastapi/params.py::Depends",
-        "fastapi/params.py::Security",
-        "fastapi/_compat.py",
-        "fastapi/params.py::Enum",
-        "fastapi/params.py::FieldInfo"
+        "fastapi/params.py::Body"
+      ]
+    },
+    {
+      "repo": "fastapi",
+      "description": "Query param extends Param base class in params module",
+      "target": "fastapi/params.py::Query",
+      "depth": 3,
+      "confidence": "high",
+      "expected_affected": [
+        "fastapi/params.py::Param"
+      ]
+    },
+    {
+      "repo": "fastapi",
+      "description": "Security param extends Depends for dependency injection",
+      "target": "fastapi/params.py::Security",
+      "depth": 3,
+      "confidence": "high",
+      "expected_affected": [
+        "fastapi/params.py::Depends"
+      ]
+    },
+    {
+      "repo": "fastapi",
+      "description": "RequestValidationError extends ValidationException in exception hierarchy",
+      "target": "fastapi/exceptions.py::RequestValidationError",
+      "depth": 3,
+      "confidence": "high",
+      "expected_affected": [
+        "fastapi/exceptions.py::ValidationException"
+      ]
+    },
+    {
+      "repo": "fastapi",
+      "description": "HTTPBearer extends HTTPBase -> SecurityBase -> BaseModelWithConfig in OpenAPI models",
+      "target": "fastapi/openapi/models.py::HTTPBearer",
+      "depth": 3,
+      "confidence": "high",
+      "expected_affected": [
+        "fastapi/openapi/models.py::HTTPBase",
+        "fastapi/openapi/models.py::SecurityBase",
+        "fastapi/openapi/models.py::BaseModelWithConfig"
+      ]
+    },
+    {
+      "repo": "fastapi",
+      "description": "OpenAPI Parameter model extends ParameterBase -> BaseModelWithConfig",
+      "target": "fastapi/openapi/models.py::Parameter",
+      "depth": 3,
+      "confidence": "high",
+      "expected_affected": [
+        "fastapi/openapi/models.py::ParameterBase",
+        "fastapi/openapi/models.py::BaseModelWithConfig"
       ]
     }
   ]
