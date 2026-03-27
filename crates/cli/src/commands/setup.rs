@@ -7,6 +7,7 @@ use super::SetupArgs;
 use super::setup_helpers::{
     resolve_settings_path, ensure_gitignore_entry, remove_gitignore_entry, find_on_path,
 };
+use crate::project::find_project_root;
 
 // ── Settings JSON management (T02) ──────────────────────────────────────────
 
@@ -156,7 +157,7 @@ fn run_check(args: &SetupArgs, project_root: Option<&Path>) -> Result<()> {
     });
 
     let rel_path = if args.global {
-        format!("~/.claude/settings.json")
+        "~/.claude/settings.json".to_string()
     } else {
         ".claude/settings.json".to_string()
     };
@@ -205,7 +206,7 @@ fn run_install(args: &SetupArgs, project_root: Option<&Path>) -> Result<()> {
         let event_arr = hooks_obj.get_mut(*event).unwrap().as_array_mut().unwrap();
 
         // Find existing code-graph entry
-        let existing_idx = event_arr.iter().position(|e| is_code_graph_hook(e));
+        let existing_idx = event_arr.iter().position(is_code_graph_hook);
 
         match existing_idx {
             Some(idx) => {
@@ -261,7 +262,7 @@ fn run_remove(args: &SetupArgs, project_root: Option<&Path>) -> Result<()> {
     write_settings(&settings_path, &settings)?;
 
     // --clean or --purge → remove .gitignore entry
-    if (args.clean || args.purge) {
+    if args.clean || args.purge {
         if let Some(root) = project_root {
             remove_gitignore_entry(root)?;
         }
@@ -285,8 +286,30 @@ fn run_remove(args: &SetupArgs, project_root: Option<&Path>) -> Result<()> {
 
 // ── Dispatcher (T07 stub — wired in T07) ────────────────────────────────────
 
+fn find_project_root_optional() -> Option<PathBuf> {
+    let cwd = std::env::current_dir().ok()?;
+    find_project_root(&cwd).ok()
+}
+
 pub fn run_setup(args: &SetupArgs) -> Result<()> {
-    Err(CodeGraphError::Other("setup: not yet implemented".into()))
+    let project_root = find_project_root_optional();
+    if args.check {
+        return run_check(args, project_root.as_deref());
+    }
+    if args.remove {
+        return run_remove(args, project_root.as_deref());
+    }
+    // Install mode — platform required
+    let platform = args.platform.as_deref()
+        .ok_or_else(|| CodeGraphError::Other(
+            "platform required: code-graph setup claude".into()
+        ))?;
+    if platform != "claude" {
+        return Err(CodeGraphError::Other(
+            format!("Unsupported platform '{}'. Supported: claude", platform)
+        ));
+    }
+    run_install(args, project_root.as_deref())
 }
 
 #[cfg(test)]
@@ -718,6 +741,29 @@ mod tests {
     }
 
     #[test]
+    fn install_unknown_platform_errors() {
+        let dir = tempdir().unwrap();
+        let root = dir.path();
+        let args = make_setup_args(Some("cursor"), false, false, false, false, false);
+        let err = run_install_via_dispatch(&args, Some(root));
+        assert!(err.is_err());
+        let msg = format!("{}", err.unwrap_err());
+        assert!(msg.contains("Unsupported platform"));
+        assert!(msg.contains("claude"));
+    }
+
+    fn run_install_via_dispatch(args: &SetupArgs, project_root: Option<&Path>) -> Result<()> {
+        let platform = args.platform.as_deref()
+            .ok_or_else(|| CodeGraphError::Other("platform required".into()))?;
+        if platform != "claude" {
+            return Err(CodeGraphError::Other(
+                format!("Unsupported platform '{}'. Supported: claude", platform)
+            ));
+        }
+        run_install(args, project_root)
+    }
+
+    #[test]
     fn remove_preserves_other_settings() {
         let dir = tempdir().unwrap();
         let root = dir.path();
@@ -736,5 +782,109 @@ mod tests {
 
         let result: Value = serde_json::from_str(&fs::read_to_string(&settings_path).unwrap()).unwrap();
         assert_eq!(result["env"]["DEBUG"], "1");
+    }
+
+    // ── T07 tests: integration ──────────────────────────────────────────────
+
+    #[test]
+    fn full_install_check_remove_cycle() {
+        let dir = tempdir().unwrap();
+        let root = dir.path();
+        fs::create_dir(root.join(".git")).unwrap();
+
+        // Install
+        let install_args = make_setup_args(Some("claude"), false, false, false, false, false);
+        run_install(&install_args, Some(root)).unwrap();
+
+        // Verify settings JSON has correct structure
+        let settings_path = root.join(".claude").join("settings.json");
+        let settings: Value = serde_json::from_str(&fs::read_to_string(&settings_path).unwrap()).unwrap();
+        assert_eq!(settings["hooks"]["SessionStart"].as_array().unwrap().len(), 1);
+        assert_eq!(settings["hooks"]["PostToolUse"].as_array().unwrap().len(), 1);
+
+        // Check reports installed
+        let check_args = make_setup_args(None, false, true, false, false, false);
+        assert!(run_check(&check_args, Some(root)).is_ok());
+
+        // Remove
+        let remove_args = make_setup_args(None, false, false, true, false, false);
+        run_remove(&remove_args, Some(root)).unwrap();
+
+        // Check reports missing
+        let check_args2 = make_setup_args(None, false, true, false, false, false);
+        assert!(run_check(&check_args2, Some(root)).is_err());
+    }
+
+    #[test]
+    fn install_on_existing_settings_preserves_other_hooks() {
+        let dir = tempdir().unwrap();
+        let root = dir.path();
+        let settings_path = root.join(".claude").join("settings.json");
+        fs::create_dir_all(settings_path.parent().unwrap()).unwrap();
+
+        // Pre-populate with a non-code-graph hook
+        let existing = json!({
+            "hooks": {
+                "PreToolUse": [
+                    {"matcher": "Bash", "hooks": [{"type": "command", "command": "echo pre-bash"}]}
+                ]
+            }
+        });
+        fs::write(&settings_path, serde_json::to_string_pretty(&existing).unwrap()).unwrap();
+
+        // Install
+        let args = make_setup_args(Some("claude"), false, false, false, false, false);
+        run_install(&args, Some(root)).unwrap();
+
+        // Verify both old and new hooks present
+        let settings: Value = serde_json::from_str(&fs::read_to_string(&settings_path).unwrap()).unwrap();
+        assert!(settings["hooks"]["PreToolUse"].as_array().unwrap().len() == 1);
+        assert!(settings["hooks"]["SessionStart"].as_array().unwrap().len() == 1);
+        assert!(settings["hooks"]["PostToolUse"].as_array().unwrap().len() == 1);
+    }
+
+    #[test]
+    fn idempotent_install_no_duplicates_integration() {
+        let dir = tempdir().unwrap();
+        let root = dir.path();
+        let args = make_setup_args(Some("claude"), false, false, false, false, false);
+
+        // Install three times
+        run_install(&args, Some(root)).unwrap();
+        run_install(&args, Some(root)).unwrap();
+        run_install(&args, Some(root)).unwrap();
+
+        let settings_path = root.join(".claude").join("settings.json");
+        let settings: Value = serde_json::from_str(&fs::read_to_string(&settings_path).unwrap()).unwrap();
+        assert_eq!(settings["hooks"]["SessionStart"].as_array().unwrap().len(), 1);
+        assert_eq!(settings["hooks"]["PostToolUse"].as_array().unwrap().len(), 1);
+
+        // .gitignore should also have exactly one entry
+        let gitignore = fs::read_to_string(root.join(".gitignore")).unwrap();
+        assert_eq!(gitignore.matches(".code-graph/").count(), 1);
+    }
+
+    #[test]
+    fn purge_deletes_data_directory_integration() {
+        let dir = tempdir().unwrap();
+        let root = dir.path();
+
+        // Create .code-graph/ with content
+        let data_dir = root.join(".code-graph");
+        fs::create_dir_all(&data_dir).unwrap();
+        fs::write(data_dir.join("graph.db"), "test data").unwrap();
+        fs::write(data_dir.join("meta.json"), "{}").unwrap();
+
+        // Install
+        let install_args = make_setup_args(Some("claude"), false, false, false, false, false);
+        run_install(&install_args, Some(root)).unwrap();
+
+        // Purge
+        let remove_args = make_setup_args(None, false, false, true, true, true);
+        run_remove(&remove_args, Some(root)).unwrap();
+
+        assert!(!data_dir.exists(), ".code-graph/ directory should be gone");
+        let gitignore = fs::read_to_string(root.join(".gitignore")).unwrap();
+        assert!(!gitignore.contains(".code-graph/"), ".gitignore entry should be removed");
     }
 }
