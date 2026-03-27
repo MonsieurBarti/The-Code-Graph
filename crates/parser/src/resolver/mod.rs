@@ -46,7 +46,8 @@ impl ResolverRegistry {
         };
         registry.register(Box::new(typescript::TypeScriptResolver::new(project_root)));
         registry.register(Box::new(rust_lang::RustResolver));
-        registry.register(Box::new(python::PythonResolver));
+        let python_config = python::PythonConfig::load(project_root);
+        registry.register(Box::new(python::PythonResolver::new(python_config)));
         registry.register(Box::new(go::GoResolver));
         registry
     }
