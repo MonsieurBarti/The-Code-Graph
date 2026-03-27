@@ -10,6 +10,12 @@ pub struct InMemoryGraph {
     incoming: HashMap<String, Vec<(String, EdgeKind)>>,
 }
 
+impl Default for InMemoryGraph {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl InMemoryGraph {
     pub fn new() -> Self {
         InMemoryGraph {
