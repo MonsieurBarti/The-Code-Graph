@@ -6,8 +6,44 @@ use domain::model::{Edge, EdgeKind, Language};
 use super::{ImportResolver, ResolveContext};
 use crate::ParseResult;
 
+/// Configuration for the Rust resolver, loaded from Cargo.toml.
+pub struct RustConfig {
+    pub workspace_members: Vec<String>,
+    pub edition: Option<String>,
+}
+
+impl RustConfig {
+    pub fn load(project_root: &Path) -> Self {
+        let cargo_path = project_root.join("Cargo.toml");
+        let contents = match std::fs::read_to_string(&cargo_path) {
+            Ok(c) => c,
+            Err(_) => return Self { workspace_members: vec![], edition: None },
+        };
+        let table: toml::Table = match contents.parse() {
+            Ok(t) => t,
+            Err(_) => return Self { workspace_members: vec![], edition: None },
+        };
+        let workspace_members = table.get("workspace")
+            .and_then(|w| w.get("members"))
+            .and_then(|m| m.as_array())
+            .map(|arr| arr.iter().filter_map(|v| v.as_str().map(String::from)).collect())
+            .unwrap_or_default();
+        let edition = table.get("package")
+            .and_then(|p| p.get("edition"))
+            .and_then(|e| e.as_str())
+            .map(String::from);
+        Self { workspace_members, edition }
+    }
+}
+
 /// Rust import resolver — module tree + use path resolution.
-pub struct RustResolver;
+pub struct RustResolver {
+    _config: RustConfig,
+}
+
+impl RustResolver {
+    pub fn new(config: RustConfig) -> Self { Self { _config: config } }
+}
 
 // ---------------------------------------------------------------------------
 // Module tree helpers
@@ -400,7 +436,7 @@ mod tests {
             parsed_files,
         );
 
-        let resolver = RustResolver;
+        let resolver = RustResolver::new(RustConfig { workspace_members: vec![], edition: None });
         let importer = ParseResult {
             imports: vec![use_import("crate::auth::validate")],
             ..Default::default()
@@ -453,7 +489,7 @@ mod tests {
         );
 
         // auth.rs uses `use self::sub::something`
-        let resolver = RustResolver;
+        let resolver = RustResolver::new(RustConfig { workspace_members: vec![], edition: None });
         let parse_result = ParseResult {
             imports: vec![use_import("self::sub::something")],
             ..Default::default()
@@ -497,7 +533,7 @@ mod tests {
         );
 
         // lib.rs does `pub use crate::auth::validate;`
-        let resolver = RustResolver;
+        let resolver = RustResolver::new(RustConfig { workspace_members: vec![], edition: None });
         let parse_result = ParseResult {
             imports: vec![use_import("crate::auth::validate")],
             exports: vec![pub_use_export("crate::auth::validate")],
@@ -568,7 +604,7 @@ mod tests {
 
         let context = make_context(root.clone(), vec![lib_rs.clone()], HashMap::new());
 
-        let resolver = RustResolver;
+        let resolver = RustResolver::new(RustConfig { workspace_members: vec![], edition: None });
         let parse_result = ParseResult {
             imports: vec![mod_import("auth"), mod_import("db")],
             ..Default::default()
@@ -588,7 +624,7 @@ mod tests {
 
         let context = make_context(root.clone(), vec![lib_rs.clone()], HashMap::new());
 
-        let resolver = RustResolver;
+        let resolver = RustResolver::new(RustConfig { workspace_members: vec![], edition: None });
         let parse_result = ParseResult {
             // std paths and external crates are not resolvable by this resolver
             imports: vec![use_import("std::fmt"), use_import("serde::Serialize")],
@@ -669,7 +705,7 @@ mod tests {
             parsed_files,
         );
 
-        let resolver = RustResolver;
+        let resolver = RustResolver::new(RustConfig { workspace_members: vec![], edition: None });
         let parse_result = ParseResult {
             imports: vec![use_import("crate::auth")],
             ..Default::default()
@@ -716,7 +752,7 @@ mod tests {
         );
 
         // validate.rs does `use super::something` — resolves to crate::auth → auth.rs
-        let resolver = RustResolver;
+        let resolver = RustResolver::new(RustConfig { workspace_members: vec![], edition: None });
         let parse_result = ParseResult {
             imports: vec![use_import("super::something")],
             ..Default::default()
@@ -737,5 +773,45 @@ mod tests {
         assert_eq!(edges[0].kind, EdgeKind::ImportsFrom);
         assert_eq!(edges[0].source, validate_rs.to_string_lossy());
         assert_eq!(edges[0].target, auth_rs.to_string_lossy());
+    }
+}
+
+#[cfg(test)]
+mod config_tests {
+    use super::*;
+
+    #[test]
+    fn rust_config_parses_workspace_members() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("Cargo.toml"), r#"
+[workspace]
+members = ["crates/foo", "crates/bar"]
+
+[package]
+edition = "2021"
+"#).unwrap();
+        let config = RustConfig::load(dir.path());
+        assert_eq!(config.workspace_members, vec!["crates/foo", "crates/bar"]);
+        assert_eq!(config.edition.as_deref(), Some("2021"));
+    }
+
+    #[test]
+    fn rust_config_empty_without_workspace() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("Cargo.toml"), r#"
+[package]
+name = "solo"
+edition = "2021"
+"#).unwrap();
+        let config = RustConfig::load(dir.path());
+        assert!(config.workspace_members.is_empty());
+    }
+
+    #[test]
+    fn rust_config_empty_without_cargo_toml() {
+        let dir = tempfile::tempdir().unwrap();
+        let config = RustConfig::load(dir.path());
+        assert!(config.workspace_members.is_empty());
+        assert!(config.edition.is_none());
     }
 }

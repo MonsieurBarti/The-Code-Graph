@@ -45,7 +45,8 @@ impl ResolverRegistry {
             resolvers: Vec::new(),
         };
         registry.register(Box::new(typescript::TypeScriptResolver::new(project_root)));
-        registry.register(Box::new(rust_lang::RustResolver));
+        let rust_config = rust_lang::RustConfig::load(project_root);
+        registry.register(Box::new(rust_lang::RustResolver::new(rust_config)));
         let python_config = python::PythonConfig::load(project_root);
         registry.register(Box::new(python::PythonResolver::new(python_config)));
         registry.register(Box::new(go::GoResolver));
