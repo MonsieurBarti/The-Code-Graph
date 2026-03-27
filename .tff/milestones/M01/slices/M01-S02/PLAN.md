@@ -30,7 +30,7 @@
 **Files:** Modify `crates/domain/src/ports.rs`, `crates/domain/src/test_support.rs`
 **Traces to:** AC28, AC29, AC30
 
-- [ ] Step 1: Add two methods to `GraphStore` trait in `ports.rs`:
+- [x] Step 1: Add two methods to `GraphStore` trait in `ports.rs`:
   ```rust
   fn store_file_data(
       &self,
@@ -41,12 +41,12 @@
 
   fn remove_file_data(&self, path: &Path) -> Result<()>;
   ```
-- [ ] Step 2: Run `cargo test -p domain`, verify FAIL (InMemoryGraphStore doesn't implement new methods)
-- [ ] Step 3: Implement both methods on `InMemoryGraphStore` in `test_support.rs`:
+- [x] Step 2: Run `cargo test -p domain`, verify FAIL (InMemoryGraphStore doesn't implement new methods)
+- [x] Step 3: Implement both methods on `InMemoryGraphStore` in `test_support.rs`:
   - `store_file_data`: push file, extend symbols, extend edges
   - `remove_file_data`: retain files/symbols/edges not matching path, remove edges whose source/target starts with a qualified_name from that file's symbols
-- [ ] Step 4: Run `cargo test -p domain`, verify ALL tests PASS (AC30)
-- [ ] Step 5: `git commit -m "feat(S02/T01): add store_file_data + remove_file_data to GraphStore trait"`
+- [x] Step 4: Run `cargo test -p domain`, verify ALL tests PASS (AC30)
+- [x] Step 5: `git commit -m "feat(S02/T01): add store_file_data + remove_file_data to GraphStore trait"`
 
 ---
 
@@ -56,7 +56,7 @@
 **Files:** Create `Cargo.toml` (modify workspace), `crates/storage/Cargo.toml`, `crates/storage/src/lib.rs`, `crates/storage/src/schema.rs`
 **Traces to:** AC1, AC2, AC3, AC4, AC5, AC25, AC33
 
-- [ ] Step 1: Create `crates/storage/Cargo.toml` and add `"crates/storage"` to workspace `Cargo.toml` members. Create minimal `lib.rs` with module declarations.
+- [x] Step 1: Create `crates/storage/Cargo.toml` and add `"crates/storage"` to workspace `Cargo.toml` members. Create minimal `lib.rs` with module declarations.
   ```toml
   [package]
   name = "storage"
@@ -70,7 +70,7 @@
   r2d2 = "0.8"
   serde_json = "1"
   ```
-- [ ] Step 2: Write failing tests in `schema.rs` and `lib.rs`:
+- [x] Step 2: Write failing tests in `schema.rs` and `lib.rs`:
   ```rust
   // lib.rs tests
   #[cfg(test)]
@@ -134,21 +134,21 @@
       }
   }
   ```
-- [ ] Step 3: Run `cargo test -p storage`, verify FAIL
-- [ ] Step 4: Implement `SqliteStore` struct with:
+- [x] Step 3: Run `cargo test -p storage`, verify FAIL
+- [x] Step 4: Implement `SqliteStore` struct with:
   - `pool: r2d2::Pool<SqliteConnectionManager>` field
   - `open(path)` constructor: creates `SqliteConnectionManager::file(path).with_init(pragmas)`, builds pool, runs `ensure_schema` on a dedicated connection
   - `open_in_memory()` constructor: `SqliteConnectionManager::memory()` with `max_size(1)`, same init
   - `conn()` helper: `self.pool.get()` wrapped to convert r2d2 errors to `CodeGraphError::Storage`
   - Implement `schema.rs` with `SCHEMA_V1` const (full DDL from design spec Section 5.2) and `ensure_schema(conn)` function using `PRAGMA user_version`
-- [ ] Step 5: Run `cargo test -p storage`, verify PASS
-- [ ] Step 6: `git commit -m "feat(S02/T02): storage crate scaffold + SqliteStore + schema + connection pool"`
+- [x] Step 5: Run `cargo test -p storage`, verify PASS
+- [x] Step 6: `git commit -m "feat(S02/T02): storage crate scaffold + SqliteStore + schema + connection pool"`
 
 ### T03: Enum mapping functions
 **Files:** Create `crates/storage/src/mapping.rs`
 **Traces to:** AC27 (error conversion)
 
-- [ ] Step 1: Write failing tests in `mapping.rs`:
+- [x] Step 1: Write failing tests in `mapping.rs`:
   ```rust
   #[cfg(test)]
   mod tests {
@@ -220,10 +220,10 @@
       }
   }
   ```
-- [ ] Step 2: Run `cargo test -p storage -- mapping`, verify FAIL
-- [ ] Step 3: Implement all `*_to_str` / `*_from_str` pairs with exhaustive match arms for: `Language` (5), `SymbolKind` (14), `EdgeKind` (16), `Visibility` (3), `NonParsedKind` (5). Also add `map_rusqlite_error` helper to convert `rusqlite::Error` → `CodeGraphError::Storage`.
-- [ ] Step 4: Run `cargo test -p storage -- mapping`, verify PASS
-- [ ] Step 5: `git commit -m "feat(S02/T03): domain enum mapping functions + error conversion"`
+- [x] Step 2: Run `cargo test -p storage -- mapping`, verify FAIL
+- [x] Step 3: Implement all `*_to_str` / `*_from_str` pairs with exhaustive match arms for: `Language` (5), `SymbolKind` (14), `EdgeKind` (16), `Visibility` (3), `NonParsedKind` (5). Also add `map_rusqlite_error` helper to convert `rusqlite::Error` → `CodeGraphError::Storage`.
+- [x] Step 4: Run `cargo test -p storage -- mapping`, verify PASS
+- [x] Step 5: `git commit -m "feat(S02/T03): domain enum mapping functions + error conversion"`
 
 ---
 
@@ -233,7 +233,7 @@
 **Files:** Create `crates/storage/src/graph_store.rs`
 **Traces to:** AC6, AC7, AC8, AC9, AC10, AC11, AC12, AC13, AC14, AC15, AC16, AC27
 
-- [ ] Step 1: Write failing tests in `graph_store.rs`:
+- [x] Step 1: Write failing tests in `graph_store.rs`:
   ```rust
   #[cfg(test)]
   mod tests {
@@ -430,8 +430,8 @@
       }
   }
   ```
-- [ ] Step 2: Run `cargo test -p storage -- graph_store`, verify FAIL
-- [ ] Step 3: Implement `GraphStore for SqliteStore` in `graph_store.rs`:
+- [x] Step 2: Run `cargo test -p storage -- graph_store`, verify FAIL
+- [x] Step 3: Implement `GraphStore for SqliteStore` in `graph_store.rs`:
   - All SQL uses `prepare_cached` for performance
   - `upsert_*` uses `INSERT OR REPLACE INTO`
   - `get_*` uses `SELECT ... WHERE` with row mapping via enum mapping functions
@@ -441,8 +441,8 @@
   - `stats` uses `SELECT COUNT(*) FROM` each table
   - All rusqlite errors converted via `map_rusqlite_error`
   - `store_file_data` and `remove_file_data` left as `todo!()` stubs (implemented in T05)
-- [ ] Step 4: Run `cargo test -p storage -- graph_store`, verify PASS
-- [ ] Step 5: `git commit -m "feat(S02/T04): GraphStore individual operations — upsert, get, all, remove, stats"`
+- [x] Step 4: Run `cargo test -p storage -- graph_store`, verify PASS
+- [x] Step 5: `git commit -m "feat(S02/T04): GraphStore individual operations — upsert, get, all, remove, stats"`
 
 ---
 
@@ -452,7 +452,7 @@
 **Files:** Modify `crates/storage/src/graph_store.rs`
 **Traces to:** AC17, AC18, AC19, AC20
 
-- [ ] Step 1: Write failing tests (append to `graph_store.rs` test module):
+- [x] Step 1: Write failing tests (append to `graph_store.rs` test module):
   ```rust
   // --- Batch operations ---
 
@@ -519,18 +519,18 @@
       assert!(store.all_edges().unwrap().is_empty());
   }
   ```
-- [ ] Step 2: Run `cargo test -p storage -- store_file_data remove_file_data`, verify FAIL
-- [ ] Step 3: Implement both methods:
+- [x] Step 2: Run `cargo test -p storage -- store_file_data remove_file_data`, verify FAIL
+- [x] Step 3: Implement both methods:
   - `store_file_data`: acquire connection, `transaction_with_behavior(Immediate)`, upsert file, upsert each symbol, upsert each edge via `prepare_cached`, commit
   - `remove_file_data`: acquire connection, `transaction_with_behavior(Immediate)`, delete edges where source/target IN (symbols for file), delete file (CASCADE removes symbols), commit
-- [ ] Step 4: Run `cargo test -p storage -- store_file_data remove_file_data`, verify PASS
-- [ ] Step 5: `git commit -m "feat(S02/T05): batch GraphStore operations — store_file_data + remove_file_data"`
+- [x] Step 4: Run `cargo test -p storage -- store_file_data remove_file_data`, verify PASS
+- [x] Step 5: `git commit -m "feat(S02/T05): batch GraphStore operations — store_file_data + remove_file_data"`
 
 ### T06: SearchIndex — FTS5 search implementation
 **Files:** Create `crates/storage/src/search_index.rs`
 **Traces to:** AC21, AC22, AC23, AC24
 
-- [ ] Step 1: Write failing tests in `search_index.rs`:
+- [x] Step 1: Write failing tests in `search_index.rs`:
   ```rust
   #[cfg(test)]
   mod tests {
@@ -657,13 +657,13 @@
       }
   }
   ```
-- [ ] Step 2: Run `cargo test -p storage -- search_index`, verify FAIL
-- [ ] Step 3: Implement `SearchIndex for SqliteStore`:
+- [x] Step 2: Run `cargo test -p storage -- search_index`, verify FAIL
+- [x] Step 3: Implement `SearchIndex for SqliteStore`:
   - `search`: early return `[]` for empty query. Otherwise: FTS5 MATCH query joining `symbols_fts` with `symbols`, ORDER BY rank, LIMIT. Map rows to `SearchResult` using enum mapping.
   - `index_symbol`: return `Ok(())` (no-op, triggers handle sync)
   - `rebuild`: return `Ok(())` (stub)
-- [ ] Step 4: Run `cargo test -p storage -- search_index`, verify PASS
-- [ ] Step 5: `git commit -m "feat(S02/T06): SearchIndex FTS5 implementation — search, index_symbol (no-op), rebuild (stub)"`
+- [x] Step 4: Run `cargo test -p storage -- search_index`, verify PASS
+- [x] Step 5: `git commit -m "feat(S02/T06): SearchIndex FTS5 implementation — search, index_symbol (no-op), rebuild (stub)"`
 
 ---
 
@@ -673,7 +673,7 @@
 **Files:** Modify `crates/storage/src/lib.rs` (add integration tests)
 **Traces to:** AC18, AC26, AC31, AC32
 
-- [ ] Step 1: Write integration tests in `lib.rs` test module (or a separate `tests/` integration file):
+- [x] Step 1: Write integration tests in `lib.rs` test module (or a separate `tests/` integration file):
   ```rust
   #[test]
   fn fts5_trigger_sync_on_store_file_data() {
@@ -751,11 +751,11 @@
       assert!(store.get_symbol("a.rs::X").unwrap().is_some());
   }
   ```
-- [ ] Step 2: Run `cargo test -p storage`, verify PASS (all tests from T02-T07)
-- [ ] Step 3: Run `cargo clippy -p storage -- -Dwarnings`, fix any warnings (AC32)
-- [ ] Step 4: Run `cargo build --workspace`, verify PASS (AC1)
-- [ ] Step 5: Run `cargo test --workspace`, verify ALL tests PASS (AC30, AC31)
-- [ ] Step 6: `git commit -m "feat(S02/T07): integration tests — FTS5 sync, cascade, thread safety, final verification"`
+- [x] Step 2: Run `cargo test -p storage`, verify PASS (all tests from T02-T07)
+- [x] Step 3: Run `cargo clippy -p storage -- -Dwarnings`, fix any warnings (AC32)
+- [x] Step 4: Run `cargo build --workspace`, verify PASS (AC1)
+- [x] Step 5: Run `cargo test --workspace`, verify ALL tests PASS (AC30, AC31)
+- [x] Step 6: `git commit -m "feat(S02/T07): integration tests — FTS5 sync, cascade, thread safety, final verification"`
 
 ---
 

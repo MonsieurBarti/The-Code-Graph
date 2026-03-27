@@ -1,8 +1,8 @@
 # State — Milestone
 
 ## Progress
-- Slices: 1/9 completed
-- Tasks: 8/8 completed
+- Slices: 2/9 completed
+- Tasks: 15/15 completed
 
 ## Slices
 | Slice | Status | Tasks | Progress |
@@ -14,5 +14,5 @@
 | CLI Foundation & Index Command | open | 0/0 | 0% |
 | Language Parsers & Import Resolution | open | 0/0 | 0% |
 | Tree-Sitter Parser Infrastructure | open | 0/0 | 0% |
-| SQLite Storage Layer | planned | 0/7 | 0% |
+| SQLite Storage Layer | shipped | 7/7 | 100% |
 | Workspace Scaffold & Domain Model | shipped | 8/8 | 100% |
