@@ -302,6 +302,7 @@ fn extract_class_body(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn extract_method(
     source: &[u8],
     file_path: &str,
@@ -748,7 +749,7 @@ fn relative_import_specifier(node: &Node, source: &[u8]) -> String {
 // ---------------------------------------------------------------------------
 
 /// Get text of a named field on a node.
-fn node_text_field<'a>(node: Node, field: &str, source: &'a [u8]) -> Option<String> {
+fn node_text_field(node: Node, field: &str, source: &[u8]) -> Option<String> {
     node.child_by_field_name(field)
         .and_then(|n| n.utf8_text(source).ok())
         .map(|s| s.to_string())

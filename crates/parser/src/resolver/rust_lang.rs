@@ -17,35 +17,6 @@ pub struct RustResolver;
 /// declares that module.
 type ModuleTree = HashMap<String, PathBuf>;
 
-/// Parse the crate name from a `Cargo.toml` file content.
-/// Looks for `name = "..."` inside the `[package]` section.
-fn parse_crate_name(toml_content: &str) -> Option<String> {
-    let mut in_package = false;
-    for line in toml_content.lines() {
-        let trimmed = line.trim();
-        if trimmed == "[package]" {
-            in_package = true;
-            continue;
-        }
-        // Any other section header exits [package]
-        if trimmed.starts_with('[') && trimmed != "[package]" {
-            in_package = false;
-        }
-        if in_package {
-            if let Some(rest) = trimmed.strip_prefix("name") {
-                let rest = rest.trim();
-                if let Some(rest) = rest.strip_prefix('=') {
-                    let value = rest.trim().trim_matches('"').trim_matches('\'');
-                    if !value.is_empty() {
-                        return Some(value.to_string());
-                    }
-                }
-            }
-        }
-    }
-    None
-}
-
 /// Find the crate root file (`src/lib.rs` or `src/main.rs`) relative to project_root
 /// from the provided file_tree.
 fn find_crate_root(project_root: &Path, file_tree: &[PathBuf]) -> Option<PathBuf> {
@@ -62,7 +33,6 @@ fn find_crate_root(project_root: &Path, file_tree: &[PathBuf]) -> Option<PathBuf
 /// Recursively build the module tree starting from `current_file`.
 /// `current_module_path` is the crate path to the current file (e.g. "crate" for the root).
 fn build_module_tree_recursive(
-    project_root: &Path,
     current_file: &Path,
     current_module_path: &str,
     parsed_files: &HashMap<PathBuf, ParseResult>,
@@ -131,7 +101,6 @@ fn build_module_tree_recursive(
         tree.insert(child_module_path.clone(), mod_file.clone());
 
         build_module_tree_recursive(
-            project_root,
             &mod_file,
             &child_module_path,
             parsed_files,
@@ -154,7 +123,6 @@ fn build_module_tree(context: &ResolveContext) -> ModuleTree {
 
     let mut visited = Vec::new();
     build_module_tree_recursive(
-        &context.project_root,
         &crate_root,
         "crate",
         &context.parsed_files,
@@ -573,28 +541,6 @@ mod tests {
             "expected crate::db in tree, got: {tree:?}"
         );
         assert_eq!(tree["crate::db"], db_mod_rs);
-    }
-
-    // -----------------------------------------------------------------------
-    // Helper: parse_crate_name
-    // -----------------------------------------------------------------------
-    #[test]
-    fn parses_crate_name_from_cargo_toml() {
-        let toml = r#"
-[package]
-name = "my-crate"
-version = "0.1.0"
-edition = "2021"
-
-[dependencies]
-"#;
-        assert_eq!(parse_crate_name(toml), Some("my-crate".to_string()));
-    }
-
-    #[test]
-    fn parse_crate_name_returns_none_if_missing() {
-        let toml = "[dependencies]\nfoo = \"1.0\"\n";
-        assert_eq!(parse_crate_name(toml), None);
     }
 
     // -----------------------------------------------------------------------

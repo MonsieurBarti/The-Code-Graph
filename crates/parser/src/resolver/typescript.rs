@@ -8,13 +8,13 @@ use super::{ImportResolver, ResolveContext};
 
 /// TS/JS import resolver using oxc_resolver + barrel chain traversal.
 pub struct TypeScriptResolver {
-    project_root: PathBuf,
+    _project_root: PathBuf,
 }
 
 impl TypeScriptResolver {
     pub fn new(project_root: &Path) -> Self {
         Self {
-            project_root: project_root.to_path_buf(),
+            _project_root: project_root.to_path_buf(),
         }
     }
 
