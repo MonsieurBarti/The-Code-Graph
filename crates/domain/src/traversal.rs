@@ -11,6 +11,24 @@ pub struct InMemoryGraph {
 }
 
 impl InMemoryGraph {
+    pub fn new() -> Self {
+        InMemoryGraph {
+            outgoing: HashMap::new(),
+            incoming: HashMap::new(),
+        }
+    }
+
+    pub fn add_edge(&mut self, edge: Edge) {
+        self.outgoing
+            .entry(edge.source.clone())
+            .or_default()
+            .push((edge.target.clone(), edge.kind));
+        self.incoming
+            .entry(edge.target)
+            .or_default()
+            .push((edge.source, edge.kind));
+    }
+
     pub fn from_edges(edges: Vec<Edge>) -> Self {
         let mut outgoing: HashMap<String, Vec<(String, EdgeKind)>> = HashMap::new();
         let mut incoming: HashMap<String, Vec<(String, EdgeKind)>> = HashMap::new();
@@ -245,6 +263,15 @@ mod tests {
         let graph = InMemoryGraph::from_edges(edges);
         let results = graph.bfs("A", Direction::Forward, 5);
         assert!(results.iter().filter(|r| r.node == "A").count() <= 1);
+    }
+
+    #[test]
+    fn in_memory_graph_incremental_construction() {
+        let mut graph = InMemoryGraph::new();
+        graph.add_edge(make_edge("a::foo", "b::bar", EdgeKind::Calls));
+        let results = graph.bfs("a::foo", Direction::Forward, 1);
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].node, "b::bar");
     }
 
     #[test]

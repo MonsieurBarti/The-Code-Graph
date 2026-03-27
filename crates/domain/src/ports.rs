@@ -19,6 +19,20 @@ pub trait GraphStore: Send + Sync {
     fn stats(&self) -> Result<GraphStats>;
     fn find_by_name(&self, pattern: &str) -> Result<Vec<SymbolNode>>;
 
+    /// Returns symbols only for the specified file paths.
+    fn symbols_for_files(&self, paths: &[&Path]) -> Result<Vec<SymbolNode>> {
+        let all = self.all_symbols()?;
+        Ok(all.into_iter().filter(|s| paths.contains(&&*s.location.file)).collect())
+    }
+
+    /// Processes edges row-by-row via callback.
+    fn edges_streaming(&self, callback: &mut dyn FnMut(Edge) -> Result<()>) -> Result<()> {
+        for edge in self.all_edges()? {
+            callback(edge)?;
+        }
+        Ok(())
+    }
+
     /// Store a file and all its symbols and edges atomically.
     fn store_file_data(
         &self,

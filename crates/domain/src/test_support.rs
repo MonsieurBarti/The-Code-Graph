@@ -2,13 +2,39 @@ use crate::error::Result;
 use crate::model::*;
 use crate::ports::{FileData, GraphStore, ParseProvider, SearchIndex};
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 /// In-memory implementation of GraphStore + SearchIndex for testing.
-#[derive(Default, Clone)]
 pub struct InMemoryGraphStore {
-    files: Vec<FileNode>,
-    symbols: Vec<SymbolNode>,
-    edges: Vec<Edge>,
+    pub files: Vec<FileNode>,
+    pub symbols: Vec<SymbolNode>,
+    pub edges: Vec<Edge>,
+    pub symbols_for_files_calls: AtomicUsize,
+    pub edges_streaming_calls: AtomicUsize,
+}
+
+impl Clone for InMemoryGraphStore {
+    fn clone(&self) -> Self {
+        Self {
+            files: self.files.clone(),
+            symbols: self.symbols.clone(),
+            edges: self.edges.clone(),
+            symbols_for_files_calls: AtomicUsize::new(self.symbols_for_files_calls.load(Ordering::Relaxed)),
+            edges_streaming_calls: AtomicUsize::new(self.edges_streaming_calls.load(Ordering::Relaxed)),
+        }
+    }
+}
+
+impl Default for InMemoryGraphStore {
+    fn default() -> Self {
+        Self {
+            files: Vec::new(),
+            symbols: Vec::new(),
+            edges: Vec::new(),
+            symbols_for_files_calls: AtomicUsize::new(0),
+            edges_streaming_calls: AtomicUsize::new(0),
+        }
+    }
 }
 
 impl InMemoryGraphStore {
@@ -103,6 +129,19 @@ impl GraphStore for InMemoryGraphStore {
             .filter(|s| s.name.starts_with(pattern))
             .cloned()
             .collect())
+    }
+
+    fn symbols_for_files(&self, paths: &[&Path]) -> Result<Vec<SymbolNode>> {
+        self.symbols_for_files_calls.fetch_add(1, Ordering::Relaxed);
+        Ok(self.symbols.iter().filter(|s| paths.contains(&&*s.location.file)).cloned().collect())
+    }
+
+    fn edges_streaming(&self, callback: &mut dyn FnMut(Edge) -> Result<()>) -> Result<()> {
+        self.edges_streaming_calls.fetch_add(1, Ordering::Relaxed);
+        for edge in &self.edges {
+            callback(edge.clone())?;
+        }
+        Ok(())
     }
 
     fn store_file_data(
