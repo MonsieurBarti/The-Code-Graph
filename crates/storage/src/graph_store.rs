@@ -387,15 +387,109 @@ impl GraphStore for SqliteStore {
 
     fn store_file_data(
         &self,
-        _file: &FileNode,
-        _symbols: &[SymbolNode],
-        _edges: &[Edge],
+        file: &FileNode,
+        symbols: &[SymbolNode],
+        edges: &[Edge],
     ) -> Result<()> {
-        todo!("implemented in T05")
+        let mut conn = self.conn()?;
+        let tx = conn
+            .transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)
+            .map_err(map_rusqlite_error)?;
+
+        // Upsert file
+        tx.prepare_cached(
+            "INSERT OR REPLACE INTO files (path, language, hash, updated_at) VALUES (?1, ?2, ?3, ?4)",
+        )
+        .map_err(map_rusqlite_error)?
+        .execute(rusqlite::params![
+            file.path.to_str().unwrap_or_default(),
+            language_to_str(&file.language),
+            &file.hash,
+            now_epoch(),
+        ])
+        .map_err(map_rusqlite_error)?;
+
+        // Upsert each symbol
+        for symbol in symbols {
+            let decorators_json =
+                serde_json::to_string(&symbol.decorators).map_err(|e| {
+                    domain::error::CodeGraphError::Storage(e.to_string())
+                })?;
+            tx.prepare_cached(
+                "INSERT OR REPLACE INTO symbols (
+                    qualified_name, name, kind, file_path,
+                    line_start, line_end, col_start, col_end,
+                    visibility, is_exported, is_async, is_test,
+                    decorators, signature, updated_at
+                ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)",
+            )
+            .map_err(map_rusqlite_error)?
+            .execute(rusqlite::params![
+                &symbol.qualified_name,
+                &symbol.name,
+                symbol_kind_to_str(&symbol.kind),
+                symbol.location.file.to_str().unwrap_or_default(),
+                symbol.location.line_start as i64,
+                symbol.location.line_end as i64,
+                symbol.location.col_start as i64,
+                symbol.location.col_end as i64,
+                visibility_to_str(&symbol.visibility),
+                symbol.is_exported as i32,
+                symbol.is_async as i32,
+                symbol.is_test as i32,
+                &decorators_json,
+                &symbol.signature,
+                now_epoch(),
+            ])
+            .map_err(map_rusqlite_error)?;
+        }
+
+        // Upsert each edge
+        for edge in edges {
+            tx.prepare_cached(
+                "INSERT OR REPLACE INTO edges (kind, source_qualified, target_qualified, metadata)
+                 VALUES (?1, ?2, ?3, ?4)",
+            )
+            .map_err(map_rusqlite_error)?
+            .execute(rusqlite::params![
+                edge_kind_to_str(&edge.kind),
+                &edge.source,
+                &edge.target,
+                &edge.metadata,
+            ])
+            .map_err(map_rusqlite_error)?;
+        }
+
+        tx.commit().map_err(map_rusqlite_error)?;
+        Ok(())
     }
 
-    fn remove_file_data(&self, _path: &Path) -> Result<()> {
-        todo!("implemented in T05")
+    fn remove_file_data(&self, path: &Path) -> Result<()> {
+        let mut conn = self.conn()?;
+        let tx = conn
+            .transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)
+            .map_err(map_rusqlite_error)?;
+
+        let path_str = path.to_str().unwrap_or_default();
+
+        // Delete edges where source or target is a symbol from this file
+        tx.prepare_cached(
+            "DELETE FROM edges
+             WHERE source_qualified IN (SELECT qualified_name FROM symbols WHERE file_path = ?1)
+                OR target_qualified IN (SELECT qualified_name FROM symbols WHERE file_path = ?1)",
+        )
+        .map_err(map_rusqlite_error)?
+        .execute(rusqlite::params![path_str])
+        .map_err(map_rusqlite_error)?;
+
+        // Delete file (CASCADE removes symbols)
+        tx.prepare_cached("DELETE FROM files WHERE path = ?1")
+            .map_err(map_rusqlite_error)?
+            .execute(rusqlite::params![path_str])
+            .map_err(map_rusqlite_error)?;
+
+        tx.commit().map_err(map_rusqlite_error)?;
+        Ok(())
     }
 }
 
@@ -551,6 +645,72 @@ mod tests {
         assert_eq!(s.symbols, 1);
         assert_eq!(s.edges, 1);
     }
+
+    // --- Batch operations (T05) ---
+
+    #[test]
+    fn store_file_data_stores_all() {
+        let store = test_store();
+        let file = sample_file();
+        let symbols = vec![sample_symbol()];
+        let edges = vec![sample_edge()];
+        store.store_file_data(&file, &symbols, &edges).unwrap();
+        assert!(store.get_file(&file.path).unwrap().is_some());
+        assert!(store.get_symbol("src/main.rs::foo").unwrap().is_some());
+        assert_eq!(store.all_edges().unwrap().len(), 1);
+    }
+
+    #[test]
+    fn store_file_data_replaces_existing() {
+        let store = test_store();
+        let file = sample_file();
+        let sym1 = sample_symbol();
+        store.store_file_data(&file, &[sym1], &[]).unwrap();
+
+        let sym2 = SymbolNode {
+            name: "bar".into(),
+            qualified_name: "src/main.rs::bar".into(),
+            kind: SymbolKind::Function,
+            location: Location {
+                file: "src/main.rs".into(),
+                line_start: 20,
+                line_end: 30,
+                col_start: 0,
+                col_end: 1,
+            },
+            visibility: Visibility::Private,
+            is_exported: false,
+            is_async: false,
+            is_test: false,
+            decorators: vec![],
+            signature: None,
+        };
+        store.store_file_data(&file, &[sym2], &[]).unwrap();
+        assert!(store.get_symbol("src/main.rs::bar").unwrap().is_some());
+    }
+
+    #[test]
+    fn remove_file_data_cleans_edges() {
+        let store = test_store();
+        let file = sample_file();
+        let lib_file = FileNode {
+            path: "src/lib.rs".into(),
+            language: Language::Rust,
+            hash: "xyz".into(),
+        };
+        store.upsert_file(&lib_file).unwrap();
+        let sym = sample_symbol();
+        let edge = sample_edge();
+        store.store_file_data(&file, &[sym], &[edge]).unwrap();
+
+        store.remove_file_data("src/main.rs".as_ref()).unwrap();
+
+        assert!(store.get_file("src/main.rs".as_ref()).unwrap().is_none());
+        assert!(store.get_symbol("src/main.rs::foo").unwrap().is_none());
+        assert!(store.all_edges().unwrap().is_empty());
+    }
+
+    // --- Field fidelity ---
 
     #[test]
     fn symbol_roundtrip_preserves_all_fields() {
