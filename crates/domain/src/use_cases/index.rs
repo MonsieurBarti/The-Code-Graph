@@ -67,86 +67,100 @@ impl<S: GraphStore, P: ParseProvider, F: FileSystem, G: GitProvider> IndexUseCas
     }
 
     fn run_incremental(&self, root: &Path, changed_paths: Vec<PathBuf>) -> Result<IndexStats> {
-        let start = Instant::now();
-        let mut reparse_set = Vec::new();
+        run_incremental_pipeline(&self.store, &self.parser, &self.fs, root, changed_paths)
+    }
+}
 
-        // Phase 1: Hash check — filter to actually-changed files
-        for path in &changed_paths {
-            let abs_path = root.join(path);
-            let current_hash = match self.fs.file_hash(&abs_path) {
-                Ok(h) => h,
-                Err(_) => {
-                    // File deleted — remove from store
-                    self.store.remove_file_data(path)?;
-                    continue;
-                }
-            };
-            let stored = self.store.get_file(path)?;
-            if stored.as_ref().is_some_and(|f| f.hash == current_hash) {
-                continue; // unchanged
+/// Core incremental pipeline: hash-check, 1-hop dependent discovery, re-parse, atomic store update.
+///
+/// Extracted as a free function so both `IndexUseCase` and `ensure_fresh` can reuse it
+/// without ownership issues.
+pub fn run_incremental_pipeline<S: GraphStore, P: ParseProvider, F: FileSystem>(
+    store: &S,
+    parser: &P,
+    fs: &F,
+    root: &Path,
+    changed_paths: Vec<PathBuf>,
+) -> Result<IndexStats> {
+    let start = Instant::now();
+    let mut reparse_set = Vec::new();
+
+    // Phase 1: Hash check — filter to actually-changed files
+    for path in &changed_paths {
+        let abs_path = root.join(path);
+        let current_hash = match fs.file_hash(&abs_path) {
+            Ok(h) => h,
+            Err(_) => {
+                // File deleted — remove from store
+                store.remove_file_data(path)?;
+                continue;
             }
-            reparse_set.push(path.clone());
+        };
+        let stored = store.get_file(path)?;
+        if stored.as_ref().is_some_and(|f| f.hash == current_hash) {
+            continue; // unchanged
         }
+        reparse_set.push(path.clone());
+    }
 
-        // Phase 2: Find 1-hop dependents
-        let mut dependent_set = Vec::new();
-        let all_symbols = self.store.all_symbols()?;
-        for path in &reparse_set {
-            let file_symbols: Vec<_> = all_symbols.iter()
-                .filter(|s| s.location.file == *path)
-                .collect();
-            for sym in file_symbols {
-                let incoming = self.store.get_edges_to(&sym.qualified_name)?;
-                for edge in incoming {
-                    if let Some(source_sym) = self.store.get_symbol(&edge.source)? {
-                        let dep_path = source_sym.location.file.clone();
-                        if !reparse_set.contains(&dep_path) && !dependent_set.contains(&dep_path) {
-                            dependent_set.push(dep_path);
-                        }
+    // Phase 2: Find 1-hop dependents
+    let mut dependent_set = Vec::new();
+    let all_symbols = store.all_symbols()?;
+    for path in &reparse_set {
+        let file_symbols: Vec<_> = all_symbols.iter()
+            .filter(|s| s.location.file == *path)
+            .collect();
+        for sym in file_symbols {
+            let incoming = store.get_edges_to(&sym.qualified_name)?;
+            for edge in incoming {
+                if let Some(source_sym) = store.get_symbol(&edge.source)? {
+                    let dep_path = source_sym.location.file.clone();
+                    if !reparse_set.contains(&dep_path) && !dependent_set.contains(&dep_path) {
+                        dependent_set.push(dep_path);
                     }
                 }
             }
         }
-        reparse_set.extend(dependent_set);
-        reparse_set.sort();
-        reparse_set.dedup();
+    }
+    reparse_set.extend(dependent_set);
+    reparse_set.sort();
+    reparse_set.dedup();
 
-        if reparse_set.is_empty() {
-            return Ok(IndexStats {
-                files_indexed: 0,
-                symbols_extracted: 0,
-                edges_created: 0,
-                duration: start.elapsed(),
-            });
-        }
-
-        // Phase 3: Read + parse + store
-        let mut files_with_content = Vec::new();
-        for path in &reparse_set {
-            let abs_path = root.join(path);
-            match self.fs.read_file(&abs_path) {
-                Ok(content) => files_with_content.push((path.clone(), content.into_bytes())),
-                Err(e) => tracing::warn!("skipping {}: {e}", path.display()),
-            }
-        }
-
-        let file_data = self.parser.parse_and_resolve(&files_with_content, root)?;
-        let mut stats = IndexStats {
+    if reparse_set.is_empty() {
+        return Ok(IndexStats {
             files_indexed: 0,
             symbols_extracted: 0,
             edges_created: 0,
             duration: start.elapsed(),
-        };
-        for fd in &file_data {
-            self.store.remove_file_data(&fd.file.path)?;
-            self.store.store_file_data(&fd.file, &fd.symbols, &fd.edges)?;
-            stats.files_indexed += 1;
-            stats.symbols_extracted += fd.symbols.len();
-            stats.edges_created += fd.edges.len();
-        }
-        stats.duration = start.elapsed();
-        Ok(stats)
+        });
     }
+
+    // Phase 3: Read + parse + store
+    let mut files_with_content = Vec::new();
+    for path in &reparse_set {
+        let abs_path = root.join(path);
+        match fs.read_file(&abs_path) {
+            Ok(content) => files_with_content.push((path.clone(), content.into_bytes())),
+            Err(e) => tracing::warn!("skipping {}: {e}", path.display()),
+        }
+    }
+
+    let file_data = parser.parse_and_resolve(&files_with_content, root)?;
+    let mut stats = IndexStats {
+        files_indexed: 0,
+        symbols_extracted: 0,
+        edges_created: 0,
+        duration: start.elapsed(),
+    };
+    for fd in &file_data {
+        store.remove_file_data(&fd.file.path)?;
+        store.store_file_data(&fd.file, &fd.symbols, &fd.edges)?;
+        stats.files_indexed += 1;
+        stats.symbols_extracted += fd.symbols.len();
+        stats.edges_created += fd.edges.len();
+    }
+    stats.duration = start.elapsed();
+    Ok(stats)
 }
 
 #[cfg(test)]

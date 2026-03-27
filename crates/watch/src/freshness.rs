@@ -2,13 +2,15 @@ use std::path::Path;
 
 use domain::error::Result;
 use domain::ports::{FileSystem, GitProvider, GraphStore, ParseProvider};
+use domain::use_cases::index::run_incremental_pipeline;
 
 use crate::pid;
 
 /// Ensures the graph is fresh before queries.
 ///
 /// If a daemon is running (PID file exists and process alive), the graph
-/// is assumed fresh. Otherwise, runs a lazy incremental index.
+/// is assumed fresh. Otherwise, runs the full incremental pipeline
+/// (hash check + 1-hop dependent discovery + re-parse) via git status.
 pub fn ensure_fresh<S, P, F, G>(
     store: &S,
     parser: &P,
@@ -28,52 +30,13 @@ where
         return Ok(());
     }
 
-    // Run lazy staleness check
-    // We need to create a use case with references — but IndexUseCase takes ownership.
-    // Since ensure_fresh is called on query paths, we create a lightweight wrapper.
+    // Run lazy staleness check via the full incremental pipeline
     let modified = git.modified_files()?;
     if modified.is_empty() {
         return Ok(());
     }
 
-    // Hash-check and re-parse changed files
-    let mut reparse_paths = Vec::new();
-    for path in &modified {
-        let abs_path = root.join(path);
-        let current_hash = match fs.file_hash(&abs_path) {
-            Ok(h) => h,
-            Err(_) => {
-                store.remove_file_data(path)?;
-                continue;
-            }
-        };
-        let stored = store.get_file(path)?;
-        if stored.as_ref().is_some_and(|f| f.hash == current_hash) {
-            continue;
-        }
-        reparse_paths.push(path.clone());
-    }
-
-    if reparse_paths.is_empty() {
-        return Ok(());
-    }
-
-    // Read + parse + store
-    let mut files_with_content = Vec::new();
-    for path in &reparse_paths {
-        let abs_path = root.join(path);
-        match fs.read_file(&abs_path) {
-            Ok(content) => files_with_content.push((path.clone(), content.into_bytes())),
-            Err(e) => tracing::warn!("skipping {}: {e}", path.display()),
-        }
-    }
-
-    let file_data = parser.parse_and_resolve(&files_with_content, root)?;
-    for fd in &file_data {
-        store.remove_file_data(&fd.file.path)?;
-        store.store_file_data(&fd.file, &fd.symbols, &fd.edges)?;
-    }
-
+    let _ = run_incremental_pipeline(store, parser, fs, root, modified)?;
     Ok(())
 }
 
