@@ -1,7 +1,6 @@
 use domain::error::{CodeGraphError, Result};
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::process::Command;
 
 /// Resolve the path to the settings JSON file.
 ///
@@ -107,18 +106,7 @@ pub(super) fn remove_gitignore_entry(project_root: &Path) -> Result<bool> {
 
 /// Return the full path to `binary` if it can be found on `$PATH`.
 pub(super) fn find_on_path(binary: &str) -> Option<PathBuf> {
-    let output = Command::new("which").arg(binary).output().ok()?;
-    if output.status.success() {
-        let path_str = String::from_utf8(output.stdout).ok()?;
-        let trimmed = path_str.trim();
-        if trimmed.is_empty() {
-            None
-        } else {
-            Some(PathBuf::from(trimmed))
-        }
-    } else {
-        None
-    }
+    which::which(binary).ok()
 }
 
 #[cfg(test)]
