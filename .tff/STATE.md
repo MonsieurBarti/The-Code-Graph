@@ -14,5 +14,5 @@
 | CLI Foundation & Index Command | open | 0/0 | 0% |
 | Language Parsers & Import Resolution | open | 0/0 | 0% |
 | Tree-Sitter Parser Infrastructure | open | 0/0 | 0% |
-| SQLite Storage Layer | open | 0/0 | 0% |
+| SQLite Storage Layer | planned | 0/7 | 0% |
 | Workspace Scaffold & Domain Model | shipped | 8/8 | 100% |
