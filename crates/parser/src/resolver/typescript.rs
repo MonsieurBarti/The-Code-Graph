@@ -227,7 +227,7 @@ mod tests {
     use super::*;
     use std::collections::HashMap;
     use std::fs;
-    use std::io::Write as IoWrite;
+
 
     fn make_context(project_root: &Path) -> ResolveContext {
         ResolveContext {
