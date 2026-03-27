@@ -48,7 +48,7 @@ impl SuiteResult {
             )?;
             writeln!(
                 w,
-                "  MRR:          {:.2} (target: >{:.2}) {}",
+                "  MRR:          {:.2} (target: >={:.2}) {}",
                 search.mrr, search.mrr_target, status
             )?;
             writeln!(w, "  Precision@5:  {:.2}", search.precision_at_5)?;
@@ -70,7 +70,7 @@ impl SuiteResult {
             )?;
             writeln!(
                 w,
-                "  Precision:    {:.2} (target: >{:.2}) {}",
+                "  Precision:    {:.2} (target: >={:.2}) {}",
                 impact.precision, impact.precision_target, status
             )?;
             writeln!(w, "  Recall:       {:.2}", impact.recall)?;
@@ -167,7 +167,7 @@ mod tests {
         result.fmt_compact(&mut buf).unwrap();
         let output = String::from_utf8(buf).unwrap();
         assert!(output.contains("Search Suite — 5 repos, 52 queries"));
-        assert!(output.contains("MRR:          0.62 (target: >0.30) PASS"));
+        assert!(output.contains("MRR:          0.62 (target: >=0.30) PASS"));
         assert!(output.contains("Precision@5:  0.71"));
         assert!(output.contains("Precision@10: 0.58"));
         assert!(!output.contains("Impact Suite"));
@@ -183,7 +183,7 @@ mod tests {
         result.fmt_compact(&mut buf).unwrap();
         let output = String::from_utf8(buf).unwrap();
         assert!(output.contains("Impact Suite — 5 repos, 24 scenarios"));
-        assert!(output.contains("Precision:    0.61 (target: >0.40) PASS"));
+        assert!(output.contains("Precision:    0.61 (target: >=0.40) PASS"));
         assert!(output.contains("Recall:       0.48"));
         assert!(output.contains("F1:           0.54"));
         assert!(!output.contains("Search Suite"));

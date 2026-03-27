@@ -98,6 +98,10 @@ pub fn clone_or_cache(repo: &ManifestRepo, no_cache: bool) -> Result<PathBuf> {
     }
 
     tracing::info!(repo = %repo.name, revision = %repo.revision, "Cloning");
+    if cache_path.exists() {
+        std::fs::remove_dir_all(&cache_path)
+            .map_err(|e| CodeGraphError::Other(format!("remove stale cache: {e}")))?;
+    }
     std::fs::create_dir_all(&cache_path)
         .map_err(|e| CodeGraphError::Other(format!("mkdir: {e}")))?;
 

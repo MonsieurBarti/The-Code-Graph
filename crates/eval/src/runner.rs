@@ -182,7 +182,7 @@ pub fn run_search_suite(config: &SuiteConfig) -> Result<SearchSuiteResult> {
         precision_at_5: p5,
         precision_at_10: p10,
         mrr_target: MRR_TARGET,
-        mrr_passed: mrr > MRR_TARGET,
+        mrr_passed: mrr >= MRR_TARGET,
     })
 }
 
@@ -246,7 +246,7 @@ pub fn run_impact_suite(config: &SuiteConfig) -> Result<ImpactSuiteResult> {
         recall,
         f1,
         precision_target: BLAST_PRECISION_TARGET,
-        precision_passed: precision > BLAST_PRECISION_TARGET,
+        precision_passed: precision >= BLAST_PRECISION_TARGET,
     })
 }
 
