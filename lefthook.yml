@@ -1,0 +1,19 @@
+pre-commit:
+  parallel: true
+  commands:
+    fmt:
+      run: cargo fmt --check
+      glob: "*.rs"
+    clippy:
+      run: cargo clippy --workspace -- -Dwarnings
+      glob: "*.rs"
+    test:
+      run: cargo test --workspace
+      glob: "*.rs"
+
+pre-push:
+  commands:
+    full-test:
+      run: cargo test --workspace
+    bench-check:
+      run: cargo bench --no-run
