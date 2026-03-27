@@ -88,4 +88,30 @@ mod tests {
         let report = uc.diff_impact(&hunks, 3).unwrap();
         assert!(report.changed_symbols.is_empty());
     }
+
+    #[test]
+    fn diff_impact_overlapping_returns_affected_symbols() {
+        let mut store = InMemoryGraphStore::new();
+        store.insert_symbol(SymbolNode {
+            name: "foo".into(), qualified_name: "a.rs::foo".into(),
+            kind: SymbolKind::Function,
+            location: Location { file: "a.rs".into(), line_start: 10, line_end: 20, col_start: 0, col_end: 0 },
+            visibility: Visibility::Public,
+            is_exported: false, is_async: false, is_test: false,
+            decorators: vec![], signature: None,
+        });
+        store.insert_edge(Edge {
+            kind: EdgeKind::Calls, source: "a.rs::foo".into(),
+            target: "b.rs::bar".into(), metadata: None,
+        });
+
+        let uc = ImpactUseCase::new(store);
+        let hunks = vec![DiffHunk {
+            file: "a.rs".into(), old_start: 15, old_count: 3, new_start: 15, new_count: 3,
+        }];
+        let report = uc.diff_impact(&hunks, 3).unwrap();
+        assert_eq!(report.changed_symbols.len(), 1);
+        assert_eq!(report.changed_symbols[0].name, "foo");
+        assert!(report.impact.affected.iter().any(|n| n.qualified_name == "b.rs::bar"));
+    }
 }

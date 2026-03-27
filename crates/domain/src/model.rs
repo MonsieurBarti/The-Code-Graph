@@ -436,10 +436,8 @@ mod tests {
         let mut map: HashMap<QualifiedName, u32> = HashMap::new();
         let qn = QualifiedName::parse("src/lib.rs::foo").unwrap();
         map.insert(qn, 42);
-        // This requires Borrow<str> implementation on QualifiedName
-        // so that we can look up by &str
-        let qn_lookup = QualifiedName::parse("src/lib.rs::foo").unwrap();
-        assert_eq!(map.get(&qn_lookup), Some(&42));
+        // Exercises the Borrow<str> impl: look up by &str, not QualifiedName
+        assert_eq!(map.get("src/lib.rs::foo"), Some(&42));
     }
 
     #[test]
