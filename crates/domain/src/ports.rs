@@ -51,6 +51,23 @@ pub trait FileSystem: Send + Sync {
     fn file_hash(&self, path: &Path) -> Result<String>;
 }
 
+/// Data ready for storage: one file's worth of graph data.
+#[derive(Debug, Clone)]
+pub struct FileData {
+    pub file: FileNode,
+    pub symbols: Vec<SymbolNode>,
+    pub edges: Vec<Edge>,
+}
+
+/// Outbound port: parse and resolve a batch of source files.
+pub trait ParseProvider: Send + Sync {
+    fn parse_and_resolve(
+        &self,
+        files: &[(PathBuf, Vec<u8>)],
+        project_root: &Path,
+    ) -> Result<Vec<FileData>>;
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -75,5 +92,26 @@ mod tests {
     #[test]
     fn file_system_is_send_sync() {
         assert_send_sync::<Box<dyn FileSystem>>();
+    }
+
+    #[test]
+    fn parse_provider_is_send_sync() {
+        assert_send_sync::<Box<dyn ParseProvider>>();
+    }
+
+    #[test]
+    fn file_data_construction() {
+        let fd = FileData {
+            file: FileNode {
+                path: "src/main.rs".into(),
+                language: Language::Rust,
+                hash: "abc123".into(),
+            },
+            symbols: vec![],
+            edges: vec![],
+        };
+        assert_eq!(fd.file.path.to_str().unwrap(), "src/main.rs");
+        assert!(fd.symbols.is_empty());
+        assert!(fd.edges.is_empty());
     }
 }

@@ -1,9 +1,10 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use crate::error::Result;
 use crate::model::*;
-use crate::ports::{GraphStore, SearchIndex};
+use crate::ports::{GraphStore, SearchIndex, FileData, ParseProvider};
 
 /// In-memory implementation of GraphStore + SearchIndex for testing.
+#[derive(Default)]
 pub struct InMemoryGraphStore {
     files: Vec<FileNode>,
     symbols: Vec<SymbolNode>,
@@ -12,7 +13,7 @@ pub struct InMemoryGraphStore {
 
 impl InMemoryGraphStore {
     pub fn new() -> Self {
-        Self { files: vec![], symbols: vec![], edges: vec![] }
+        Self::default()
     }
 
     pub fn insert_file(&mut self, file: FileNode) {
@@ -62,7 +63,7 @@ impl GraphStore for InMemoryGraphStore {
         Ok(())
     }
 
-    fn remove_file_data(&self, path: &Path) -> Result<()> {
+    fn remove_file_data(&self, _path: &Path) -> Result<()> {
         Ok(())
     }
 }
@@ -84,4 +85,77 @@ impl SearchIndex for InMemoryGraphStore {
         Ok(results)
     }
     fn rebuild(&self) -> Result<()> { Ok(()) }
+}
+
+/// Mock ParseProvider that returns canned FileData for testing.
+pub struct MockParseProvider {
+    pub results: Vec<FileData>,
+}
+
+impl MockParseProvider {
+    pub fn new(results: Vec<FileData>) -> Self {
+        Self { results }
+    }
+}
+
+impl ParseProvider for MockParseProvider {
+    fn parse_and_resolve(
+        &self,
+        _files: &[(PathBuf, Vec<u8>)],
+        _project_root: &Path,
+    ) -> crate::error::Result<Vec<FileData>> {
+        Ok(self.results.clone())
+    }
+}
+
+/// Mock FileSystem for testing.
+pub struct MockFileSystem {
+    pub files: Vec<(PathBuf, String)>,
+}
+
+impl MockFileSystem {
+    pub fn new(files: Vec<(PathBuf, String)>) -> Self {
+        Self { files }
+    }
+}
+
+impl crate::ports::FileSystem for MockFileSystem {
+    fn list_files(&self, _root: &Path, extensions: &[&str]) -> Result<Vec<PathBuf>> {
+        Ok(self.files.iter()
+            .filter(|(p, _)| {
+                p.extension()
+                    .and_then(|e| e.to_str())
+                    .is_some_and(|e| extensions.contains(&e))
+            })
+            .map(|(p, _)| p.clone())
+            .collect())
+    }
+
+    fn read_file(&self, path: &Path) -> Result<String> {
+        self.files.iter()
+            .find(|(p, _)| p == path)
+            .map(|(_, content)| content.clone())
+            .ok_or_else(|| crate::error::CodeGraphError::Other(format!("file not found: {}", path.display())))
+    }
+
+    fn file_hash(&self, _path: &Path) -> Result<String> {
+        Ok("mock_hash".to_string())
+    }
+}
+
+/// Mock GitProvider for testing.
+pub struct MockGitProvider;
+
+impl crate::ports::GitProvider for MockGitProvider {
+    fn current_head(&self) -> Result<String> {
+        Ok("abcd1234".to_string())
+    }
+
+    fn changed_files(&self, _from: &str, _to: &str) -> Result<Vec<PathBuf>> {
+        Ok(vec![])
+    }
+
+    fn diff_hunks(&self, _from: &str, _to: &str) -> Result<Vec<DiffHunk>> {
+        Ok(vec![])
+    }
 }
