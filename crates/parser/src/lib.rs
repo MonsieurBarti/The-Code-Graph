@@ -1,12 +1,19 @@
 #![forbid(unsafe_code)]
 
+mod go;
+mod python;
 mod registry;
+pub mod resolver;
+mod rust_lang;
 mod typescript;
 
 #[cfg(test)]
 pub mod test_utils;
 
+pub use go::GoParser;
+pub use python::PythonParser;
 pub use registry::ParserRegistry;
+pub use rust_lang::RustParser;
 pub use typescript::{JavaScriptParser, TypeScriptParser};
 
 use domain::model::{Edge, SymbolNode};
