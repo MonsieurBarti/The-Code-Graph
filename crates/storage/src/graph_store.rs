@@ -570,6 +570,107 @@ impl GraphStore for SqliteStore {
         Ok(())
     }
 
+    fn symbols_for_files(&self, paths: &[&Path]) -> Result<Vec<SymbolNode>> {
+        if paths.is_empty() {
+            return Ok(vec![]);
+        }
+        let conn = self.conn()?;
+        let placeholders: String = (1..=paths.len())
+            .map(|i| format!("?{i}"))
+            .collect::<Vec<_>>()
+            .join(", ");
+        let sql = format!(
+            "SELECT qualified_name, name, kind, file_path,
+                    line_start, line_end, col_start, col_end,
+                    visibility, is_exported, is_async, is_test,
+                    decorators, signature
+             FROM symbols WHERE file_path IN ({placeholders})"
+        );
+        let mut stmt = conn.prepare(&sql).map_err(map_rusqlite_error)?;
+        let params: Vec<&str> = paths
+            .iter()
+            .map(|p| p.to_str().unwrap_or_default())
+            .collect();
+        let rows = stmt
+            .query_map(rusqlite::params_from_iter(params), |row| {
+                Ok((
+                    row.get::<_, String>(0)?,
+                    row.get::<_, String>(1)?,
+                    row.get::<_, String>(2)?,
+                    row.get::<_, String>(3)?,
+                    row.get::<_, i64>(4)?,
+                    row.get::<_, i64>(5)?,
+                    row.get::<_, i64>(6)?,
+                    row.get::<_, i64>(7)?,
+                    row.get::<_, String>(8)?,
+                    row.get::<_, i32>(9)?,
+                    row.get::<_, i32>(10)?,
+                    row.get::<_, i32>(11)?,
+                    row.get::<_, Option<String>>(12)?,
+                    row.get::<_, Option<String>>(13)?,
+                ))
+            })
+            .map_err(map_rusqlite_error)?;
+        let mut symbols = Vec::new();
+        for row in rows {
+            let (qn, name, kind, file, ls, le, cs, ce, vis, exp, asy, tst, dec, sig) =
+                row.map_err(map_rusqlite_error)?;
+            let decorators: Vec<String> = match dec {
+                Some(ref s) => serde_json::from_str(s)
+                    .map_err(|e| domain::error::CodeGraphError::Storage(e.to_string()))?,
+                None => vec![],
+            };
+            symbols.push(SymbolNode {
+                qualified_name: qn,
+                name,
+                kind: symbol_kind_from_str(&kind)?,
+                location: Location {
+                    file: file.into(),
+                    line_start: ls as usize,
+                    line_end: le as usize,
+                    col_start: cs as usize,
+                    col_end: ce as usize,
+                },
+                visibility: visibility_from_str(&vis)?,
+                is_exported: exp != 0,
+                is_async: asy != 0,
+                is_test: tst != 0,
+                decorators,
+                signature: sig,
+            });
+        }
+        Ok(symbols)
+    }
+
+    fn edges_streaming(&self, callback: &mut dyn FnMut(Edge) -> Result<()>) -> Result<()> {
+        let conn = self.conn()?;
+        let mut stmt = conn
+            .prepare_cached(
+                "SELECT kind, source_qualified, target_qualified, metadata FROM edges",
+            )
+            .map_err(map_rusqlite_error)?;
+        let rows = stmt
+            .query_map([], |row| {
+                Ok((
+                    row.get::<_, String>(0)?,
+                    row.get::<_, String>(1)?,
+                    row.get::<_, String>(2)?,
+                    row.get::<_, Option<String>>(3)?,
+                ))
+            })
+            .map_err(map_rusqlite_error)?;
+        for row in rows {
+            let (kind, src, tgt, meta) = row.map_err(map_rusqlite_error)?;
+            callback(Edge {
+                kind: edge_kind_from_str(&kind)?,
+                source: src,
+                target: tgt,
+                metadata: meta,
+            })?;
+        }
+        Ok(())
+    }
+
     fn remove_file_data(&self, path: &Path) -> Result<()> {
         let mut conn = self.conn()?;
         let tx = conn
@@ -954,5 +1055,87 @@ mod tests {
         let mut names: Vec<&str> = results.iter().map(|s| s.name.as_str()).collect();
         names.sort();
         assert_eq!(names, vec!["__init__", "__init_extra"]);
+    }
+
+    // --- Filtered queries (T06) ---
+
+    #[test]
+    fn symbols_for_files_returns_filtered_subset() {
+        let store = test_store();
+        // Insert file for a.rs
+        store.upsert_file(&FileNode {
+            path: "src/a.rs".into(),
+            language: Language::Rust,
+            hash: "h1".into(),
+        }).unwrap();
+        // Insert file for b.rs
+        store.upsert_file(&FileNode {
+            path: "src/b.rs".into(),
+            language: Language::Rust,
+            hash: "h2".into(),
+        }).unwrap();
+        // Symbols in a.rs
+        store.upsert_symbol(&SymbolNode {
+            name: "foo".into(),
+            qualified_name: "src/a.rs::foo".into(),
+            kind: SymbolKind::Function,
+            location: Location { file: "src/a.rs".into(), line_start: 1, line_end: 10, col_start: 0, col_end: 1 },
+            visibility: Visibility::Public,
+            is_exported: true, is_async: false, is_test: false,
+            decorators: vec![], signature: None,
+        }).unwrap();
+        // Symbols in b.rs
+        store.upsert_symbol(&SymbolNode {
+            name: "bar".into(),
+            qualified_name: "src/b.rs::bar".into(),
+            kind: SymbolKind::Function,
+            location: Location { file: "src/b.rs".into(), line_start: 1, line_end: 10, col_start: 0, col_end: 1 },
+            visibility: Visibility::Public,
+            is_exported: true, is_async: false, is_test: false,
+            decorators: vec![], signature: None,
+        }).unwrap();
+        // Filter for a.rs only
+        let results = store.symbols_for_files(&[Path::new("src/a.rs")]).unwrap();
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].name, "foo");
+    }
+
+    #[test]
+    fn symbols_for_files_empty_paths_returns_empty() {
+        let store = test_store();
+        store.upsert_file(&sample_file()).unwrap();
+        store.upsert_symbol(&sample_symbol()).unwrap();
+        let results = store.symbols_for_files(&[]).unwrap();
+        assert!(results.is_empty());
+    }
+
+    #[test]
+    fn edges_streaming_invokes_callback_per_row() {
+        let store = test_store();
+        store.upsert_edge(&Edge {
+            kind: EdgeKind::Calls,
+            source: "a::foo".into(),
+            target: "b::bar".into(),
+            metadata: None,
+        }).unwrap();
+        store.upsert_edge(&Edge {
+            kind: EdgeKind::ImportsFrom,
+            source: "c::baz".into(),
+            target: "d::qux".into(),
+            metadata: None,
+        }).unwrap();
+        store.upsert_edge(&Edge {
+            kind: EdgeKind::Contains,
+            source: "e::quux".into(),
+            target: "f::corge".into(),
+            metadata: None,
+        }).unwrap();
+        let mut count = 0usize;
+        store.edges_streaming(&mut |_edge| {
+            count += 1;
+            Ok(())
+        }).unwrap();
+        assert_eq!(count, 3);
+        assert_eq!(store.all_edges().unwrap().len(), 3);
     }
 }
