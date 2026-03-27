@@ -52,6 +52,19 @@ impl GraphStore for InMemoryGraphStore {
     fn stats(&self) -> Result<GraphStats> {
         Ok(GraphStats { files: self.files.len(), symbols: self.symbols.len(), edges: self.edges.len() })
     }
+
+    fn store_file_data(
+        &self,
+        _file: &FileNode,
+        _symbols: &[SymbolNode],
+        _edges: &[Edge],
+    ) -> Result<()> {
+        Ok(())
+    }
+
+    fn remove_file_data(&self, path: &Path) -> Result<()> {
+        Ok(())
+    }
 }
 
 impl SearchIndex for InMemoryGraphStore {
