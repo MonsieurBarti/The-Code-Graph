@@ -234,7 +234,7 @@ fn run_install(args: &SetupArgs, project_root: Option<&Path>) -> Result<()> {
         println!("Warning: jq not found — PostToolUse hook will not extract file paths. Install jq for per-file incremental indexing.");
     }
 
-    println!("Installed 2 hooks to {}", settings_path.display());
+    println!("Installed {} hooks to {}", defs.len(), settings_path.display());
     Ok(())
 }
 
@@ -273,6 +273,15 @@ fn run_remove(args: &SetupArgs, project_root: Option<&Path>) -> Result<()> {
         if let Some(root) = project_root {
             let data_dir = root.join(".code-graph");
             if data_dir.is_dir() {
+                // Refuse to follow symlinks to avoid deleting unrelated directories
+                let meta = fs::symlink_metadata(&data_dir).map_err(|e| {
+                    CodeGraphError::FileSystem { path: data_dir.clone(), source: e }
+                })?;
+                if meta.file_type().is_symlink() {
+                    return Err(CodeGraphError::Other(
+                        format!("{} is a symlink — refusing to purge", data_dir.display())
+                    ));
+                }
                 fs::remove_dir_all(&data_dir).map_err(|e| {
                     CodeGraphError::FileSystem { path: data_dir, source: e }
                 })?;
