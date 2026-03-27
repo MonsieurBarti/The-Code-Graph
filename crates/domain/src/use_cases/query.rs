@@ -12,8 +12,8 @@ impl<S: GraphStore, I: SearchIndex> QueryUseCase<S, I> {
         Self { store, index }
     }
 
-    pub fn find(&self, qualified_name: &str) -> Result<Option<SymbolNode>> {
-        self.store.get_symbol(qualified_name)
+    pub fn find(&self, pattern: &str) -> Result<Vec<SymbolNode>> {
+        self.store.find_by_name(pattern)
     }
 
     pub fn refs(&self, qualified_name: &str) -> Result<Vec<Reference>> {
@@ -47,5 +47,62 @@ impl<S: GraphStore, I: SearchIndex> QueryUseCase<S, I> {
 
     pub fn stats(&self) -> Result<GraphStats> {
         self.store.stats()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::test_support::InMemoryGraphStore;
+
+    fn make_symbol(name: &str) -> SymbolNode {
+        SymbolNode {
+            name: name.into(),
+            qualified_name: format!("test.rs::{name}"),
+            kind: SymbolKind::Function,
+            location: Location { file: "test.rs".into(), line_start: 1, line_end: 5, col_start: 0, col_end: 0 },
+            visibility: Visibility::Public,
+            is_exported: false, is_async: false, is_test: false,
+            decorators: vec![], signature: None,
+        }
+    }
+
+    #[test]
+    fn find_exact_match() {
+        let mut store = InMemoryGraphStore::new();
+        store.insert_symbol(make_symbol("foo"));
+        let uc = QueryUseCase::new(store.clone(), store);
+        let results = uc.find("foo").unwrap();
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].name, "foo");
+    }
+
+    #[test]
+    fn find_prefix_fallback() {
+        let mut store = InMemoryGraphStore::new();
+        store.insert_symbol(make_symbol("foobar"));
+        let uc = QueryUseCase::new(store.clone(), store);
+        let results = uc.find("foo").unwrap();
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].name, "foobar");
+    }
+
+    #[test]
+    fn find_no_match_returns_empty() {
+        let store = InMemoryGraphStore::new();
+        let uc = QueryUseCase::new(store.clone(), store);
+        let results = uc.find("bar").unwrap();
+        assert!(results.is_empty());
+    }
+
+    #[test]
+    fn find_exact_takes_priority_over_prefix() {
+        let mut store = InMemoryGraphStore::new();
+        store.insert_symbol(make_symbol("foo"));
+        store.insert_symbol(make_symbol("foobar"));
+        let uc = QueryUseCase::new(store.clone(), store);
+        let results = uc.find("foo").unwrap();
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].name, "foo");
     }
 }

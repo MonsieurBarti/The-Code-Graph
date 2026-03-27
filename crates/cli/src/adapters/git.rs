@@ -45,8 +45,8 @@ impl GitProvider for ShellGitProvider {
             .collect())
     }
 
-    fn diff_hunks(&self, _from: &str, _to: &str) -> Result<Vec<DiffHunk>> {
-        todo!("diff hunk parsing implemented in S07")
+    fn diff_hunks(&self, _from: &str, _to: Option<&str>) -> Result<Vec<DiffHunk>> {
+        todo!("diff hunk parsing — implemented in T05")
     }
 }
 

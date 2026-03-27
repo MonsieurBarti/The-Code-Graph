@@ -25,7 +25,7 @@ impl<S: GraphStore> ImpactUseCase<S> {
         Ok(compute_blast_radius(&graph, targets, max_depth, min_confidence))
     }
 
-    pub fn diff_impact(&self, hunks: &[DiffHunk], max_depth: usize) -> Result<DiffImpactReport> {
+    pub fn diff_impact(&self, hunks: &[DiffHunk], max_depth: usize, min_confidence: Confidence) -> Result<DiffImpactReport> {
         let edges = self.store.all_edges()?;
         let symbols = self.store.all_symbols()?;
         let graph = InMemoryGraph::from_edges(edges);
@@ -33,7 +33,7 @@ impl<S: GraphStore> ImpactUseCase<S> {
         let targets: Vec<ImpactTarget> = changed.iter()
             .map(|s| ImpactTarget::Symbol(s.qualified_name.clone()))
             .collect();
-        let impact = compute_blast_radius(&graph, &targets, max_depth, Confidence::Structural);
+        let impact = compute_blast_radius(&graph, &targets, max_depth, min_confidence);
         Ok(DiffImpactReport { changed_symbols: changed, impact })
     }
 }
@@ -85,7 +85,7 @@ mod tests {
             file: "nonexistent.rs".into(),
             old_start: 1, old_count: 1, new_start: 1, new_count: 1,
         }];
-        let report = uc.diff_impact(&hunks, 3).unwrap();
+        let report = uc.diff_impact(&hunks, 3, Confidence::Structural).unwrap();
         assert!(report.changed_symbols.is_empty());
     }
 
@@ -109,7 +109,7 @@ mod tests {
         let hunks = vec![DiffHunk {
             file: "a.rs".into(), old_start: 15, old_count: 3, new_start: 15, new_count: 3,
         }];
-        let report = uc.diff_impact(&hunks, 3).unwrap();
+        let report = uc.diff_impact(&hunks, 3, Confidence::Structural).unwrap();
         assert_eq!(report.changed_symbols.len(), 1);
         assert_eq!(report.changed_symbols[0].name, "foo");
         assert!(report.impact.affected.iter().any(|n| n.qualified_name == "b.rs::bar"));

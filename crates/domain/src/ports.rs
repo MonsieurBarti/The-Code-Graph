@@ -17,6 +17,7 @@ pub trait GraphStore: Send + Sync {
     fn remove_file(&self, path: &Path) -> Result<()>;
     fn remove_symbols_in_file(&self, path: &Path) -> Result<()>;
     fn stats(&self) -> Result<GraphStats>;
+    fn find_by_name(&self, pattern: &str) -> Result<Vec<SymbolNode>>;
 
     /// Store a file and all its symbols and edges atomically.
     fn store_file_data(
@@ -39,7 +40,7 @@ pub trait SearchIndex: Send + Sync {
 
 /// Git operations (diff, log, etc.).
 pub trait GitProvider: Send + Sync {
-    fn diff_hunks(&self, from: &str, to: &str) -> Result<Vec<DiffHunk>>;
+    fn diff_hunks(&self, from: &str, to: Option<&str>) -> Result<Vec<DiffHunk>>;
     fn changed_files(&self, from: &str, to: &str) -> Result<Vec<PathBuf>>;
     fn current_head(&self) -> Result<String>;
 }

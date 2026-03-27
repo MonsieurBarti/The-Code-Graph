@@ -8,6 +8,65 @@ use domain::ports::GraphStore;
 use crate::mapping::*;
 use crate::SqliteStore;
 
+impl SqliteStore {
+    fn query_symbols(
+        &self,
+        stmt: &mut rusqlite::CachedStatement<'_>,
+        params: impl rusqlite::Params,
+    ) -> Result<Vec<SymbolNode>> {
+        let rows = stmt
+            .query_map(params, |row| {
+                Ok((
+                    row.get::<_, String>(0)?,
+                    row.get::<_, String>(1)?,
+                    row.get::<_, String>(2)?,
+                    row.get::<_, String>(3)?,
+                    row.get::<_, i64>(4)?,
+                    row.get::<_, i64>(5)?,
+                    row.get::<_, i64>(6)?,
+                    row.get::<_, i64>(7)?,
+                    row.get::<_, String>(8)?,
+                    row.get::<_, i32>(9)?,
+                    row.get::<_, i32>(10)?,
+                    row.get::<_, i32>(11)?,
+                    row.get::<_, Option<String>>(12)?,
+                    row.get::<_, Option<String>>(13)?,
+                ))
+            })
+            .map_err(map_rusqlite_error)?;
+        let mut symbols = Vec::new();
+        for row in rows {
+            let (qn, name, kind, file, ls, le, cs, ce, vis, exp, asy, tst, dec, sig) =
+                row.map_err(map_rusqlite_error)?;
+            let decorators: Vec<String> = match dec {
+                Some(ref s) => serde_json::from_str(s).map_err(|e| {
+                    domain::error::CodeGraphError::Storage(e.to_string())
+                })?,
+                None => vec![],
+            };
+            symbols.push(SymbolNode {
+                qualified_name: qn,
+                name,
+                kind: symbol_kind_from_str(&kind)?,
+                location: Location {
+                    file: file.into(),
+                    line_start: ls as usize,
+                    line_end: le as usize,
+                    col_start: cs as usize,
+                    col_end: ce as usize,
+                },
+                visibility: visibility_from_str(&vis)?,
+                is_exported: exp != 0,
+                is_async: asy != 0,
+                is_test: tst != 0,
+                decorators,
+                signature: sig,
+            });
+        }
+        Ok(symbols)
+    }
+}
+
 fn now_epoch() -> i64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -369,6 +428,36 @@ impl GraphStore for SqliteStore {
             .execute(rusqlite::params![path.to_str().unwrap_or_default()])
             .map_err(map_rusqlite_error)?;
         Ok(())
+    }
+
+    fn find_by_name(&self, pattern: &str) -> Result<Vec<SymbolNode>> {
+        let conn = self.conn()?;
+        // Phase 1: exact match on name
+        let mut stmt = conn
+            .prepare_cached(
+                "SELECT qualified_name, name, kind, file_path,
+                        line_start, line_end, col_start, col_end,
+                        visibility, is_exported, is_async, is_test,
+                        decorators, signature
+                 FROM symbols WHERE name = ?1",
+            )
+            .map_err(map_rusqlite_error)?;
+        let exact = self.query_symbols(&mut stmt, rusqlite::params![pattern])?;
+        if !exact.is_empty() {
+            return Ok(exact);
+        }
+        // Phase 2: prefix fallback
+        let prefix_pattern = format!("{pattern}%");
+        let mut stmt = conn
+            .prepare_cached(
+                "SELECT qualified_name, name, kind, file_path,
+                        line_start, line_end, col_start, col_end,
+                        visibility, is_exported, is_async, is_test,
+                        decorators, signature
+                 FROM symbols WHERE name LIKE ?1",
+            )
+            .map_err(map_rusqlite_error)?;
+        self.query_symbols(&mut stmt, rusqlite::params![&prefix_pattern])
     }
 
     fn stats(&self) -> Result<GraphStats> {
