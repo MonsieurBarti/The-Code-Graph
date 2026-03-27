@@ -55,7 +55,6 @@ impl<S: GraphStore> ImpactUseCase<S> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::model::*;
     use crate::test_support::InMemoryGraphStore;
 
     #[test]

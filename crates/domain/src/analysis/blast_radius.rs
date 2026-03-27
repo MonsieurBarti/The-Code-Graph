@@ -39,7 +39,6 @@ pub fn compute_blast_radius(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::model::*;
     use crate::traversal::InMemoryGraph;
 
     #[test]

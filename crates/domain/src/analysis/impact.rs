@@ -25,7 +25,6 @@ pub fn compute_diff_impact(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::model::*;
     use crate::traversal::InMemoryGraph;
 
     #[test]

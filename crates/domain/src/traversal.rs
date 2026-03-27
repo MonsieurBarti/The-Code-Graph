@@ -160,7 +160,6 @@ impl InMemoryGraph {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::model::*;
 
     fn make_edge(src: &str, tgt: &str, kind: EdgeKind) -> Edge {
         Edge {
