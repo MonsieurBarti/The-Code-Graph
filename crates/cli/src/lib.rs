@@ -24,6 +24,6 @@ pub fn run(cli: Cli) -> Result<()> {
         Commands::Stats => commands::stats::run_stats(output_format),
         Commands::Watch(args) => commands::watch::run_watch(args),
         Commands::Setup(args) => commands::setup::run_setup(args),
-        Commands::Eval => commands::stubs::not_implemented("eval"),
+        Commands::Eval(args) => commands::eval::run_eval(args, output_format),
     }
 }

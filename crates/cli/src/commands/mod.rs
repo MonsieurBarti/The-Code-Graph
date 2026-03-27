@@ -12,6 +12,7 @@ pub mod diff;
 pub mod setup;
 pub mod setup_helpers;
 pub mod watch;
+pub mod eval;
 
 use clap::{Parser, Subcommand, ArgAction};
 
@@ -63,7 +64,7 @@ pub enum Commands {
     /// Set up agent integration hooks
     Setup(SetupArgs),
     /// Run evaluation suite
-    Eval,
+    Eval(EvalArgs),
 }
 
 #[derive(clap::Args)]
@@ -165,6 +166,16 @@ pub struct SearchArgs {
 }
 
 #[derive(clap::Args)]
+pub struct EvalArgs {
+    /// Which suite to run: search, impact, or all
+    #[arg(long, default_value = "all")]
+    pub suite: String,
+    /// Force re-clone of eval repos (ignore cache)
+    #[arg(long)]
+    pub no_cache: bool,
+}
+
+#[derive(clap::Args)]
 pub struct SetupArgs {
     /// Target platform (currently: "claude")
     pub platform: Option<String>,
@@ -239,6 +250,8 @@ mod tests {
             vec!["code-graph", "setup", "--remove", "--clean"],
             vec!["code-graph", "setup", "--remove", "--purge"],
             vec!["code-graph", "eval"],
+            vec!["code-graph", "eval", "--suite", "search"],
+            vec!["code-graph", "eval", "--no-cache"],
         ];
         for args in &commands {
             Cli::parse_from(args.iter());
