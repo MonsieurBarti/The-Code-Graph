@@ -49,7 +49,8 @@ impl ResolverRegistry {
         registry.register(Box::new(rust_lang::RustResolver::new(rust_config)));
         let python_config = python::PythonConfig::load(project_root);
         registry.register(Box::new(python::PythonResolver::new(python_config)));
-        registry.register(Box::new(go::GoResolver));
+        let go_config = go::GoConfig::load(project_root);
+        registry.register(Box::new(go::GoResolver::new(go_config)));
         registry
     }
 

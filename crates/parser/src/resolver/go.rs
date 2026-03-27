@@ -5,8 +5,25 @@ use domain::model::{Edge, EdgeKind, Language};
 use super::{ImportResolver, ResolveContext};
 use crate::ParseResult;
 
+/// Configuration for the Go resolver, loaded from go.mod.
+pub struct GoConfig {
+    pub module_path: Option<String>,
+}
+
+impl GoConfig {
+    pub fn load(project_root: &Path) -> Self {
+        GoConfig { module_path: parse_go_mod(project_root) }
+    }
+}
+
 /// Go import resolver — go.mod + module path resolution.
-pub struct GoResolver;
+pub struct GoResolver {
+    config: GoConfig,
+}
+
+impl GoResolver {
+    pub fn new(config: GoConfig) -> Self { Self { config } }
+}
 
 /// Parse go.mod from the filesystem and extract the module path.
 fn parse_go_mod(project_root: &Path) -> Option<String> {
@@ -69,7 +86,7 @@ impl ImportResolver for GoResolver {
         let source = file_path.to_string_lossy().to_string();
 
         // Try to read go.mod; if absent we can still handle side-effect/dot imports
-        let module_path = parse_go_mod(&context.project_root);
+        let module_path = self.config.module_path.clone();
 
         let mut edges = Vec::new();
 
@@ -143,7 +160,7 @@ mod tests {
 
     #[test]
     fn skips_stdlib_imports() {
-        let resolver = GoResolver;
+        let resolver = GoResolver::new(GoConfig { module_path: None });
         let parse_result = ParseResult {
             imports: vec![crate::RawImport {
                 specifier: "fmt".into(),
@@ -164,7 +181,7 @@ mod tests {
 
     #[test]
     fn skips_stdlib_multipart_path() {
-        let resolver = GoResolver;
+        let resolver = GoResolver::new(GoConfig { module_path: None });
         let parse_result = ParseResult {
             imports: vec![crate::RawImport {
                 specifier: "net/http".into(),
@@ -189,7 +206,7 @@ mod tests {
 
     #[test]
     fn creates_side_effect_import_edge() {
-        let resolver = GoResolver;
+        let resolver = GoResolver::new(GoConfig { module_path: None });
         let parse_result = ParseResult {
             imports: vec![crate::RawImport {
                 specifier: "github.com/lib/pq".into(),
@@ -214,7 +231,7 @@ mod tests {
 
     #[test]
     fn side_effect_import_targets_raw_specifier() {
-        let resolver = GoResolver;
+        let resolver = GoResolver::new(GoConfig { module_path: None });
         let parse_result = ParseResult {
             imports: vec![crate::RawImport {
                 specifier: "database/sql".into(),
@@ -242,7 +259,7 @@ mod tests {
 
     #[test]
     fn creates_dot_import_edge() {
-        let resolver = GoResolver;
+        let resolver = GoResolver::new(GoConfig { module_path: None });
         let parse_result = ParseResult {
             imports: vec![crate::RawImport {
                 specifier: "github.com/some/pkg".into(),
@@ -269,8 +286,6 @@ mod tests {
 
     #[test]
     fn resolves_local_import_to_directory() {
-        let resolver = GoResolver;
-
         // Set up a temporary directory with go.mod
         let tmp = tempfile::tempdir().unwrap();
         let project_root = tmp.path().to_path_buf();
@@ -279,6 +294,7 @@ mod tests {
             "module github.com/myorg/myapp\n\ngo 1.21\n",
         )
         .unwrap();
+        let resolver = GoResolver::new(GoConfig::load(&project_root));
 
         // Simulate a file tree with files under internal/store
         let store_dir = project_root.join("internal").join("store");
@@ -309,8 +325,6 @@ mod tests {
 
     #[test]
     fn skips_external_third_party_imports() {
-        let resolver = GoResolver;
-
         let tmp = tempfile::tempdir().unwrap();
         let project_root = tmp.path().to_path_buf();
         std::fs::write(
@@ -318,6 +332,7 @@ mod tests {
             "module github.com/myorg/myapp\n\ngo 1.21\n",
         )
         .unwrap();
+        let resolver = GoResolver::new(GoConfig::load(&project_root));
 
         let parse_result = ParseResult {
             imports: vec![crate::RawImport {
@@ -340,7 +355,7 @@ mod tests {
 
     #[test]
     fn returns_empty_when_go_mod_missing() {
-        let resolver = GoResolver;
+        let resolver = GoResolver::new(GoConfig { module_path: None });
         let parse_result = ParseResult {
             imports: vec![crate::RawImport {
                 specifier: "github.com/org/repo/pkg".into(),
@@ -362,8 +377,6 @@ mod tests {
 
     #[test]
     fn multiple_imports_mixed_types() {
-        let resolver = GoResolver;
-
         let tmp = tempfile::tempdir().unwrap();
         let project_root = tmp.path().to_path_buf();
         std::fs::write(
@@ -371,6 +384,7 @@ mod tests {
             "module github.com/myorg/myapp\n\ngo 1.21\n",
         )
         .unwrap();
+        let resolver = GoResolver::new(GoConfig::load(&project_root));
 
         let util_file = project_root.join("util").join("util.go");
 
@@ -472,5 +486,25 @@ mod tests {
         // gives "  github.com/..." → trim → "github.com/..."
         let result = parse_go_mod(project_root);
         assert_eq!(result, Some("github.com/example/repo".to_string()));
+    }
+}
+
+#[cfg(test)]
+mod config_tests {
+    use super::*;
+
+    #[test]
+    fn go_config_loads_module_path() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("go.mod"), "module github.com/example/app\n\ngo 1.21\n").unwrap();
+        let config = GoConfig::load(dir.path());
+        assert_eq!(config.module_path.as_deref(), Some("github.com/example/app"));
+    }
+
+    #[test]
+    fn go_config_none_without_go_mod() {
+        let dir = tempfile::tempdir().unwrap();
+        let config = GoConfig::load(dir.path());
+        assert!(config.module_path.is_none());
     }
 }
