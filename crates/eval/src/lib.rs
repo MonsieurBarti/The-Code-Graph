@@ -26,7 +26,16 @@ pub struct SuiteConfig {
 
 /// Run the evaluation suite. Entry point called by CLI.
 pub fn run_suite(config: &SuiteConfig) -> Result<SuiteResult> {
-    Err(domain::error::CodeGraphError::Other(
-        "eval: not yet implemented".into(),
-    ))
+    let search_result = match config.suite {
+        Suite::Search | Suite::All => Some(runner::run_search_suite(config)?),
+        _ => None,
+    };
+    let impact_result = match config.suite {
+        Suite::Impact | Suite::All => Some(runner::run_impact_suite(config)?),
+        _ => None,
+    };
+    Ok(SuiteResult {
+        search: search_result,
+        impact: impact_result,
+    })
 }

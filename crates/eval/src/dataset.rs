@@ -32,7 +32,7 @@ pub struct SearchQueryFile {
     pub queries: Vec<SearchQuery>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct SearchQuery {
     pub repo: String,
     pub query: String,
@@ -44,7 +44,7 @@ pub struct ImpactQueryFile {
     pub scenarios: Vec<ImpactScenario>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct ImpactScenario {
     pub repo: String,
     pub description: String,
