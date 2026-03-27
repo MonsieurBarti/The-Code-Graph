@@ -189,4 +189,43 @@ mod tests {
         t1.join().expect("thread 1 panicked");
         t2.join().expect("thread 2 panicked");
     }
+
+    #[test]
+    fn ac51_parse_from_multiple_threads_all_languages() {
+        use std::sync::Arc;
+        use std::thread;
+
+        let registry = Arc::new(ParserRegistry::new());
+
+        let sources: Vec<(&str, &str)> = vec![
+            ("test.rs", "fn hello() {} struct Foo {}"),
+            ("test.py", "def hello(): pass\nclass Foo: pass"),
+            ("test.go", "package main\nfunc Hello() {}"),
+        ];
+
+        let handles: Vec<_> = sources
+            .into_iter()
+            .map(|(filename, source)| {
+                let reg = Arc::clone(&registry);
+                let filename = filename.to_string();
+                let source = source.to_string();
+                thread::spawn(move || {
+                    let parser = reg
+                        .parser_for_file(Path::new(&filename))
+                        .expect("parser should exist");
+                    let result = parser.parse(source.as_bytes(), Path::new(&filename));
+                    assert!(result.is_ok(), "parse failed for {filename}");
+                    let pr = result.unwrap();
+                    assert!(
+                        !pr.symbols.is_empty(),
+                        "expected symbols from {filename}"
+                    );
+                })
+            })
+            .collect();
+
+        for h in handles {
+            h.join().expect("thread panicked");
+        }
+    }
 }
