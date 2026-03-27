@@ -164,7 +164,9 @@ pub(crate) fn non_parsed_kind_from_str(s: &str) -> Result<NonParsedKind> {
         "ci" => Ok(NonParsedKind::CI),
         "asset" => Ok(NonParsedKind::Asset),
         "other" => Ok(NonParsedKind::Other),
-        _ => Err(CodeGraphError::Storage(format!("unknown non-parsed kind: {s}"))),
+        _ => Err(CodeGraphError::Storage(format!(
+            "unknown non-parsed kind: {s}"
+        ))),
     }
 }
 
@@ -175,8 +177,11 @@ mod tests {
     #[test]
     fn language_roundtrip_all_variants() {
         let variants = [
-            Language::TypeScript, Language::JavaScript,
-            Language::Rust, Language::Python, Language::Go,
+            Language::TypeScript,
+            Language::JavaScript,
+            Language::Rust,
+            Language::Python,
+            Language::Go,
         ];
         for v in &variants {
             let s = language_to_str(v);
@@ -188,11 +193,20 @@ mod tests {
     #[test]
     fn symbol_kind_roundtrip_all_variants() {
         let variants = [
-            SymbolKind::Function, SymbolKind::Class, SymbolKind::Interface,
-            SymbolKind::Struct, SymbolKind::Trait, SymbolKind::Enum,
-            SymbolKind::TypeAlias, SymbolKind::Method, SymbolKind::Property,
-            SymbolKind::Const, SymbolKind::Macro, SymbolKind::Variable,
-            SymbolKind::Component, SymbolKind::Test,
+            SymbolKind::Function,
+            SymbolKind::Class,
+            SymbolKind::Interface,
+            SymbolKind::Struct,
+            SymbolKind::Trait,
+            SymbolKind::Enum,
+            SymbolKind::TypeAlias,
+            SymbolKind::Method,
+            SymbolKind::Property,
+            SymbolKind::Const,
+            SymbolKind::Macro,
+            SymbolKind::Variable,
+            SymbolKind::Component,
+            SymbolKind::Test,
         ];
         for v in &variants {
             let s = symbol_kind_to_str(v);
@@ -204,12 +218,22 @@ mod tests {
     #[test]
     fn edge_kind_roundtrip_all_16_variants() {
         let variants = [
-            EdgeKind::Contains, EdgeKind::ChildOf, EdgeKind::Calls,
-            EdgeKind::ImportsFrom, EdgeKind::Extends, EdgeKind::Implements,
-            EdgeKind::TestedBy, EdgeKind::DependsOn, EdgeKind::BarrelReExportAll,
-            EdgeKind::ConditionalImport, EdgeKind::SideEffectImport,
-            EdgeKind::DotImport, EdgeKind::HasDecorator, EdgeKind::Embeds,
-            EdgeKind::TypeReference, EdgeKind::ReExport,
+            EdgeKind::Contains,
+            EdgeKind::ChildOf,
+            EdgeKind::Calls,
+            EdgeKind::ImportsFrom,
+            EdgeKind::Extends,
+            EdgeKind::Implements,
+            EdgeKind::TestedBy,
+            EdgeKind::DependsOn,
+            EdgeKind::BarrelReExportAll,
+            EdgeKind::ConditionalImport,
+            EdgeKind::SideEffectImport,
+            EdgeKind::DotImport,
+            EdgeKind::HasDecorator,
+            EdgeKind::Embeds,
+            EdgeKind::TypeReference,
+            EdgeKind::ReExport,
         ];
         assert_eq!(variants.len(), 16);
         for v in &variants {
@@ -231,8 +255,11 @@ mod tests {
     #[test]
     fn non_parsed_kind_roundtrip_all_variants() {
         let variants = [
-            NonParsedKind::Doc, NonParsedKind::Config, NonParsedKind::CI,
-            NonParsedKind::Asset, NonParsedKind::Other,
+            NonParsedKind::Doc,
+            NonParsedKind::Config,
+            NonParsedKind::CI,
+            NonParsedKind::Asset,
+            NonParsedKind::Other,
         ];
         for v in &variants {
             let s = non_parsed_kind_to_str(v);

@@ -19,10 +19,16 @@ pub fn find_affected_symbols(hunks: &[DiffHunk], symbols: &[SymbolNode]) -> Vec<
             // Determine the hunk's effective line range
             let (hunk_start, hunk_end) = if hunk.new_count == 0 {
                 // Pure deletion — use old line range
-                (hunk.old_start, hunk.old_start + hunk.old_count.saturating_sub(1))
+                (
+                    hunk.old_start,
+                    hunk.old_start + hunk.old_count.saturating_sub(1),
+                )
             } else {
                 // Normal change — use new line range
-                (hunk.new_start, hunk.new_start + hunk.new_count.saturating_sub(1))
+                (
+                    hunk.new_start,
+                    hunk.new_start + hunk.new_count.saturating_sub(1),
+                )
             };
 
             // Check line range overlap
@@ -47,12 +53,17 @@ mod tests {
             kind: SymbolKind::Function,
             location: Location {
                 file: file.into(),
-                line_start: start, line_end: end,
-                col_start: 0, col_end: 0,
+                line_start: start,
+                line_end: end,
+                col_start: 0,
+                col_end: 0,
             },
             visibility: Visibility::Public,
-            is_exported: false, is_async: false, is_test: false,
-            decorators: vec![], signature: None,
+            is_exported: false,
+            is_async: false,
+            is_test: false,
+            decorators: vec![],
+            signature: None,
         }
     }
 
@@ -61,7 +72,10 @@ mod tests {
         let symbols = vec![sym("foo", "src/a.rs", 10, 20)];
         let hunks = vec![DiffHunk {
             file: "src/a.rs".into(),
-            old_start: 15, old_count: 3, new_start: 15, new_count: 5,
+            old_start: 15,
+            old_count: 3,
+            new_start: 15,
+            new_count: 5,
         }];
         let affected = find_affected_symbols(&hunks, &symbols);
         assert_eq!(affected.len(), 1);
@@ -73,7 +87,10 @@ mod tests {
         let symbols = vec![sym("foo", "src/a.rs", 10, 20)];
         let hunks = vec![DiffHunk {
             file: "src/a.rs".into(),
-            old_start: 25, old_count: 3, new_start: 25, new_count: 3,
+            old_start: 25,
+            old_count: 3,
+            new_start: 25,
+            new_count: 3,
         }];
         let affected = find_affected_symbols(&hunks, &symbols);
         assert!(affected.is_empty());
@@ -84,7 +101,10 @@ mod tests {
         let symbols = vec![sym("foo", "src/a.rs", 10, 20)];
         let hunks = vec![DiffHunk {
             file: "src/b.rs".into(),
-            old_start: 15, old_count: 3, new_start: 15, new_count: 3,
+            old_start: 15,
+            old_count: 3,
+            new_start: 15,
+            new_count: 3,
         }];
         let affected = find_affected_symbols(&hunks, &symbols);
         assert!(affected.is_empty());
@@ -95,7 +115,10 @@ mod tests {
         let symbols = vec![sym("foo", "src/a.rs", 10, 20)];
         let hunks = vec![DiffHunk {
             file: "src/a.rs".into(),
-            old_start: 12, old_count: 3, new_start: 12, new_count: 0,
+            old_start: 12,
+            old_count: 3,
+            new_start: 12,
+            new_count: 0,
         }];
         let affected = find_affected_symbols(&hunks, &symbols);
         assert_eq!(affected.len(), 1);

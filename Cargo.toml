@@ -1,3 +1,3 @@
 [workspace]
-members = ["crates/domain", "crates/storage", "crates/parser", "crates/watch", "crates/cli", "crates/binary"]
+members = ["crates/domain", "crates/storage", "crates/parser", "crates/watch", "crates/cli", "crates/binary", "crates/eval"]
 resolver = "2"

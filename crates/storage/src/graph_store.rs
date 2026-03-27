@@ -39,9 +39,8 @@ impl SqliteStore {
             let (qn, name, kind, file, ls, le, cs, ce, vis, exp, asy, tst, dec, sig) =
                 row.map_err(map_rusqlite_error)?;
             let decorators: Vec<String> = match dec {
-                Some(ref s) => serde_json::from_str(s).map_err(|e| {
-                    domain::error::CodeGraphError::Storage(e.to_string())
-                })?,
+                Some(ref s) => serde_json::from_str(s)
+                    .map_err(|e| domain::error::CodeGraphError::Storage(e.to_string()))?,
                 None => vec![],
             };
             symbols.push(SymbolNode {
@@ -93,10 +92,8 @@ impl GraphStore for SqliteStore {
 
     fn upsert_symbol(&self, symbol: &SymbolNode) -> Result<()> {
         let conn = self.conn()?;
-        let decorators_json =
-            serde_json::to_string(&symbol.decorators).map_err(|e| {
-                domain::error::CodeGraphError::Storage(e.to_string())
-            })?;
+        let decorators_json = serde_json::to_string(&symbol.decorators)
+            .map_err(|e| domain::error::CodeGraphError::Storage(e.to_string()))?;
         conn.prepare_cached(
             "INSERT OR REPLACE INTO symbols (
                 qualified_name, name, kind, file_path,
@@ -202,9 +199,8 @@ impl GraphStore for SqliteStore {
         match result {
             Ok((qn, name, kind, file, ls, le, cs, ce, vis, exp, asy, tst, dec, sig)) => {
                 let decorators: Vec<String> = match dec {
-                    Some(ref s) => serde_json::from_str(s).map_err(|e| {
-                        domain::error::CodeGraphError::Storage(e.to_string())
-                    })?,
+                    Some(ref s) => serde_json::from_str(s)
+                        .map_err(|e| domain::error::CodeGraphError::Storage(e.to_string()))?,
                     None => vec![],
                 };
                 Ok(Some(SymbolNode {
@@ -355,9 +351,8 @@ impl GraphStore for SqliteStore {
             let (qn, name, kind, file, ls, le, cs, ce, vis, exp, asy, tst, dec, sig) =
                 row.map_err(map_rusqlite_error)?;
             let decorators: Vec<String> = match dec {
-                Some(ref s) => serde_json::from_str(s).map_err(|e| {
-                    domain::error::CodeGraphError::Storage(e.to_string())
-                })?,
+                Some(ref s) => serde_json::from_str(s)
+                    .map_err(|e| domain::error::CodeGraphError::Storage(e.to_string()))?,
                 None => vec![],
             };
             symbols.push(SymbolNode {
@@ -385,9 +380,7 @@ impl GraphStore for SqliteStore {
     fn all_edges(&self) -> Result<Vec<Edge>> {
         let conn = self.conn()?;
         let mut stmt = conn
-            .prepare_cached(
-                "SELECT kind, source_qualified, target_qualified, metadata FROM edges",
-            )
+            .prepare_cached("SELECT kind, source_qualified, target_qualified, metadata FROM edges")
             .map_err(map_rusqlite_error)?;
         let rows = stmt
             .query_map([], |row| {
@@ -447,7 +440,10 @@ impl GraphStore for SqliteStore {
             return Ok(exact);
         }
         // Phase 2: prefix fallback (escape LIKE metacharacters)
-        let escaped = pattern.replace('\\', "\\\\").replace('%', "\\%").replace('_', "\\_");
+        let escaped = pattern
+            .replace('\\', "\\\\")
+            .replace('%', "\\%")
+            .replace('_', "\\_");
         let prefix_pattern = format!("{escaped}%");
         let mut stmt = conn
             .prepare_cached(
@@ -472,7 +468,11 @@ impl GraphStore for SqliteStore {
         let edges: usize = conn
             .query_row("SELECT COUNT(*) FROM edges", [], |r| r.get(0))
             .map_err(map_rusqlite_error)?;
-        Ok(GraphStats { files, symbols, edges })
+        Ok(GraphStats {
+            files,
+            symbols,
+            edges,
+        })
     }
 
     fn store_file_data(
@@ -519,10 +519,8 @@ impl GraphStore for SqliteStore {
 
         // Insert each symbol
         for symbol in symbols {
-            let decorators_json =
-                serde_json::to_string(&symbol.decorators).map_err(|e| {
-                    domain::error::CodeGraphError::Storage(e.to_string())
-                })?;
+            let decorators_json = serde_json::to_string(&symbol.decorators)
+                .map_err(|e| domain::error::CodeGraphError::Storage(e.to_string()))?;
             tx.prepare_cached(
                 "INSERT OR REPLACE INTO symbols (
                     qualified_name, name, kind, file_path,
@@ -737,7 +735,9 @@ mod tests {
         let store = test_store();
         store.upsert_file(&sample_file()).unwrap();
         store.upsert_symbol(&sample_symbol()).unwrap();
-        store.remove_symbols_in_file("src/main.rs".as_ref()).unwrap();
+        store
+            .remove_symbols_in_file("src/main.rs".as_ref())
+            .unwrap();
         assert!(store.get_file("src/main.rs".as_ref()).unwrap().is_some());
         assert!(store.get_symbol("src/main.rs::foo").unwrap().is_none());
     }
@@ -868,9 +868,15 @@ mod tests {
     fn find_by_name_exact_match() {
         let store = test_store();
         store.upsert_file(&sample_file()).unwrap();
-        store.upsert_symbol(&make_named_symbol("foo", "src/main.rs::foo")).unwrap();
-        store.upsert_symbol(&make_named_symbol("foobar", "src/main.rs::foobar")).unwrap();
-        store.upsert_symbol(&make_named_symbol("bar", "src/main.rs::bar")).unwrap();
+        store
+            .upsert_symbol(&make_named_symbol("foo", "src/main.rs::foo"))
+            .unwrap();
+        store
+            .upsert_symbol(&make_named_symbol("foobar", "src/main.rs::foobar"))
+            .unwrap();
+        store
+            .upsert_symbol(&make_named_symbol("bar", "src/main.rs::bar"))
+            .unwrap();
 
         let results = store.find_by_name("foo").unwrap();
         assert_eq!(results.len(), 1);
@@ -881,8 +887,12 @@ mod tests {
     fn find_by_name_prefix_fallback() {
         let store = test_store();
         store.upsert_file(&sample_file()).unwrap();
-        store.upsert_symbol(&make_named_symbol("foobar", "src/main.rs::foobar")).unwrap();
-        store.upsert_symbol(&make_named_symbol("foobaz", "src/main.rs::foobaz")).unwrap();
+        store
+            .upsert_symbol(&make_named_symbol("foobar", "src/main.rs::foobar"))
+            .unwrap();
+        store
+            .upsert_symbol(&make_named_symbol("foobaz", "src/main.rs::foobaz"))
+            .unwrap();
 
         let results = store.find_by_name("foo").unwrap();
         assert_eq!(results.len(), 2);
@@ -905,7 +915,9 @@ mod tests {
         // prefix fallback matches "foo" when searching "Foo".
         let store = test_store();
         store.upsert_file(&sample_file()).unwrap();
-        store.upsert_symbol(&make_named_symbol("foo", "src/main.rs::foo")).unwrap();
+        store
+            .upsert_symbol(&make_named_symbol("foo", "src/main.rs::foo"))
+            .unwrap();
 
         // Exact match skipped (case-sensitive =), but prefix LIKE catches it
         let results = store.find_by_name("Foo").unwrap();
@@ -917,9 +929,18 @@ mod tests {
     fn find_by_name_escapes_like_metacharacters() {
         let store = test_store();
         store.upsert_file(&sample_file()).unwrap();
-        store.upsert_symbol(&make_named_symbol("__init__", "src/main.rs::__init__")).unwrap();
-        store.upsert_symbol(&make_named_symbol("__init_extra", "src/main.rs::__init_extra")).unwrap();
-        store.upsert_symbol(&make_named_symbol("axbycz", "src/main.rs::axbycz")).unwrap();
+        store
+            .upsert_symbol(&make_named_symbol("__init__", "src/main.rs::__init__"))
+            .unwrap();
+        store
+            .upsert_symbol(&make_named_symbol(
+                "__init_extra",
+                "src/main.rs::__init_extra",
+            ))
+            .unwrap();
+        store
+            .upsert_symbol(&make_named_symbol("axbycz", "src/main.rs::axbycz"))
+            .unwrap();
 
         // Exact match for __init__
         let results = store.find_by_name("__init__").unwrap();

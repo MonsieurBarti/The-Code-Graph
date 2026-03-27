@@ -3,8 +3,8 @@ use std::path::{Path, PathBuf};
 
 use domain::model::{Edge, EdgeKind, Language};
 
-use crate::{Export, ParseResult};
 use super::{ImportResolver, ResolveContext};
+use crate::{Export, ParseResult};
 
 /// TS/JS import resolver using oxc_resolver + barrel chain traversal.
 pub struct TypeScriptResolver {
@@ -48,7 +48,10 @@ impl TypeScriptResolver {
         specifier: &str,
     ) -> Option<PathBuf> {
         let dir = from_file.parent()?;
-        resolver.resolve(dir, specifier).ok().map(|r| r.into_path_buf())
+        resolver
+            .resolve(dir, specifier)
+            .ok()
+            .map(|r| r.into_path_buf())
     }
 
     /// Traverse a barrel chain starting from `start_file`, looking for where `name` is
@@ -84,10 +87,8 @@ impl TypeScriptResolver {
                 if let Some(specifier) = &export.source_specifier {
                     if let Some(target) = Self::resolve_specifier(resolver, start_file, specifier) {
                         // Recurse: the name may be re-exported further
-                        return Self::trace_barrel_chain(
-                            resolver, context, &target, name, visited,
-                        )
-                        .or(Some(target));
+                        return Self::trace_barrel_chain(resolver, context, &target, name, visited)
+                            .or(Some(target));
                     }
                 }
             }
@@ -227,7 +228,6 @@ mod tests {
     use super::*;
     use std::collections::HashMap;
     use std::fs;
-
 
     fn make_context(project_root: &Path) -> ResolveContext {
         ResolveContext {
@@ -445,7 +445,9 @@ mod tests {
             ..Default::default()
         };
 
-        let edges = resolver.resolve(&main_path, &parse_result, &context).unwrap();
+        let edges = resolver
+            .resolve(&main_path, &parse_result, &context)
+            .unwrap();
 
         // Should have ImportsFrom from main.ts → utils/index.ts (direct)
         let direct = edges.iter().any(|e| {

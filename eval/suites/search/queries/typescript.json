@@ -1,0 +1,80 @@
+{
+  "language": "typescript",
+  "queries": [
+    {
+      "repo": "trpc",
+      "query": "createTRPCClient",
+      "expected": ["packages/client/src/createTRPCClient.ts::createTRPCClient"]
+    },
+    {
+      "repo": "trpc",
+      "query": "initTRPC",
+      "expected": ["packages/server/src/unstable-core-do-not-import/initTRPC.ts::initTRPC"]
+    },
+    {
+      "repo": "trpc",
+      "query": "TRPCError",
+      "expected": ["packages/server/src/unstable-core-do-not-import/error/TRPCError.ts::TRPCError"]
+    },
+    {
+      "repo": "trpc",
+      "query": "createHTTPServer",
+      "expected": ["packages/server/src/adapters/standalone.ts::createHTTPServer"]
+    },
+    {
+      "repo": "trpc",
+      "query": "wsLink",
+      "expected": ["packages/client/src/links/wsLink/wsLink.ts::wsLink"]
+    },
+    {
+      "repo": "trpc",
+      "query": "loggerLink",
+      "expected": ["packages/client/src/links/loggerLink.ts::loggerLink"]
+    },
+    {
+      "repo": "trpc",
+      "query": "splitLink",
+      "expected": ["packages/client/src/links/splitLink.ts::splitLink"]
+    },
+    {
+      "repo": "trpc",
+      "query": "httpLink",
+      "expected": ["packages/client/src/links/httpLink.ts::httpLink"]
+    },
+    {
+      "repo": "trpc",
+      "query": "inferRouterInputs",
+      "expected": ["packages/server/src/unstable-core-do-not-import/clientish/inference.ts::inferRouterInputs"]
+    },
+    {
+      "repo": "trpc",
+      "query": "TRPCClientError",
+      "expected": ["packages/client/src/TRPCClientError.ts::TRPCClientError"]
+    },
+    {
+      "repo": "trpc",
+      "query": "retryLink",
+      "expected": ["packages/client/src/links/retryLink.ts::retryLink"]
+    },
+    {
+      "repo": "trpc",
+      "query": "createCallerFactory",
+      "expected": ["packages/server/src/unstable-core-do-not-import/router.ts::createCallerFactory"]
+    },
+    {
+      "repo": "trpc",
+      "query": "HTTPBatchLinkOptions",
+      "expected": ["packages/client/src/links/HTTPBatchLinkOptions.ts::HTTPBatchLinkOptions"]
+    },
+    {
+      "repo": "trpc",
+      "query": "observableToPromise",
+      "expected": ["packages/server/src/observable/observable.ts::observableToPromise"]
+    },
+    {
+      "repo": "trpc",
+      "query": "inferRouterOutputs",
+      "expected": ["packages/server/src/unstable-core-do-not-import/clientish/inference.ts::inferRouterOutputs"]
+    }
+  ]
+}

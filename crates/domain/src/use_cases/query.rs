@@ -18,26 +18,39 @@ impl<S: GraphStore, I: SearchIndex> QueryUseCase<S, I> {
 
     pub fn refs(&self, qualified_name: &str) -> Result<Vec<Reference>> {
         let edges = self.store.get_edges_to(qualified_name)?;
-        Ok(edges.into_iter().map(|e| Reference {
-            symbol: e.source,
-            edge_kind: e.kind,
-            location: None,
-        }).collect())
+        Ok(edges
+            .into_iter()
+            .map(|e| Reference {
+                symbol: e.source,
+                edge_kind: e.kind,
+                location: None,
+            })
+            .collect())
     }
 
     pub fn callers(&self, qualified_name: &str) -> Result<Vec<Reference>> {
         let edges = self.store.get_edges_to(qualified_name)?;
-        Ok(edges.into_iter()
+        Ok(edges
+            .into_iter()
             .filter(|e| e.kind == EdgeKind::Calls)
-            .map(|e| Reference { symbol: e.source, edge_kind: e.kind, location: None })
+            .map(|e| Reference {
+                symbol: e.source,
+                edge_kind: e.kind,
+                location: None,
+            })
             .collect())
     }
 
     pub fn callees(&self, qualified_name: &str) -> Result<Vec<Reference>> {
         let edges = self.store.get_edges_from(qualified_name)?;
-        Ok(edges.into_iter()
+        Ok(edges
+            .into_iter()
             .filter(|e| e.kind == EdgeKind::Calls)
-            .map(|e| Reference { symbol: e.target, edge_kind: e.kind, location: None })
+            .map(|e| Reference {
+                symbol: e.target,
+                edge_kind: e.kind,
+                location: None,
+            })
             .collect())
     }
 
@@ -60,10 +73,19 @@ mod tests {
             name: name.into(),
             qualified_name: format!("test.rs::{name}"),
             kind: SymbolKind::Function,
-            location: Location { file: "test.rs".into(), line_start: 1, line_end: 5, col_start: 0, col_end: 0 },
+            location: Location {
+                file: "test.rs".into(),
+                line_start: 1,
+                line_end: 5,
+                col_start: 0,
+                col_end: 0,
+            },
             visibility: Visibility::Public,
-            is_exported: false, is_async: false, is_test: false,
-            decorators: vec![], signature: None,
+            is_exported: false,
+            is_async: false,
+            is_test: false,
+            decorators: vec![],
+            signature: None,
         }
     }
 

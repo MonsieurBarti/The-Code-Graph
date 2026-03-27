@@ -1,7 +1,7 @@
-use std::path::{Path, PathBuf};
-use std::fs;
-use std::process::Command;
 use domain::error::{CodeGraphError, Result};
+use std::fs;
+use std::path::{Path, PathBuf};
+use std::process::Command;
 
 /// Resolve the path to the settings JSON file.
 ///
@@ -11,8 +11,8 @@ use domain::error::{CodeGraphError, Result};
 /// Returns an error when `global` is false and `project_root` is `None`.
 pub(super) fn resolve_settings_path(project_root: Option<&Path>, global: bool) -> Result<PathBuf> {
     if global {
-        let home = std::env::var("HOME")
-            .map_err(|_| CodeGraphError::Other("$HOME is not set".into()))?;
+        let home =
+            std::env::var("HOME").map_err(|_| CodeGraphError::Other("$HOME is not set".into()))?;
         Ok(PathBuf::from(home).join(".claude").join("settings.json"))
     } else {
         match project_root {
@@ -40,9 +40,7 @@ pub(super) fn ensure_gitignore_entry(project_root: &Path) -> Result<bool> {
     };
 
     // Check for an exact line match
-    let already_present = content
-        .lines()
-        .any(|line| line.trim() == ".code-graph/");
+    let already_present = content.lines().any(|line| line.trim() == ".code-graph/");
 
     if already_present {
         return Ok(false);

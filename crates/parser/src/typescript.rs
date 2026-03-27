@@ -188,8 +188,9 @@ fn extract_all(
                                 qualified_name: qn.clone(),
                                 kind: match inner.kind() {
                                     "function_declaration" => SymbolKind::Function,
-                                    "class_declaration"
-                                    | "abstract_class_declaration" => SymbolKind::Class,
+                                    "class_declaration" | "abstract_class_declaration" => {
+                                        SymbolKind::Class
+                                    }
                                     _ => SymbolKind::Variable,
                                 },
                                 location: node_location(&file_path, inner),
@@ -233,14 +234,7 @@ fn extract_all(
                 }
             }
             kind if is_declaration_kind(kind) => {
-                extract_declaration(
-                    source,
-                    &file_path,
-                    child,
-                    false,
-                    &mut symbols,
-                    &mut edges,
-                );
+                extract_declaration(source, &file_path, child, false, &mut symbols, &mut edges);
             }
             _ => {}
         }
@@ -897,8 +891,7 @@ fn parse_import_statement(node: &tree_sitter::Node, source: &[u8]) -> Option<Raw
 
                         if let Some(n) = name_node {
                             let name = node_text(&n, source).to_string();
-                            let alias =
-                                alias_node.map(|a| node_text(&a, source).to_string());
+                            let alias = alias_node.map(|a| node_text(&a, source).to_string());
                             names.push(ImportName {
                                 name,
                                 alias,
@@ -1619,33 +1612,80 @@ export * from "./helpers";
         let result = parse_ts(source);
 
         // Symbols
-        assert!(result.symbols.iter().any(|s| s.name == "processData" && s.kind == SymbolKind::Function));
-        assert!(result.symbols.iter().any(|s| s.name == "DataProcessor" && s.kind == SymbolKind::Class));
-        assert!(result.symbols.iter().any(|s| s.name == "process" && s.kind == SymbolKind::Method));
-        assert!(result.symbols.iter().any(|s| s.name == "IProcessor" && s.kind == SymbolKind::Interface));
-        assert!(result.symbols.iter().any(|s| s.name == "ProcessorFn" && s.kind == SymbolKind::TypeAlias));
-        assert!(result.symbols.iter().any(|s| s.name == "Status" && s.kind == SymbolKind::Enum));
-        assert!(result.symbols.iter().any(|s| s.name == "transformer" && s.kind == SymbolKind::Function && s.is_async));
-        assert!(result.symbols.iter().any(|s| s.name == "MainProcessor" && s.kind == SymbolKind::Class));
+        assert!(result
+            .symbols
+            .iter()
+            .any(|s| s.name == "processData" && s.kind == SymbolKind::Function));
+        assert!(result
+            .symbols
+            .iter()
+            .any(|s| s.name == "DataProcessor" && s.kind == SymbolKind::Class));
+        assert!(result
+            .symbols
+            .iter()
+            .any(|s| s.name == "process" && s.kind == SymbolKind::Method));
+        assert!(result
+            .symbols
+            .iter()
+            .any(|s| s.name == "IProcessor" && s.kind == SymbolKind::Interface));
+        assert!(result
+            .symbols
+            .iter()
+            .any(|s| s.name == "ProcessorFn" && s.kind == SymbolKind::TypeAlias));
+        assert!(result
+            .symbols
+            .iter()
+            .any(|s| s.name == "Status" && s.kind == SymbolKind::Enum));
+        assert!(result
+            .symbols
+            .iter()
+            .any(|s| s.name == "transformer" && s.kind == SymbolKind::Function && s.is_async));
+        assert!(result
+            .symbols
+            .iter()
+            .any(|s| s.name == "MainProcessor" && s.kind == SymbolKind::Class));
 
         // Edges
-        let contains_count = result.edges.iter().filter(|e| e.kind == EdgeKind::Contains).count();
-        assert!(contains_count >= 7, "expected at least 7 Contains edges, got {contains_count}");
+        let contains_count = result
+            .edges
+            .iter()
+            .filter(|e| e.kind == EdgeKind::Contains)
+            .count();
+        assert!(
+            contains_count >= 7,
+            "expected at least 7 Contains edges, got {contains_count}"
+        );
 
-        let child_of_count = result.edges.iter().filter(|e| e.kind == EdgeKind::ChildOf).count();
-        assert!(child_of_count >= 2, "expected at least 2 ChildOf edges, got {child_of_count}");
+        let child_of_count = result
+            .edges
+            .iter()
+            .filter(|e| e.kind == EdgeKind::ChildOf)
+            .count();
+        assert!(
+            child_of_count >= 2,
+            "expected at least 2 ChildOf edges, got {child_of_count}"
+        );
 
         // Imports
         assert_eq!(result.imports.len(), 2);
         assert!(result.imports.iter().any(|i| i.specifier == "./utils"));
-        assert!(result.imports.iter().any(|i| i.specifier == "./config" && i.is_type_only));
+        assert!(result
+            .imports
+            .iter()
+            .any(|i| i.specifier == "./config" && i.is_type_only));
 
         // Exports
         assert!(result.exports.iter().any(|e| e.name == "processData"));
         assert!(result.exports.iter().any(|e| e.name == "transformer"));
-        assert!(result.exports.iter().any(|e| e.name == "default" && e.is_default));
+        assert!(result
+            .exports
+            .iter()
+            .any(|e| e.name == "default" && e.is_default));
         assert!(result.exports.iter().any(|e| e.name == "DataProcessor"));
-        assert!(result.exports.iter().any(|e| e.name == "*" && e.is_reexport));
+        assert!(result
+            .exports
+            .iter()
+            .any(|e| e.name == "*" && e.is_reexport));
     }
 
     #[test]
@@ -1698,9 +1738,16 @@ export function foo() {}
         // W3: `export default function() {}` should produce a "default" symbol
         let result = parse_ts("export default function() {}");
         assert!(
-            result.symbols.iter().any(|s| s.name == "default" && s.kind == SymbolKind::Function),
+            result
+                .symbols
+                .iter()
+                .any(|s| s.name == "default" && s.kind == SymbolKind::Function),
             "anonymous default export should produce a 'default' symbol, got: {:?}",
-            result.symbols.iter().map(|s| (&s.name, &s.kind)).collect::<Vec<_>>()
+            result
+                .symbols
+                .iter()
+                .map(|s| (&s.name, &s.kind))
+                .collect::<Vec<_>>()
         );
     }
 }

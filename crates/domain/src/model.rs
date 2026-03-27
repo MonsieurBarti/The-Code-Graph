@@ -1,7 +1,7 @@
-use std::path::PathBuf;
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::borrow::Borrow;
 use std::fmt;
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use std::path::PathBuf;
 
 // ---------------------------------------------------------------------------
 // Enums
@@ -98,9 +98,9 @@ impl EdgeKind {
             | EdgeKind::ReExport
             | EdgeKind::TypeReference
             | EdgeKind::DotImport => Confidence::Medium,
-            EdgeKind::DependsOn
-            | EdgeKind::ConditionalImport
-            | EdgeKind::SideEffectImport => Confidence::Low,
+            EdgeKind::DependsOn | EdgeKind::ConditionalImport | EdgeKind::SideEffectImport => {
+                Confidence::Low
+            }
             EdgeKind::Contains
             | EdgeKind::ChildOf
             | EdgeKind::HasDecorator
@@ -397,7 +397,11 @@ mod tests {
             (EdgeKind::TestedBy, Confidence::Structural),
         ];
         for (kind, expected) in &edges {
-            assert_eq!(kind.confidence(), *expected, "wrong confidence for {kind:?}");
+            assert_eq!(
+                kind.confidence(),
+                *expected,
+                "wrong confidence for {kind:?}"
+            );
         }
         assert_eq!(edges.len(), 16, "expected 16 edge kinds");
     }
@@ -463,11 +467,17 @@ mod tests {
             kind: SymbolKind::Function,
             location: Location {
                 file: "src/lib.rs".into(),
-                line_start: 1, line_end: 5, col_start: 0, col_end: 1,
+                line_start: 1,
+                line_end: 5,
+                col_start: 0,
+                col_end: 1,
             },
             visibility: Visibility::Public,
-            is_exported: true, is_async: false, is_test: false,
-            decorators: vec![], signature: None,
+            is_exported: true,
+            is_async: false,
+            is_test: false,
+            decorators: vec![],
+            signature: None,
         });
         assert_eq!(sym.id(), "src/lib.rs::foo");
     }
@@ -492,38 +502,144 @@ mod tests {
         assert_roundtrip!(Direction::Forward, Direction);
 
         // Core types
-        let loc = Location { file: "f".into(), line_start: 1, line_end: 2, col_start: 0, col_end: 10 };
+        let loc = Location {
+            file: "f".into(),
+            line_start: 1,
+            line_end: 2,
+            col_start: 0,
+            col_end: 10,
+        };
         assert_roundtrip!(loc, Location);
 
-        let file_node = FileNode { path: "f".into(), language: Language::Rust, hash: "h".into() };
+        let file_node = FileNode {
+            path: "f".into(),
+            language: Language::Rust,
+            hash: "h".into(),
+        };
         assert_roundtrip!(file_node.clone(), FileNode);
         assert_roundtrip!(Node::File(file_node), Node);
 
         let sym = SymbolNode {
-            name: "s".into(), qualified_name: "f::s".into(), kind: SymbolKind::Function,
-            location: Location { file: "f".into(), line_start: 1, line_end: 2, col_start: 0, col_end: 0 },
-            visibility: Visibility::Public, is_exported: true, is_async: false, is_test: false,
-            decorators: vec![], signature: None,
+            name: "s".into(),
+            qualified_name: "f::s".into(),
+            kind: SymbolKind::Function,
+            location: Location {
+                file: "f".into(),
+                line_start: 1,
+                line_end: 2,
+                col_start: 0,
+                col_end: 0,
+            },
+            visibility: Visibility::Public,
+            is_exported: true,
+            is_async: false,
+            is_test: false,
+            decorators: vec![],
+            signature: None,
         };
         assert_roundtrip!(sym, SymbolNode);
 
-        let np = NonParsedNode { path: "r.md".into(), file_kind: NonParsedKind::Doc, hash: "h".into() };
+        let np = NonParsedNode {
+            path: "r.md".into(),
+            file_kind: NonParsedKind::Doc,
+            hash: "h".into(),
+        };
         assert_roundtrip!(np, NonParsedNode);
 
-        let edge = Edge { kind: EdgeKind::Calls, source: "a".into(), target: "b".into(), metadata: None };
+        let edge = Edge {
+            kind: EdgeKind::Calls,
+            source: "a".into(),
+            target: "b".into(),
+            metadata: None,
+        };
         assert_roundtrip!(edge, Edge);
 
         // Supporting types
         assert_roundtrip!(ImpactTarget::File("f".into()), ImpactTarget);
         assert_roundtrip!(ImpactTarget::Symbol("s".into()), ImpactTarget);
-        assert_roundtrip!(TraversalResult { node: "n".into(), depth: 1, path: vec![], edge_kind: EdgeKind::Calls }, TraversalResult);
-        assert_roundtrip!(SearchResult { qualified_name: "f::s".into(), name: "s".into(), kind: SymbolKind::Function, file_path: "f".into(), score: 1.0 }, SearchResult);
-        assert_roundtrip!(Reference { symbol: "s".into(), edge_kind: EdgeKind::Calls, location: None }, Reference);
-        assert_roundtrip!(IndexStats { files_indexed: 1, symbols_extracted: 2, edges_created: 3, duration: std::time::Duration::from_secs(1) }, IndexStats);
-        assert_roundtrip!(GraphStats { files: 1, symbols: 2, edges: 3 }, GraphStats);
-        assert_roundtrip!(DiffHunk { file: "f".into(), old_start: 1, old_count: 2, new_start: 1, new_count: 3 }, DiffHunk);
-        assert_roundtrip!(AffectedNode { qualified_name: "q".into(), depth: 1, confidence: Confidence::High, path: vec![] }, AffectedNode);
-        assert_roundtrip!(ImpactReport { targets: vec![], affected: vec![], depth: 3, min_confidence: Confidence::Structural }, ImpactReport);
-        assert_roundtrip!(DiffImpactReport { changed_symbols: vec![], impact: ImpactReport { targets: vec![], affected: vec![], depth: 0, min_confidence: Confidence::Structural } }, DiffImpactReport);
+        assert_roundtrip!(
+            TraversalResult {
+                node: "n".into(),
+                depth: 1,
+                path: vec![],
+                edge_kind: EdgeKind::Calls
+            },
+            TraversalResult
+        );
+        assert_roundtrip!(
+            SearchResult {
+                qualified_name: "f::s".into(),
+                name: "s".into(),
+                kind: SymbolKind::Function,
+                file_path: "f".into(),
+                score: 1.0
+            },
+            SearchResult
+        );
+        assert_roundtrip!(
+            Reference {
+                symbol: "s".into(),
+                edge_kind: EdgeKind::Calls,
+                location: None
+            },
+            Reference
+        );
+        assert_roundtrip!(
+            IndexStats {
+                files_indexed: 1,
+                symbols_extracted: 2,
+                edges_created: 3,
+                duration: std::time::Duration::from_secs(1)
+            },
+            IndexStats
+        );
+        assert_roundtrip!(
+            GraphStats {
+                files: 1,
+                symbols: 2,
+                edges: 3
+            },
+            GraphStats
+        );
+        assert_roundtrip!(
+            DiffHunk {
+                file: "f".into(),
+                old_start: 1,
+                old_count: 2,
+                new_start: 1,
+                new_count: 3
+            },
+            DiffHunk
+        );
+        assert_roundtrip!(
+            AffectedNode {
+                qualified_name: "q".into(),
+                depth: 1,
+                confidence: Confidence::High,
+                path: vec![]
+            },
+            AffectedNode
+        );
+        assert_roundtrip!(
+            ImpactReport {
+                targets: vec![],
+                affected: vec![],
+                depth: 3,
+                min_confidence: Confidence::Structural
+            },
+            ImpactReport
+        );
+        assert_roundtrip!(
+            DiffImpactReport {
+                changed_symbols: vec![],
+                impact: ImpactReport {
+                    targets: vec![],
+                    affected: vec![],
+                    depth: 0,
+                    min_confidence: Confidence::Structural
+                }
+            },
+            DiffImpactReport
+        );
     }
 }

@@ -124,7 +124,9 @@ mod tests {
         let provider = RayonParseProvider::new();
         let source = b"export function hello(): void {}\nexport class Foo {}".to_vec();
         let files = vec![(PathBuf::from("src/main.ts"), source)];
-        let result = provider.parse_and_resolve(&files, Path::new("/tmp")).unwrap();
+        let result = provider
+            .parse_and_resolve(&files, Path::new("/tmp"))
+            .unwrap();
         assert_eq!(result.len(), 1);
         let fd = &result[0];
         assert_eq!(fd.file.path, PathBuf::from("src/main.ts"));
@@ -136,7 +138,9 @@ mod tests {
     fn unsupported_extension_is_skipped() {
         let provider = RayonParseProvider::new();
         let files = vec![(PathBuf::from("readme.md"), b"# Hello".to_vec())];
-        let result = provider.parse_and_resolve(&files, Path::new("/tmp")).unwrap();
+        let result = provider
+            .parse_and_resolve(&files, Path::new("/tmp"))
+            .unwrap();
         assert!(result.is_empty());
     }
 
@@ -148,7 +152,9 @@ mod tests {
             (PathBuf::from("src/good.ts"), good),
             (PathBuf::from("src/also_good.rs"), b"fn main() {}".to_vec()),
         ];
-        let result = provider.parse_and_resolve(&files, Path::new("/tmp")).unwrap();
+        let result = provider
+            .parse_and_resolve(&files, Path::new("/tmp"))
+            .unwrap();
         assert_eq!(result.len(), 2);
     }
 
@@ -161,7 +167,9 @@ mod tests {
             (PathBuf::from("src/index.ts"), index_ts),
             (PathBuf::from("src/helper.ts"), helper_ts),
         ];
-        let result = provider.parse_and_resolve(&files, Path::new("/tmp")).unwrap();
+        let result = provider
+            .parse_and_resolve(&files, Path::new("/tmp"))
+            .unwrap();
         assert_eq!(result.len(), 2);
         // Check that at least some edges exist
         let total_edges: usize = result.iter().map(|fd| fd.edges.len()).sum();

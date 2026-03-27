@@ -1,8 +1,8 @@
-use std::path::{Path, PathBuf};
-use std::time::Instant;
 use crate::error::Result;
 use crate::model::IndexStats;
 use crate::ports::{FileSystem, GitProvider, GraphStore, ParseProvider};
+use std::path::{Path, PathBuf};
+use std::time::Instant;
 
 const SUPPORTED_EXTENSIONS: &[&str] = &["ts", "tsx", "js", "jsx", "rs", "py", "go"];
 
@@ -15,7 +15,12 @@ pub struct IndexUseCase<S, P, F, G> {
 
 impl<S: GraphStore, P: ParseProvider, F: FileSystem, G: GitProvider> IndexUseCase<S, P, F, G> {
     pub fn new(store: S, parser: P, fs: F, git: G) -> Self {
-        Self { store, parser, fs, git }
+        Self {
+            store,
+            parser,
+            fs,
+            git,
+        }
     }
 
     pub fn full_index(&self, root: &Path) -> Result<IndexStats> {
@@ -43,7 +48,8 @@ impl<S: GraphStore, P: ParseProvider, F: FileSystem, G: GitProvider> IndexUseCas
         let mut edges_created = 0;
 
         for fd in &file_data {
-            self.store.store_file_data(&fd.file, &fd.symbols, &fd.edges)?;
+            self.store
+                .store_file_data(&fd.file, &fd.symbols, &fd.edges)?;
             files_indexed += 1;
             symbols_extracted += fd.symbols.len();
             edges_created += fd.edges.len();
@@ -107,7 +113,8 @@ pub fn run_incremental_pipeline<S: GraphStore, P: ParseProvider, F: FileSystem>(
     let mut dependent_set = Vec::new();
     let all_symbols = store.all_symbols()?;
     for path in &reparse_set {
-        let file_symbols: Vec<_> = all_symbols.iter()
+        let file_symbols: Vec<_> = all_symbols
+            .iter()
             .filter(|s| s.location.file == *path)
             .collect();
         for sym in file_symbols {
@@ -172,31 +179,35 @@ mod tests {
     use std::path::PathBuf;
 
     fn make_file_data(path: &str, num_symbols: usize, num_edges: usize) -> FileData {
-        let symbols: Vec<SymbolNode> = (0..num_symbols).map(|i| SymbolNode {
-            name: format!("sym{i}"),
-            qualified_name: format!("{path}::sym{i}"),
-            kind: SymbolKind::Function,
-            location: Location {
-                file: path.into(),
-                line_start: i + 1,
-                line_end: i + 2,
-                col_start: 0,
-                col_end: 10,
-            },
-            visibility: Visibility::Public,
-            is_exported: true,
-            is_async: false,
-            is_test: false,
-            decorators: vec![],
-            signature: None,
-        }).collect();
+        let symbols: Vec<SymbolNode> = (0..num_symbols)
+            .map(|i| SymbolNode {
+                name: format!("sym{i}"),
+                qualified_name: format!("{path}::sym{i}"),
+                kind: SymbolKind::Function,
+                location: Location {
+                    file: path.into(),
+                    line_start: i + 1,
+                    line_end: i + 2,
+                    col_start: 0,
+                    col_end: 10,
+                },
+                visibility: Visibility::Public,
+                is_exported: true,
+                is_async: false,
+                is_test: false,
+                decorators: vec![],
+                signature: None,
+            })
+            .collect();
 
-        let edges: Vec<Edge> = (0..num_edges).map(|i| Edge {
-            kind: EdgeKind::Contains,
-            source: path.to_string(),
-            target: format!("{path}::sym{i}"),
-            metadata: None,
-        }).collect();
+        let edges: Vec<Edge> = (0..num_edges)
+            .map(|i| Edge {
+                kind: EdgeKind::Contains,
+                source: path.to_string(),
+                target: format!("{path}::sym{i}"),
+                metadata: None,
+            })
+            .collect();
 
         FileData {
             file: FileNode {
@@ -244,9 +255,7 @@ mod tests {
     fn full_index_duration_is_non_zero() {
         let store = InMemoryGraphStore::new();
         let parser = MockParseProvider::new(vec![make_file_data("src/a.ts", 1, 1)]);
-        let fs = MockFileSystem::new(vec![
-            (PathBuf::from("src/a.ts"), "content".into()),
-        ]);
+        let fs = MockFileSystem::new(vec![(PathBuf::from("src/a.ts"), "content".into())]);
         let git = MockGitProvider::new();
         let uc = IndexUseCase::new(store, parser, fs, git);
         let stats = uc.full_index(Path::new("/project")).unwrap();
@@ -286,9 +295,7 @@ mod tests {
         });
         let parser = MockParseProvider::new(vec![]);
         let fs = MockFileSystem::new(vec![])
-            .with_hashes(vec![
-                (PathBuf::from("/project/src/a.ts"), "abc123".into()),
-            ]);
+            .with_hashes(vec![(PathBuf::from("/project/src/a.ts"), "abc123".into())]);
         let git = MockGitProvider::with_modified(vec![PathBuf::from("src/a.ts")]);
         let uc = IndexUseCase::new(store, parser, fs, git);
         let stats = uc.incremental_index(Path::new("/project")).unwrap();
@@ -306,12 +313,11 @@ mod tests {
         });
         let fd = make_file_data("src/a.ts", 2, 1);
         let parser = MockParseProvider::new(vec![fd]);
-        let fs = MockFileSystem::new(vec![
-                (PathBuf::from("/project/src/a.ts"), "content".into()),
-            ])
-            .with_hashes(vec![
-                (PathBuf::from("/project/src/a.ts"), "new_hash".into()),
-            ]);
+        let fs = MockFileSystem::new(vec![(PathBuf::from("/project/src/a.ts"), "content".into())])
+            .with_hashes(vec![(
+                PathBuf::from("/project/src/a.ts"),
+                "new_hash".into(),
+            )]);
         let git = MockGitProvider::with_modified(vec![PathBuf::from("src/a.ts")]);
         let uc = IndexUseCase::new(store, parser, fs, git);
         let stats = uc.incremental_index(Path::new("/project")).unwrap();
@@ -340,7 +346,10 @@ mod tests {
             kind: SymbolKind::Function,
             location: Location {
                 file: "src/a.ts".into(),
-                line_start: 1, line_end: 5, col_start: 0, col_end: 10,
+                line_start: 1,
+                line_end: 5,
+                col_start: 0,
+                col_end: 10,
             },
             visibility: Visibility::Public,
             is_exported: true,
@@ -356,7 +365,10 @@ mod tests {
             kind: SymbolKind::Function,
             location: Location {
                 file: "src/b.ts".into(),
-                line_start: 1, line_end: 5, col_start: 0, col_end: 10,
+                line_start: 1,
+                line_end: 5,
+                col_start: 0,
+                col_end: 10,
             },
             visibility: Visibility::Public,
             is_exported: true,
@@ -377,13 +389,13 @@ mod tests {
         let fd_b = make_file_data("src/b.ts", 1, 0);
         let parser = MockParseProvider::new(vec![fd_a, fd_b]);
         let fs = MockFileSystem::new(vec![
-                (PathBuf::from("/project/src/a.ts"), "new content".into()),
-                (PathBuf::from("/project/src/b.ts"), "b content".into()),
-            ])
-            .with_hashes(vec![
-                (PathBuf::from("/project/src/a.ts"), "new_hash".into()),
-                (PathBuf::from("/project/src/b.ts"), "b_hash".into()),
-            ]);
+            (PathBuf::from("/project/src/a.ts"), "new content".into()),
+            (PathBuf::from("/project/src/b.ts"), "b content".into()),
+        ])
+        .with_hashes(vec![
+            (PathBuf::from("/project/src/a.ts"), "new_hash".into()),
+            (PathBuf::from("/project/src/b.ts"), "b_hash".into()),
+        ]);
         // Only A is reported as modified by git
         let git = MockGitProvider::with_modified(vec![PathBuf::from("src/a.ts")]);
         let uc = IndexUseCase::new(store, parser, fs, git);
@@ -416,18 +428,16 @@ mod tests {
         });
         let fd = make_file_data("src/a.ts", 1, 1);
         let parser = MockParseProvider::new(vec![fd]);
-        let fs = MockFileSystem::new(vec![
-                (PathBuf::from("/project/src/a.ts"), "content".into()),
-            ])
-            .with_hashes(vec![
-                (PathBuf::from("/project/src/a.ts"), "new_hash".into()),
-            ]);
+        let fs = MockFileSystem::new(vec![(PathBuf::from("/project/src/a.ts"), "content".into())])
+            .with_hashes(vec![(
+                PathBuf::from("/project/src/a.ts"),
+                "new_hash".into(),
+            )]);
         let git = MockGitProvider::new(); // no modified — git not consulted
         let uc = IndexUseCase::new(store, parser, fs, git);
-        let stats = uc.incremental_files(
-            Path::new("/project"),
-            vec![PathBuf::from("src/a.ts")],
-        ).unwrap();
+        let stats = uc
+            .incremental_files(Path::new("/project"), vec![PathBuf::from("src/a.ts")])
+            .unwrap();
         assert_eq!(stats.files_indexed, 1);
     }
 
@@ -441,16 +451,15 @@ mod tests {
             hash: "same_hash".into(),
         });
         let parser = MockParseProvider::new(vec![]);
-        let fs = MockFileSystem::new(vec![])
-            .with_hashes(vec![
-                (PathBuf::from("/project/src/a.ts"), "same_hash".into()),
-            ]);
+        let fs = MockFileSystem::new(vec![]).with_hashes(vec![(
+            PathBuf::from("/project/src/a.ts"),
+            "same_hash".into(),
+        )]);
         let git = MockGitProvider::new();
         let uc = IndexUseCase::new(store, parser, fs, git);
-        let stats = uc.incremental_files(
-            Path::new("/project"),
-            vec![PathBuf::from("src/a.ts")],
-        ).unwrap();
+        let stats = uc
+            .incremental_files(Path::new("/project"), vec![PathBuf::from("src/a.ts")])
+            .unwrap();
         assert_eq!(stats.files_indexed, 0);
     }
 
@@ -465,8 +474,7 @@ mod tests {
         });
         let parser = MockParseProvider::new(vec![]);
         // No hash for deleted file → file_hash will error
-        let fs = MockFileSystem::new(vec![])
-            .with_hashes(vec![]);
+        let fs = MockFileSystem::new(vec![]).with_hashes(vec![]);
         let git = MockGitProvider::with_modified(vec![PathBuf::from("src/deleted.ts")]);
         let uc = IndexUseCase::new(store, parser, fs, git);
         let stats = uc.incremental_index(Path::new("/project")).unwrap();

@@ -6,8 +6,8 @@ use crate::adapters::fs::RealFileSystem;
 use crate::adapters::git::ShellGitProvider;
 use crate::adapters::parse::RayonParseProvider;
 use crate::config::load_config;
-use crate::output::{OutputFormat, print};
-use crate::project::{find_project_root, ensure_data_dir};
+use crate::output::{print, OutputFormat};
+use crate::project::{ensure_data_dir, find_project_root};
 
 use super::IndexArgs;
 
@@ -26,9 +26,8 @@ pub fn run_index(args: &IndexArgs, output_format: OutputFormat) -> Result<()> {
     let _config = load_config(&root)?;
 
     let db_path = data_dir.join("graph.db");
-    let store = SqliteStore::open(&db_path).map_err(|e| {
-        domain::error::CodeGraphError::Storage(format!("{e}"))
-    })?;
+    let store = SqliteStore::open(&db_path)
+        .map_err(|e| domain::error::CodeGraphError::Storage(format!("{e}")))?;
 
     let fs = RealFileSystem;
     let git = ShellGitProvider::new(root.clone());
@@ -79,10 +78,22 @@ mod tests {
 
         let src = root.join("src");
         fs::create_dir_all(&src).unwrap();
-        fs::write(src.join("main.ts"), "export function hello(): void {}\nexport class Greeter {}").unwrap();
-        fs::write(src.join("util.ts"), "export function add(a: number, b: number): number { return a + b; }").unwrap();
+        fs::write(
+            src.join("main.ts"),
+            "export function hello(): void {}\nexport class Greeter {}",
+        )
+        .unwrap();
+        fs::write(
+            src.join("util.ts"),
+            "export function add(a: number, b: number): number { return a + b; }",
+        )
+        .unwrap();
 
-        let args = IndexArgs { path: Some(root.to_path_buf()), incremental: false, files: None };
+        let args = IndexArgs {
+            path: Some(root.to_path_buf()),
+            incremental: false,
+            files: None,
+        };
         let result = run_index(&args, OutputFormat::Compact);
         assert!(result.is_ok(), "index failed: {:?}", result.err());
 
@@ -101,7 +112,11 @@ mod tests {
         fs::write(src.join("main.ts"), "export function hello(): void {}").unwrap();
 
         // Full index first
-        let args = IndexArgs { path: Some(root.to_path_buf()), incremental: false, files: None };
+        let args = IndexArgs {
+            path: Some(root.to_path_buf()),
+            incremental: false,
+            files: None,
+        };
         run_index(&args, OutputFormat::Compact).unwrap();
 
         // Commit the file so git status shows it as clean
@@ -117,12 +132,24 @@ mod tests {
             .unwrap();
 
         // Modify file
-        fs::write(src.join("main.ts"), "export function hello(): void {}\nexport function world(): void {}").unwrap();
+        fs::write(
+            src.join("main.ts"),
+            "export function hello(): void {}\nexport function world(): void {}",
+        )
+        .unwrap();
 
         // Incremental index
-        let args = IndexArgs { path: Some(root.to_path_buf()), incremental: true, files: None };
+        let args = IndexArgs {
+            path: Some(root.to_path_buf()),
+            incremental: true,
+            files: None,
+        };
         let result = run_index(&args, OutputFormat::Compact);
-        assert!(result.is_ok(), "incremental index failed: {:?}", result.err());
+        assert!(
+            result.is_ok(),
+            "incremental index failed: {:?}",
+            result.err()
+        );
     }
 
     #[test]
@@ -136,7 +163,11 @@ mod tests {
         fs::write(src.join("main.ts"), "export function hello(): void {}").unwrap();
 
         // Full index first
-        let args = IndexArgs { path: Some(root.to_path_buf()), incremental: false, files: None };
+        let args = IndexArgs {
+            path: Some(root.to_path_buf()),
+            incremental: false,
+            files: None,
+        };
         run_index(&args, OutputFormat::Compact).unwrap();
 
         // Commit everything
@@ -152,9 +183,17 @@ mod tests {
             .unwrap();
 
         // Incremental with no changes
-        let args = IndexArgs { path: Some(root.to_path_buf()), incremental: true, files: None };
+        let args = IndexArgs {
+            path: Some(root.to_path_buf()),
+            incremental: true,
+            files: None,
+        };
         let result = run_index(&args, OutputFormat::Compact);
-        assert!(result.is_ok(), "incremental no-op failed: {:?}", result.err());
+        assert!(
+            result.is_ok(),
+            "incremental no-op failed: {:?}",
+            result.err()
+        );
     }
 
     #[test]
@@ -168,11 +207,19 @@ mod tests {
         fs::write(src.join("main.ts"), "export function hello(): void {}").unwrap();
 
         // Full index first
-        let args = IndexArgs { path: Some(root.to_path_buf()), incremental: false, files: None };
+        let args = IndexArgs {
+            path: Some(root.to_path_buf()),
+            incremental: false,
+            files: None,
+        };
         run_index(&args, OutputFormat::Compact).unwrap();
 
         // Modify file
-        fs::write(src.join("main.ts"), "export function hello(): void {}\nexport function bar(): void {}").unwrap();
+        fs::write(
+            src.join("main.ts"),
+            "export function hello(): void {}\nexport function bar(): void {}",
+        )
+        .unwrap();
 
         // Index specific files
         let args = IndexArgs {

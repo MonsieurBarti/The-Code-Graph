@@ -49,9 +49,8 @@ pub fn start_daemon(root: &Path, data_dir: &Path) -> Result<()> {
         )));
     }
 
-    let exe = std::env::current_exe().map_err(|e| {
-        CodeGraphError::Other(format!("failed to get current exe: {e}"))
-    })?;
+    let exe = std::env::current_exe()
+        .map_err(|e| CodeGraphError::Other(format!("failed to get current exe: {e}")))?;
 
     let child = Command::new(exe)
         .args(["watch", "--daemon-internal"])
@@ -111,7 +110,10 @@ where
         .with_writer(std::io::stderr)
         .init();
 
-    eprintln!("Watching {} (debounce: {debounce_ms}ms, Ctrl+C to stop)", root.display());
+    eprintln!(
+        "Watching {} (debounce: {debounce_ms}ms, Ctrl+C to stop)",
+        root.display()
+    );
     run_event_loop(use_case, root, data_dir, debounce_ms)
 }
 

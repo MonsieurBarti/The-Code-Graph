@@ -87,8 +87,12 @@ mod tests {
     #[test]
     fn registry_has_all_four_resolvers() {
         let registry = ResolverRegistry::new(Path::new("/tmp"));
-        assert!(registry.resolver_for_language(Language::TypeScript).is_some());
-        assert!(registry.resolver_for_language(Language::JavaScript).is_some());
+        assert!(registry
+            .resolver_for_language(Language::TypeScript)
+            .is_some());
+        assert!(registry
+            .resolver_for_language(Language::JavaScript)
+            .is_some());
         assert!(registry.resolver_for_language(Language::Rust).is_some());
         assert!(registry.resolver_for_language(Language::Python).is_some());
         assert!(registry.resolver_for_language(Language::Go).is_some());

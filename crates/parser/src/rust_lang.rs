@@ -95,7 +95,8 @@ fn extract_all(
                 continue; // do not reset pending_attrs below
             }
             "function_item" => {
-                if let Some(sym) = extract_function(source, &file_path, child, None, &pending_attrs) {
+                if let Some(sym) = extract_function(source, &file_path, child, None, &pending_attrs)
+                {
                     edges.push(contains_edge(&file_path, &sym.qualified_name));
                     symbols.push(sym);
                 }
@@ -414,7 +415,9 @@ fn extract_impl(
             continue;
         }
         if member.kind() == "function_item" {
-            if let Some(sym) = extract_function(source, file_path, member, Some(&type_name), &pending_attrs) {
+            if let Some(sym) =
+                extract_function(source, file_path, member, Some(&type_name), &pending_attrs)
+            {
                 edges.push(contains_edge(file_path, &sym.qualified_name));
                 // ChildOf edge: method → impl type
                 let type_qn = format!("{file_path}::{type_name}");
@@ -448,7 +451,8 @@ fn extract_use_declaration(
     // Detect `pub use` — presence of visibility_modifier child
     let is_pub_use = {
         let mut cur = node.walk();
-        let result = node.children(&mut cur)
+        let result = node
+            .children(&mut cur)
             .any(|c| c.kind() == "visibility_modifier");
         result
     };
@@ -482,7 +486,11 @@ fn process_use_argument(
             let name = parts.last().cloned().unwrap_or_default();
             emit_import_and_maybe_export(
                 specifier,
-                vec![ImportName { name, alias: None, is_type: false }],
+                vec![ImportName {
+                    name,
+                    alias: None,
+                    is_type: false,
+                }],
                 false,
                 line,
                 is_pub_use,
@@ -502,11 +510,7 @@ fn process_use_argument(
                     .filter(|c| {
                         matches!(
                             c.kind(),
-                            "scoped_identifier"
-                                | "identifier"
-                                | "crate"
-                                | "self"
-                                | "super"
+                            "scoped_identifier" | "identifier" | "crate" | "self" | "super"
                         )
                     })
                     .flat_map(|c| flatten_path_node(source, c))
@@ -581,7 +585,11 @@ fn process_use_argument(
 
             emit_import_and_maybe_export(
                 specifier,
-                vec![ImportName { name, alias, is_type: false }],
+                vec![ImportName {
+                    name,
+                    alias,
+                    is_type: false,
+                }],
                 false,
                 line,
                 is_pub_use,
@@ -599,7 +607,11 @@ fn process_use_argument(
                 let specifier = parts.join("::");
                 emit_import_and_maybe_export(
                     specifier,
-                    vec![ImportName { name, alias: None, is_type: false }],
+                    vec![ImportName {
+                        name,
+                        alias: None,
+                        is_type: false,
+                    }],
                     false,
                     line,
                     is_pub_use,
@@ -1137,11 +1149,27 @@ trait Qux {}
 "#;
         let result = parse_rust(source);
         assert_eq!(result.symbols.len(), 4);
-        assert!(result.symbols.iter().any(|s| s.name == "foo" && s.kind == SymbolKind::Function));
-        assert!(result.symbols.iter().any(|s| s.name == "Bar" && s.kind == SymbolKind::Struct));
-        assert!(result.symbols.iter().any(|s| s.name == "Baz" && s.kind == SymbolKind::Enum));
-        assert!(result.symbols.iter().any(|s| s.name == "Qux" && s.kind == SymbolKind::Trait));
-        let contains_count = result.edges.iter().filter(|e| e.kind == EdgeKind::Contains).count();
+        assert!(result
+            .symbols
+            .iter()
+            .any(|s| s.name == "foo" && s.kind == SymbolKind::Function));
+        assert!(result
+            .symbols
+            .iter()
+            .any(|s| s.name == "Bar" && s.kind == SymbolKind::Struct));
+        assert!(result
+            .symbols
+            .iter()
+            .any(|s| s.name == "Baz" && s.kind == SymbolKind::Enum));
+        assert!(result
+            .symbols
+            .iter()
+            .any(|s| s.name == "Qux" && s.kind == SymbolKind::Trait));
+        let contains_count = result
+            .edges
+            .iter()
+            .filter(|e| e.kind == EdgeKind::Contains)
+            .count();
         assert_eq!(contains_count, 4);
     }
 
@@ -1166,7 +1194,11 @@ impl Counter {
             .filter(|s| s.kind == SymbolKind::Method)
             .collect();
         assert_eq!(methods.len(), 3);
-        let child_of_count = result.edges.iter().filter(|e| e.kind == EdgeKind::ChildOf).count();
+        let child_of_count = result
+            .edges
+            .iter()
+            .filter(|e| e.kind == EdgeKind::ChildOf)
+            .count();
         assert_eq!(child_of_count, 3);
     }
 
@@ -1209,7 +1241,10 @@ impl Counter {
         assert_eq!(result.exports.len(), 1);
         let exp = &result.exports[0];
         assert!(exp.is_reexport);
-        assert_eq!(exp.source_specifier.as_deref(), Some("self::greetings::hello"));
+        assert_eq!(
+            exp.source_specifier.as_deref(),
+            Some("self::greetings::hello")
+        );
         assert_eq!(exp.name, "hello");
     }
 
@@ -1235,9 +1270,19 @@ impl Counter {
         let result = parse_rust("use foo::{A, B};");
         // Each item in the list becomes its own RawImport
         assert_eq!(result.imports.len(), 2);
-        let specifiers: Vec<_> = result.imports.iter().map(|i| i.specifier.as_str()).collect();
-        assert!(specifiers.contains(&"foo::A"), "expected foo::A, got {specifiers:?}");
-        assert!(specifiers.contains(&"foo::B"), "expected foo::B, got {specifiers:?}");
+        let specifiers: Vec<_> = result
+            .imports
+            .iter()
+            .map(|i| i.specifier.as_str())
+            .collect();
+        assert!(
+            specifiers.contains(&"foo::A"),
+            "expected foo::A, got {specifiers:?}"
+        );
+        assert!(
+            specifiers.contains(&"foo::B"),
+            "expected foo::B, got {specifiers:?}"
+        );
     }
 
     // -----------------------------------------------------------------------
@@ -1335,19 +1380,45 @@ fn test_distance() {
         let result = parse_rust(source);
 
         // Symbols
-        assert!(result.symbols.iter().any(|s| s.name == "Point" && s.kind == SymbolKind::Struct));
-        assert!(result.symbols.iter().any(|s| s.name == "Shape" && s.kind == SymbolKind::Trait));
-        assert!(result.symbols.iter().any(|s| s.name == "Color" && s.kind == SymbolKind::Enum));
-        assert!(result.symbols.iter().any(|s| s.name == "MAX_POINTS" && s.kind == SymbolKind::Const));
-        assert!(result.symbols.iter().any(|s| s.name == "fetch_data" && s.is_async));
-        assert!(result.symbols.iter().any(|s| s.name == "test_distance" && s.is_test));
+        assert!(result
+            .symbols
+            .iter()
+            .any(|s| s.name == "Point" && s.kind == SymbolKind::Struct));
+        assert!(result
+            .symbols
+            .iter()
+            .any(|s| s.name == "Shape" && s.kind == SymbolKind::Trait));
+        assert!(result
+            .symbols
+            .iter()
+            .any(|s| s.name == "Color" && s.kind == SymbolKind::Enum));
+        assert!(result
+            .symbols
+            .iter()
+            .any(|s| s.name == "MAX_POINTS" && s.kind == SymbolKind::Const));
+        assert!(result
+            .symbols
+            .iter()
+            .any(|s| s.name == "fetch_data" && s.is_async));
+        assert!(result
+            .symbols
+            .iter()
+            .any(|s| s.name == "test_distance" && s.is_test));
 
         // Methods from impl Point
-        assert!(result.symbols.iter().any(|s| s.name == "new" && s.kind == SymbolKind::Method && s.qualified_name == "test.rs::Point.new"));
-        assert!(result.symbols.iter().any(|s| s.name == "distance" && s.kind == SymbolKind::Method));
+        assert!(result.symbols.iter().any(|s| s.name == "new"
+            && s.kind == SymbolKind::Method
+            && s.qualified_name == "test.rs::Point.new"));
+        assert!(result
+            .symbols
+            .iter()
+            .any(|s| s.name == "distance" && s.kind == SymbolKind::Method));
 
         // Method from impl Display for Point
-        assert!(result.symbols.iter().any(|s| s.name == "fmt" && s.kind == SymbolKind::Method));
+        assert!(result
+            .symbols
+            .iter()
+            .any(|s| s.name == "fmt" && s.kind == SymbolKind::Method));
 
         // Visibility
         let point_sym = result.symbols.iter().find(|s| s.name == "Point").unwrap();
@@ -1360,10 +1431,20 @@ fn test_distance() {
             .iter()
             .filter(|e| e.kind == EdgeKind::Implements)
             .collect::<Vec<_>>();
-        assert!(!implements.is_empty(), "should have at least one Implements edge");
+        assert!(
+            !implements.is_empty(),
+            "should have at least one Implements edge"
+        );
 
         // ChildOf edges
-        let child_of_count = result.edges.iter().filter(|e| e.kind == EdgeKind::ChildOf).count();
-        assert!(child_of_count >= 3, "expected at least 3 ChildOf edges, got {child_of_count}");
+        let child_of_count = result
+            .edges
+            .iter()
+            .filter(|e| e.kind == EdgeKind::ChildOf)
+            .count();
+        assert!(
+            child_of_count >= 3,
+            "expected at least 3 ChildOf edges, got {child_of_count}"
+        );
     }
 }

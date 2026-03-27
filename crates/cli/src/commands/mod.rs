@@ -1,22 +1,27 @@
-pub mod index;
-pub mod stubs;
-pub mod helpers;
-pub mod find;
-pub mod refs;
-pub mod callers;
 pub mod callees;
-pub mod search;
-pub mod stats;
-pub mod impact;
+pub mod callers;
 pub mod diff;
+pub mod eval;
+pub mod find;
+pub mod helpers;
+pub mod impact;
+pub mod index;
+pub mod refs;
+pub mod search;
 pub mod setup;
 pub mod setup_helpers;
+pub mod stats;
+pub mod stubs;
 pub mod watch;
 
-use clap::{Parser, Subcommand, ArgAction};
+use clap::{ArgAction, Parser, Subcommand};
 
 #[derive(Parser)]
-#[command(name = "code-graph", version, about = "Index codebases into a queryable dependency graph")]
+#[command(
+    name = "code-graph",
+    version,
+    about = "Index codebases into a queryable dependency graph"
+)]
 pub struct Cli {
     /// Increase verbosity (-v info, -vv debug)
     #[arg(short, long, action = ArgAction::Count, global = true)]
@@ -63,7 +68,7 @@ pub enum Commands {
     /// Set up agent integration hooks
     Setup(SetupArgs),
     /// Run evaluation suite
-    Eval,
+    Eval(EvalArgs),
 }
 
 #[derive(clap::Args)]
@@ -165,6 +170,16 @@ pub struct SearchArgs {
 }
 
 #[derive(clap::Args)]
+pub struct EvalArgs {
+    /// Which suite to run: search, impact, or all
+    #[arg(long, default_value = "all")]
+    pub suite: String,
+    /// Force re-clone of eval repos (ignore cache)
+    #[arg(long)]
+    pub no_cache: bool,
+}
+
+#[derive(clap::Args)]
 pub struct SetupArgs {
     /// Target platform (currently: "claude")
     pub platform: Option<String>,
@@ -239,6 +254,8 @@ mod tests {
             vec!["code-graph", "setup", "--remove", "--clean"],
             vec!["code-graph", "setup", "--remove", "--purge"],
             vec!["code-graph", "eval"],
+            vec!["code-graph", "eval", "--suite", "search"],
+            vec!["code-graph", "eval", "--no-cache"],
         ];
         for args in &commands {
             Cli::parse_from(args.iter());

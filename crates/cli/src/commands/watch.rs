@@ -7,7 +7,7 @@ use crate::adapters::fs::RealFileSystem;
 use crate::adapters::git::ShellGitProvider;
 use crate::adapters::parse::RayonParseProvider;
 use crate::config::load_config;
-use crate::project::{find_project_root, ensure_data_dir};
+use crate::project::{ensure_data_dir, find_project_root};
 
 use super::WatchArgs;
 
@@ -23,7 +23,11 @@ pub fn run_watch(args: &WatchArgs) -> Result<()> {
     };
     let data_dir = ensure_data_dir(&root)?;
     let config = load_config(&root)?;
-    let debounce_ms = config.watch.as_ref().and_then(|w| w.debounce_ms).unwrap_or(100);
+    let debounce_ms = config
+        .watch
+        .as_ref()
+        .and_then(|w| w.debounce_ms)
+        .unwrap_or(100);
 
     if args.status {
         return show_status(&data_dir);
@@ -37,9 +41,8 @@ pub fn run_watch(args: &WatchArgs) -> Result<()> {
 
     // Build adapters
     let db_path = data_dir.join("graph.db");
-    let store = SqliteStore::open(&db_path).map_err(|e| {
-        domain::error::CodeGraphError::Storage(format!("{e}"))
-    })?;
+    let store = SqliteStore::open(&db_path)
+        .map_err(|e| domain::error::CodeGraphError::Storage(format!("{e}")))?;
     let fs = RealFileSystem;
     let git = ShellGitProvider::new(root.clone());
     let parser = RayonParseProvider::new();
@@ -117,12 +120,16 @@ mod tests {
         let store = domain::test_support::InMemoryGraphStore::new();
         let parser = domain::test_support::MockParseProvider::new(vec![]);
         let fs = domain::test_support::MockFileSystem::new(vec![]);
-        let git = domain::test_support::MockGitProvider::with_modified(vec![
-            std::path::PathBuf::from("src/a.ts"),
-        ]);
+        let git =
+            domain::test_support::MockGitProvider::with_modified(vec![std::path::PathBuf::from(
+                "src/a.ts",
+            )]);
 
         let result = watch::freshness::ensure_fresh(
-            &store, &parser, &fs, &git,
+            &store,
+            &parser,
+            &fs,
+            &git,
             std::path::Path::new("/project"),
             &data_dir,
         );

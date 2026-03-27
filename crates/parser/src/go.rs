@@ -456,7 +456,14 @@ fn extract_var_declaration(
     let mut cursor = node.walk();
     for child in node.children(&mut cursor) {
         if child.kind() == "var_spec" {
-            extract_spec_names(source, file_path, child, SymbolKind::Variable, symbols, edges);
+            extract_spec_names(
+                source,
+                file_path,
+                child,
+                SymbolKind::Variable,
+                symbols,
+                edges,
+            );
         }
     }
 }
@@ -573,7 +580,11 @@ fn parse_import_spec(source: &[u8], node: Node) -> Option<RawImport> {
     let names = if is_side_effect || is_namespace {
         Vec::new()
     } else {
-        let pkg = specifier.split('/').next_back().unwrap_or(&specifier).to_string();
+        let pkg = specifier
+            .split('/')
+            .next_back()
+            .unwrap_or(&specifier)
+            .to_string();
         vec![ImportName {
             name: pkg,
             alias,
@@ -647,9 +658,7 @@ mod tests {
 
     #[test]
     fn ac23_method_declaration_value_receiver() {
-        let result = parse_go(
-            "package main\n\ntype Bar struct {}\n\nfunc (r Bar) Method() {}",
-        );
+        let result = parse_go("package main\n\ntype Bar struct {}\n\nfunc (r Bar) Method() {}");
         let sym = result.symbols.iter().find(|s| s.name == "Method").unwrap();
         assert_eq!(sym.kind, SymbolKind::Method);
         assert_eq!(sym.qualified_name, "test.go::Bar.Method");
@@ -657,9 +666,7 @@ mod tests {
 
     #[test]
     fn ac23_method_declaration_pointer_receiver() {
-        let result = parse_go(
-            "package main\n\ntype Bar struct {}\n\nfunc (r *Bar) Method() {}",
-        );
+        let result = parse_go("package main\n\ntype Bar struct {}\n\nfunc (r *Bar) Method() {}");
         let sym = result.symbols.iter().find(|s| s.name == "Method").unwrap();
         assert_eq!(sym.kind, SymbolKind::Method);
         assert_eq!(sym.qualified_name, "test.go::Bar.Method");
@@ -667,9 +674,7 @@ mod tests {
 
     #[test]
     fn ac23_method_child_of_edge() {
-        let result = parse_go(
-            "package main\n\ntype Bar struct {}\n\nfunc (r *Bar) Method() {}",
-        );
+        let result = parse_go("package main\n\ntype Bar struct {}\n\nfunc (r *Bar) Method() {}");
         let child_of = result
             .edges
             .iter()
@@ -685,14 +690,9 @@ mod tests {
 
     #[test]
     fn ac24_struct_embedding() {
-        let result = parse_go(
-            "package main\n\ntype Base struct {}\n\ntype Derived struct { Base }",
-        );
-        let sym = result
-            .symbols
-            .iter()
-            .find(|s| s.name == "Derived")
-            .unwrap();
+        let result =
+            parse_go("package main\n\ntype Base struct {}\n\ntype Derived struct { Base }");
+        let sym = result.symbols.iter().find(|s| s.name == "Derived").unwrap();
         assert_eq!(sym.kind, SymbolKind::Struct);
 
         let embeds = result
@@ -706,9 +706,8 @@ mod tests {
 
     #[test]
     fn ac24_struct_pointer_embedding() {
-        let result = parse_go(
-            "package main\n\ntype Base struct {}\n\ntype Derived struct { *Base }",
-        );
+        let result =
+            parse_go("package main\n\ntype Base struct {}\n\ntype Derived struct { *Base }");
         let embeds = result
             .edges
             .iter()
@@ -719,15 +718,16 @@ mod tests {
 
     #[test]
     fn ac24_struct_no_embedding_for_named_field() {
-        let result = parse_go(
-            "package main\n\ntype Foo struct { bar string }",
-        );
+        let result = parse_go("package main\n\ntype Foo struct { bar string }");
         let embeds_count = result
             .edges
             .iter()
             .filter(|e| e.kind == EdgeKind::Embeds)
             .count();
-        assert_eq!(embeds_count, 0, "named fields must not produce Embeds edges");
+        assert_eq!(
+            embeds_count, 0,
+            "named fields must not produce Embeds edges"
+        );
     }
 
     // -----------------------------------------------------------------------
@@ -748,9 +748,7 @@ mod tests {
 
     #[test]
     fn ac26_side_effect_import() {
-        let result = parse_go(
-            "package main\n\nimport _ \"lib/pq\"\n\nfunc main() {}",
-        );
+        let result = parse_go("package main\n\nimport _ \"lib/pq\"\n\nfunc main() {}");
         let imp = result
             .imports
             .iter()
@@ -766,9 +764,7 @@ mod tests {
 
     #[test]
     fn ac27_dot_import() {
-        let result = parse_go(
-            "package main\n\nimport . \"fmt\"\n\nfunc main() {}",
-        );
+        let result = parse_go("package main\n\nimport . \"fmt\"\n\nfunc main() {}");
         let imp = result
             .imports
             .iter()
@@ -872,11 +868,7 @@ mod tests {
     #[test]
     fn test_function_detection() {
         let result = parse_go("package main\n\nfunc TestFoo(t *testing.T) {}");
-        let sym = result
-            .symbols
-            .iter()
-            .find(|s| s.name == "TestFoo")
-            .unwrap();
+        let sym = result.symbols.iter().find(|s| s.name == "TestFoo").unwrap();
         assert!(sym.is_test);
     }
 
@@ -904,9 +896,7 @@ mod tests {
 
     #[test]
     fn regular_import() {
-        let result = parse_go(
-            "package main\n\nimport \"fmt\"\n\nfunc main() {}",
-        );
+        let result = parse_go("package main\n\nimport \"fmt\"\n\nfunc main() {}");
         let imp = result
             .imports
             .iter()
@@ -918,9 +908,7 @@ mod tests {
 
     #[test]
     fn aliased_import() {
-        let result = parse_go(
-            "package main\n\nimport myfmt \"fmt\"\n\nfunc main() {}",
-        );
+        let result = parse_go("package main\n\nimport myfmt \"fmt\"\n\nfunc main() {}");
         let imp = result
             .imports
             .iter()
@@ -961,8 +949,14 @@ import (
 func main() {}
 "#;
         let result = parse_go(source);
-        assert!(result.imports.iter().any(|i| i.specifier == "lib/pq" && i.is_side_effect));
-        assert!(result.imports.iter().any(|i| i.specifier == "math" && i.is_namespace));
+        assert!(result
+            .imports
+            .iter()
+            .any(|i| i.specifier == "lib/pq" && i.is_side_effect));
+        assert!(result
+            .imports
+            .iter()
+            .any(|i| i.specifier == "math" && i.is_namespace));
         assert!(result.imports.iter().any(|i| i.specifier == "fmt"));
     }
 
@@ -991,14 +985,9 @@ func main() {}
 
     #[test]
     fn qualified_name_method() {
-        let result = parse_go(
-            "package main\n\ntype MyStruct struct {}\n\nfunc (s *MyStruct) DoWork() {}",
-        );
-        let sym = result
-            .symbols
-            .iter()
-            .find(|s| s.name == "DoWork")
-            .unwrap();
+        let result =
+            parse_go("package main\n\ntype MyStruct struct {}\n\nfunc (s *MyStruct) DoWork() {}");
+        let sym = result.symbols.iter().find(|s| s.name == "DoWork").unwrap();
         assert_eq!(sym.qualified_name, "test.go::MyStruct.DoWork");
     }
 
@@ -1048,38 +1037,91 @@ func TestDog(t interface{}) {}
         let result = parse_go(source);
 
         // Symbols
-        assert!(result.symbols.iter().any(|s| s.name == "MaxItems" && s.kind == SymbolKind::Const));
-        assert!(result.symbols.iter().any(|s| s.name == "globalVar" && s.kind == SymbolKind::Variable));
-        assert!(result.symbols.iter().any(|s| s.name == "Animal" && s.kind == SymbolKind::Struct));
-        assert!(result.symbols.iter().any(|s| s.name == "Dog" && s.kind == SymbolKind::Struct));
-        assert!(result.symbols.iter().any(|s| s.name == "Speaker" && s.kind == SymbolKind::Interface));
-        assert!(result.symbols.iter().any(|s| s.name == "MyAlias" && s.kind == SymbolKind::TypeAlias));
-        assert!(result.symbols.iter().any(|s| s.name == "NewDog" && s.kind == SymbolKind::Function));
-        assert!(result.symbols.iter().any(|s| s.name == "Bark" && s.kind == SymbolKind::Method));
+        assert!(result
+            .symbols
+            .iter()
+            .any(|s| s.name == "MaxItems" && s.kind == SymbolKind::Const));
+        assert!(result
+            .symbols
+            .iter()
+            .any(|s| s.name == "globalVar" && s.kind == SymbolKind::Variable));
+        assert!(result
+            .symbols
+            .iter()
+            .any(|s| s.name == "Animal" && s.kind == SymbolKind::Struct));
+        assert!(result
+            .symbols
+            .iter()
+            .any(|s| s.name == "Dog" && s.kind == SymbolKind::Struct));
+        assert!(result
+            .symbols
+            .iter()
+            .any(|s| s.name == "Speaker" && s.kind == SymbolKind::Interface));
+        assert!(result
+            .symbols
+            .iter()
+            .any(|s| s.name == "MyAlias" && s.kind == SymbolKind::TypeAlias));
+        assert!(result
+            .symbols
+            .iter()
+            .any(|s| s.name == "NewDog" && s.kind == SymbolKind::Function));
+        assert!(result
+            .symbols
+            .iter()
+            .any(|s| s.name == "Bark" && s.kind == SymbolKind::Method));
 
         // Test detection
         let test_sym = result.symbols.iter().find(|s| s.name == "TestDog").unwrap();
         assert!(test_sym.is_test);
 
         // Visibility
-        let max = result.symbols.iter().find(|s| s.name == "MaxItems").unwrap();
+        let max = result
+            .symbols
+            .iter()
+            .find(|s| s.name == "MaxItems")
+            .unwrap();
         assert_eq!(max.visibility, Visibility::Public);
-        let gvar = result.symbols.iter().find(|s| s.name == "globalVar").unwrap();
+        let gvar = result
+            .symbols
+            .iter()
+            .find(|s| s.name == "globalVar")
+            .unwrap();
         assert_eq!(gvar.visibility, Visibility::Private);
 
         // Edges
-        let child_of = result.edges.iter().filter(|e| e.kind == EdgeKind::ChildOf).count();
+        let child_of = result
+            .edges
+            .iter()
+            .filter(|e| e.kind == EdgeKind::ChildOf)
+            .count();
         assert!(child_of >= 1, "expected at least one ChildOf edge");
 
-        let embeds = result.edges.iter().filter(|e| e.kind == EdgeKind::Embeds).count();
-        assert_eq!(embeds, 1, "expected one Embeds edge for Dog embedding Animal");
+        let embeds = result
+            .edges
+            .iter()
+            .filter(|e| e.kind == EdgeKind::Embeds)
+            .count();
+        assert_eq!(
+            embeds, 1,
+            "expected one Embeds edge for Dog embedding Animal"
+        );
 
-        let contains = result.edges.iter().filter(|e| e.kind == EdgeKind::Contains).count();
+        let contains = result
+            .edges
+            .iter()
+            .filter(|e| e.kind == EdgeKind::Contains)
+            .count();
         assert!(contains >= 5, "expected many Contains edges");
 
         // Imports
         assert!(result.imports.iter().any(|i| i.specifier == "fmt"));
-        assert!(result.imports.iter().any(|i| i.specifier == "lib/pq" && i.is_side_effect));
-        assert!(result.imports.iter().any(|i| i.specifier == "math" && i.is_namespace));
+        assert!(result
+            .imports
+            .iter()
+            .any(|i| i.specifier == "lib/pq" && i.is_side_effect));
+        assert!(result
+            .imports
+            .iter()
+            .any(|i| i.specifier == "math" && i.is_namespace));
     }
 }

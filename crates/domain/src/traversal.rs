@@ -1,5 +1,5 @@
-use std::collections::{HashMap, HashSet, VecDeque};
 use crate::model::*;
+use std::collections::{HashMap, HashSet, VecDeque};
 
 // ---------------------------------------------------------------------------
 // InMemoryGraph
@@ -95,12 +95,7 @@ impl InMemoryGraph {
                 if let Some(neighbors) = adjacency.get(&node) {
                     for (neighbor, kind) in neighbors {
                         if edge_filter(kind) && !visited.contains(neighbor.as_str()) {
-                            queue.push_back((
-                                neighbor.clone(),
-                                depth + 1,
-                                new_path.clone(),
-                                *kind,
-                            ));
+                            queue.push_back((neighbor.clone(), depth + 1, new_path.clone(), *kind));
                         }
                     }
                 }
@@ -165,10 +160,14 @@ impl InMemoryGraph {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::model::*;
 
     fn make_edge(src: &str, tgt: &str, kind: EdgeKind) -> Edge {
-        Edge { kind, source: src.into(), target: tgt.into(), metadata: None }
+        Edge {
+            kind,
+            source: src.into(),
+            target: tgt.into(),
+            metadata: None,
+        }
     }
 
     #[test]
@@ -202,8 +201,8 @@ mod tests {
     fn bfs_filtered_excludes_low_confidence() {
         let edges = vec![
             make_edge("A", "B", EdgeKind::Calls),       // High
-            make_edge("A", "C", EdgeKind::DependsOn),    // Low
-            make_edge("B", "D", EdgeKind::ImportsFrom),  // Medium
+            make_edge("A", "C", EdgeKind::DependsOn),   // Low
+            make_edge("B", "D", EdgeKind::ImportsFrom), // Medium
         ];
         let graph = InMemoryGraph::from_edges(edges);
         let results = graph.bfs_filtered("A", Direction::Forward, 3, Confidence::High);
