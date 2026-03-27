@@ -7,11 +7,10 @@ pub fn pid_path(data_dir: &Path) -> PathBuf {
 }
 
 pub fn write_pid(data_dir: &Path, pid: u32) -> Result<()> {
-    std::fs::write(pid_path(data_dir), pid.to_string())
-        .map_err(|e| CodeGraphError::FileSystem {
-            path: pid_path(data_dir),
-            source: e,
-        })
+    std::fs::write(pid_path(data_dir), pid.to_string()).map_err(|e| CodeGraphError::FileSystem {
+        path: pid_path(data_dir),
+        source: e,
+    })
 }
 
 pub fn read_pid(data_dir: &Path) -> Option<u32> {

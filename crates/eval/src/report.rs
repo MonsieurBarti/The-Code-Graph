@@ -32,8 +32,8 @@ pub struct ImpactSuiteResult {
 impl SuiteResult {
     /// Returns true if all quality targets are met.
     pub fn all_passed(&self) -> bool {
-        let search_ok = self.search.as_ref().map_or(true, |s| s.mrr_passed);
-        let impact_ok = self.impact.as_ref().map_or(true, |i| i.precision_passed);
+        let search_ok = self.search.as_ref().is_none_or(|s| s.mrr_passed);
+        let impact_ok = self.impact.as_ref().is_none_or(|i| i.precision_passed);
         search_ok && impact_ok
     }
 
@@ -41,18 +41,38 @@ impl SuiteResult {
     pub fn fmt_compact(&self, w: &mut dyn Write) -> std::io::Result<()> {
         if let Some(search) = &self.search {
             let status = if search.mrr_passed { "PASS" } else { "FAIL" };
-            writeln!(w, "Search Suite — {} repos, {} queries", search.repos, search.queries)?;
-            writeln!(w, "  MRR:          {:.2} (target: >{:.2}) {}", search.mrr, search.mrr_target, status)?;
+            writeln!(
+                w,
+                "Search Suite — {} repos, {} queries",
+                search.repos, search.queries
+            )?;
+            writeln!(
+                w,
+                "  MRR:          {:.2} (target: >{:.2}) {}",
+                search.mrr, search.mrr_target, status
+            )?;
             writeln!(w, "  Precision@5:  {:.2}", search.precision_at_5)?;
             writeln!(w, "  Precision@10: {:.2}", search.precision_at_10)?;
         }
         if let Some(impact) = &self.impact {
-            let status = if impact.precision_passed { "PASS" } else { "FAIL" };
+            let status = if impact.precision_passed {
+                "PASS"
+            } else {
+                "FAIL"
+            };
             if self.search.is_some() {
                 writeln!(w)?;
             }
-            writeln!(w, "Impact Suite — {} repos, {} scenarios", impact.repos, impact.scenarios)?;
-            writeln!(w, "  Precision:    {:.2} (target: >{:.2}) {}", impact.precision, impact.precision_target, status)?;
+            writeln!(
+                w,
+                "Impact Suite — {} repos, {} scenarios",
+                impact.repos, impact.scenarios
+            )?;
+            writeln!(
+                w,
+                "  Precision:    {:.2} (target: >{:.2}) {}",
+                impact.precision, impact.precision_target, status
+            )?;
             writeln!(w, "  Recall:       {:.2}", impact.recall)?;
             writeln!(w, "  F1:           {:.2}", impact.f1)?;
         }
@@ -65,14 +85,38 @@ impl SuiteResult {
         writeln!(w, "--------+--------------+-------+--------+-------")?;
         if let Some(search) = &self.search {
             let status = if search.mrr_passed { "PASS" } else { "FAIL" };
-            writeln!(w, "Search  | MRR          | {:.2}  | >{:.2}  | {}", search.mrr, search.mrr_target, status)?;
-            writeln!(w, "Search  | Precision@5  | {:.2}  |        |", search.precision_at_5)?;
-            writeln!(w, "Search  | Precision@10 | {:.2}  |        |", search.precision_at_10)?;
+            writeln!(
+                w,
+                "Search  | MRR          | {:.2}  | >{:.2}  | {}",
+                search.mrr, search.mrr_target, status
+            )?;
+            writeln!(
+                w,
+                "Search  | Precision@5  | {:.2}  |        |",
+                search.precision_at_5
+            )?;
+            writeln!(
+                w,
+                "Search  | Precision@10 | {:.2}  |        |",
+                search.precision_at_10
+            )?;
         }
         if let Some(impact) = &self.impact {
-            let status = if impact.precision_passed { "PASS" } else { "FAIL" };
-            writeln!(w, "Impact  | Precision    | {:.2}  | >{:.2}  | {}", impact.precision, impact.precision_target, status)?;
-            writeln!(w, "Impact  | Recall       | {:.2}  |        |", impact.recall)?;
+            let status = if impact.precision_passed {
+                "PASS"
+            } else {
+                "FAIL"
+            };
+            writeln!(
+                w,
+                "Impact  | Precision    | {:.2}  | >{:.2}  | {}",
+                impact.precision, impact.precision_target, status
+            )?;
+            writeln!(
+                w,
+                "Impact  | Recall       | {:.2}  |        |",
+                impact.recall
+            )?;
             writeln!(w, "Impact  | F1           | {:.2}  |        |", impact.f1)?;
         }
         Ok(())

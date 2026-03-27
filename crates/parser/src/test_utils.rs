@@ -2,7 +2,10 @@ use std::path::Path;
 
 use domain::model::SymbolNode;
 
-use crate::{Export, GoParser, JavaScriptParser, LanguageParser, ParseResult, PythonParser, RawImport, RustParser, TypeScriptParser};
+use crate::{
+    Export, GoParser, JavaScriptParser, LanguageParser, ParseResult, PythonParser, RawImport,
+    RustParser, TypeScriptParser,
+};
 
 /// Parse TypeScript source and return the result.
 pub fn parse_ts(source: &str) -> ParseResult {

@@ -5,8 +5,8 @@ pub mod logging;
 pub mod output;
 pub mod project;
 
-use domain::error::Result;
 use commands::{Cli, Commands};
+use domain::error::Result;
 use output::OutputFormat;
 
 pub fn run(cli: Cli) -> Result<()> {

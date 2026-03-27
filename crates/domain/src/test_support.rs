@@ -1,7 +1,7 @@
-use std::path::{Path, PathBuf};
 use crate::error::Result;
 use crate::model::*;
-use crate::ports::{GraphStore, SearchIndex, FileData, ParseProvider};
+use crate::ports::{FileData, GraphStore, ParseProvider, SearchIndex};
+use std::path::{Path, PathBuf};
 
 /// In-memory implementation of GraphStore + SearchIndex for testing.
 #[derive(Default, Clone)]
@@ -30,38 +30,76 @@ impl InMemoryGraphStore {
 }
 
 impl GraphStore for InMemoryGraphStore {
-    fn upsert_file(&self, _file: &FileNode) -> Result<()> { Ok(()) }
-    fn upsert_symbol(&self, _symbol: &SymbolNode) -> Result<()> { Ok(()) }
-    fn upsert_edge(&self, _edge: &Edge) -> Result<()> { Ok(()) }
+    fn upsert_file(&self, _file: &FileNode) -> Result<()> {
+        Ok(())
+    }
+    fn upsert_symbol(&self, _symbol: &SymbolNode) -> Result<()> {
+        Ok(())
+    }
+    fn upsert_edge(&self, _edge: &Edge) -> Result<()> {
+        Ok(())
+    }
     fn get_file(&self, path: &Path) -> Result<Option<FileNode>> {
         Ok(self.files.iter().find(|f| f.path == path).cloned())
     }
     fn get_symbol(&self, qualified_name: &str) -> Result<Option<SymbolNode>> {
-        Ok(self.symbols.iter().find(|s| s.qualified_name == qualified_name).cloned())
+        Ok(self
+            .symbols
+            .iter()
+            .find(|s| s.qualified_name == qualified_name)
+            .cloned())
     }
     fn get_edges_from(&self, source: &str) -> Result<Vec<Edge>> {
-        Ok(self.edges.iter().filter(|e| e.source == source).cloned().collect())
+        Ok(self
+            .edges
+            .iter()
+            .filter(|e| e.source == source)
+            .cloned()
+            .collect())
     }
     fn get_edges_to(&self, target: &str) -> Result<Vec<Edge>> {
-        Ok(self.edges.iter().filter(|e| e.target == target).cloned().collect())
+        Ok(self
+            .edges
+            .iter()
+            .filter(|e| e.target == target)
+            .cloned()
+            .collect())
     }
-    fn all_files(&self) -> Result<Vec<FileNode>> { Ok(self.files.clone()) }
-    fn all_symbols(&self) -> Result<Vec<SymbolNode>> { Ok(self.symbols.clone()) }
-    fn all_edges(&self) -> Result<Vec<Edge>> { Ok(self.edges.clone()) }
-    fn remove_file(&self, _path: &Path) -> Result<()> { Ok(()) }
-    fn remove_symbols_in_file(&self, _path: &Path) -> Result<()> { Ok(()) }
+    fn all_files(&self) -> Result<Vec<FileNode>> {
+        Ok(self.files.clone())
+    }
+    fn all_symbols(&self) -> Result<Vec<SymbolNode>> {
+        Ok(self.symbols.clone())
+    }
+    fn all_edges(&self) -> Result<Vec<Edge>> {
+        Ok(self.edges.clone())
+    }
+    fn remove_file(&self, _path: &Path) -> Result<()> {
+        Ok(())
+    }
+    fn remove_symbols_in_file(&self, _path: &Path) -> Result<()> {
+        Ok(())
+    }
     fn stats(&self) -> Result<GraphStats> {
-        Ok(GraphStats { files: self.files.len(), symbols: self.symbols.len(), edges: self.edges.len() })
+        Ok(GraphStats {
+            files: self.files.len(),
+            symbols: self.symbols.len(),
+            edges: self.edges.len(),
+        })
     }
     fn find_by_name(&self, pattern: &str) -> Result<Vec<SymbolNode>> {
-        let exact: Vec<SymbolNode> = self.symbols.iter()
+        let exact: Vec<SymbolNode> = self
+            .symbols
+            .iter()
             .filter(|s| s.name == pattern)
             .cloned()
             .collect();
         if !exact.is_empty() {
             return Ok(exact);
         }
-        Ok(self.symbols.iter()
+        Ok(self
+            .symbols
+            .iter()
             .filter(|s| s.name.starts_with(pattern))
             .cloned()
             .collect())
@@ -82,9 +120,13 @@ impl GraphStore for InMemoryGraphStore {
 }
 
 impl SearchIndex for InMemoryGraphStore {
-    fn index_symbol(&self, _symbol: &SymbolNode) -> Result<()> { Ok(()) }
+    fn index_symbol(&self, _symbol: &SymbolNode) -> Result<()> {
+        Ok(())
+    }
     fn search(&self, query: &str, limit: usize) -> Result<Vec<SearchResult>> {
-        let results: Vec<SearchResult> = self.symbols.iter()
+        let results: Vec<SearchResult> = self
+            .symbols
+            .iter()
             .filter(|s| s.name.contains(query) || s.qualified_name.contains(query))
             .take(limit)
             .map(|s| SearchResult {
@@ -97,7 +139,9 @@ impl SearchIndex for InMemoryGraphStore {
             .collect();
         Ok(results)
     }
-    fn rebuild(&self) -> Result<()> { Ok(()) }
+    fn rebuild(&self) -> Result<()> {
+        Ok(())
+    }
 }
 
 /// Mock ParseProvider that returns canned FileData for testing.
@@ -129,7 +173,10 @@ pub struct MockFileSystem {
 
 impl MockFileSystem {
     pub fn new(files: Vec<(PathBuf, String)>) -> Self {
-        Self { files, hashes: vec![] }
+        Self {
+            files,
+            hashes: vec![],
+        }
     }
 
     pub fn with_hashes(mut self, hashes: Vec<(PathBuf, String)>) -> Self {
@@ -140,7 +187,9 @@ impl MockFileSystem {
 
 impl crate::ports::FileSystem for MockFileSystem {
     fn list_files(&self, _root: &Path, extensions: &[&str]) -> Result<Vec<PathBuf>> {
-        Ok(self.files.iter()
+        Ok(self
+            .files
+            .iter()
             .filter(|(p, _)| {
                 p.extension()
                     .and_then(|e| e.to_str())
@@ -151,20 +200,28 @@ impl crate::ports::FileSystem for MockFileSystem {
     }
 
     fn read_file(&self, path: &Path) -> Result<String> {
-        self.files.iter()
+        self.files
+            .iter()
             .find(|(p, _)| p == path)
             .map(|(_, content)| content.clone())
-            .ok_or_else(|| crate::error::CodeGraphError::Other(format!("file not found: {}", path.display())))
+            .ok_or_else(|| {
+                crate::error::CodeGraphError::Other(format!("file not found: {}", path.display()))
+            })
     }
 
     fn file_hash(&self, path: &Path) -> Result<String> {
         if !self.hashes.is_empty() {
-            return self.hashes.iter()
+            return self
+                .hashes
+                .iter()
                 .find(|(p, _)| p == path)
                 .map(|(_, h)| h.clone())
-                .ok_or_else(|| crate::error::CodeGraphError::Other(
-                    format!("file not found: {}", path.display())
-                ));
+                .ok_or_else(|| {
+                    crate::error::CodeGraphError::Other(format!(
+                        "file not found: {}",
+                        path.display()
+                    ))
+                });
         }
         Ok("mock_hash".to_string())
     }

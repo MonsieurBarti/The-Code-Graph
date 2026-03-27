@@ -32,7 +32,12 @@ pub fn run_find(args: &FindArgs, output_format: OutputFormat) -> Result<()> {
             .filter(|e| e.kind == EdgeKind::TestedBy)
             .map(|e| e.source)
             .collect();
-        results.push(FindResult { symbol, callers, callees, tested_by });
+        results.push(FindResult {
+            symbol,
+            callers,
+            callees,
+            tested_by,
+        });
     }
 
     print(&results, output_format);

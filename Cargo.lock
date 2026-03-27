@@ -385,6 +385,7 @@ dependencies = [
  "sha2",
  "storage",
  "tempfile",
+ "toml",
  "tracing",
 ]
 

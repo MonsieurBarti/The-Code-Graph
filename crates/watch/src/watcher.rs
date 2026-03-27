@@ -100,7 +100,9 @@ mod tests {
 
     #[test]
     fn should_ignore_node_modules() {
-        assert!(should_ignore(Path::new("/project/node_modules/foo/index.js")));
+        assert!(should_ignore(Path::new(
+            "/project/node_modules/foo/index.js"
+        )));
     }
 
     #[test]

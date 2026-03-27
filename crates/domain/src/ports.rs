@@ -1,6 +1,6 @@
-use std::path::{Path, PathBuf};
 use crate::error::Result;
 use crate::model::*;
+use std::path::{Path, PathBuf};
 
 /// Primary storage for the code graph — files, symbols, edges.
 pub trait GraphStore: Send + Sync {

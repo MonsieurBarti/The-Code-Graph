@@ -1,11 +1,15 @@
-use std::path::{Path, PathBuf};
 use domain::error::{CodeGraphError, Result};
+use std::path::{Path, PathBuf};
 
 const BLOCKLIST: &[&str] = &["/", "/home", "/Users", "/tmp", "/var"];
 
 pub fn find_project_root(start: &Path) -> Result<PathBuf> {
-    let mut current = start.canonicalize()
-        .map_err(|e| CodeGraphError::FileSystem { path: start.into(), source: e })?;
+    let mut current = start
+        .canonicalize()
+        .map_err(|e| CodeGraphError::FileSystem {
+            path: start.into(),
+            source: e,
+        })?;
 
     loop {
         if is_blocklisted(&current) {
@@ -22,14 +26,15 @@ pub fn find_project_root(start: &Path) -> Result<PathBuf> {
 
 fn is_blocklisted(path: &Path) -> bool {
     let s = path.to_string_lossy();
-    BLOCKLIST.contains(&s.as_ref())
-        || std::env::var("HOME").ok().is_some_and(|h| s == *h)
+    BLOCKLIST.contains(&s.as_ref()) || std::env::var("HOME").ok().is_some_and(|h| s == *h)
 }
 
 pub fn ensure_data_dir(project_root: &Path) -> Result<PathBuf> {
     let dir = project_root.join(".code-graph");
-    std::fs::create_dir_all(&dir)
-        .map_err(|e| CodeGraphError::FileSystem { path: dir.clone(), source: e })?;
+    std::fs::create_dir_all(&dir).map_err(|e| CodeGraphError::FileSystem {
+        path: dir.clone(),
+        source: e,
+    })?;
     Ok(dir)
 }
 

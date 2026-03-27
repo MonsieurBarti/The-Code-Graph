@@ -2,47 +2,226 @@ use std::path::{Path, PathBuf};
 
 use domain::model::{Edge, EdgeKind, Language};
 
-use crate::ParseResult;
 use super::{ImportResolver, ResolveContext};
+use crate::ParseResult;
 
 // ---------------------------------------------------------------------------
 // Stdlib module set
 // ---------------------------------------------------------------------------
 
 static STDLIB_MODULES: &[&str] = &[
-    "abc", "aifc", "argparse", "array", "ast", "asynchat", "asyncio", "asyncore",
-    "atexit", "audioop", "base64", "bdb", "binascii", "binhex", "bisect",
-    "builtins", "bz2", "calendar", "cgi", "cgitb", "chunk", "cmath", "cmd",
-    "code", "codecs", "codeop", "collections", "colorsys", "compileall",
-    "concurrent", "configparser", "contextlib", "contextvars", "copy", "copyreg",
-    "cProfile", "crypt", "csv", "ctypes", "curses", "dataclasses", "datetime",
-    "dbm", "decimal", "difflib", "dis", "distutils", "doctest", "email",
-    "encodings", "enum", "errno", "faulthandler", "fcntl", "filecmp", "fileinput",
-    "fnmatch", "formatter", "fractions", "ftplib", "functools", "gc", "getopt",
-    "getpass", "gettext", "glob", "grp", "gzip", "hashlib", "heapq", "hmac",
-    "html", "http", "idlelib", "imaplib", "imghdr", "imp", "importlib",
-    "inspect", "io", "ipaddress", "itertools", "json", "keyword", "lib2to3",
-    "linecache", "locale", "logging", "lzma", "mailbox", "mailcap", "marshal",
-    "math", "mimetypes", "mmap", "modulefinder", "multiprocessing", "netrc",
-    "nis", "nntplib", "numbers", "operator", "optparse", "os", "ossaudiodev",
-    "parser", "pathlib", "pdb", "pickle", "pickletools", "pipes", "pkgutil",
-    "platform", "plistlib", "poplib", "posix", "posixpath", "pprint",
-    "profile", "pstats", "pty", "pwd", "py_compile", "pyclbr", "pydoc",
-    "queue", "quopri", "random", "re", "readline", "reprlib", "resource",
-    "rlcompleter", "runpy", "sched", "secrets", "select", "selectors",
-    "shelve", "shlex", "shutil", "signal", "site", "smtpd", "smtplib",
-    "sndhdr", "socket", "socketserver", "spwd", "sqlite3", "sre_compile",
-    "sre_constants", "sre_parse", "ssl", "stat", "statistics", "string",
-    "stringprep", "struct", "subprocess", "sunau", "symtable", "sys",
-    "sysconfig", "syslog", "tabnanny", "tarfile", "telnetlib", "tempfile",
-    "termios", "test", "textwrap", "threading", "time", "timeit", "tkinter",
-    "token", "tokenize", "tomllib", "trace", "traceback", "tracemalloc",
-    "tty", "turtle", "turtledemo", "types", "typing", "unicodedata",
-    "unittest", "urllib", "uu", "uuid", "venv", "warnings", "wave",
-    "weakref", "webbrowser", "winreg", "winsound", "wsgiref", "xdrlib",
-    "xml", "xmlrpc", "zipapp", "zipfile", "zipimport", "zlib",
+    "abc",
+    "aifc",
+    "argparse",
+    "array",
+    "ast",
+    "asynchat",
+    "asyncio",
+    "asyncore",
+    "atexit",
+    "audioop",
+    "base64",
+    "bdb",
+    "binascii",
+    "binhex",
+    "bisect",
+    "builtins",
+    "bz2",
+    "calendar",
+    "cgi",
+    "cgitb",
+    "chunk",
+    "cmath",
+    "cmd",
+    "code",
+    "codecs",
+    "codeop",
+    "collections",
+    "colorsys",
+    "compileall",
+    "concurrent",
+    "configparser",
+    "contextlib",
+    "contextvars",
+    "copy",
+    "copyreg",
+    "cProfile",
+    "crypt",
+    "csv",
+    "ctypes",
+    "curses",
+    "dataclasses",
+    "datetime",
+    "dbm",
+    "decimal",
+    "difflib",
+    "dis",
+    "distutils",
+    "doctest",
+    "email",
+    "encodings",
+    "enum",
+    "errno",
+    "faulthandler",
+    "fcntl",
+    "filecmp",
+    "fileinput",
+    "fnmatch",
+    "formatter",
+    "fractions",
+    "ftplib",
+    "functools",
+    "gc",
+    "getopt",
+    "getpass",
+    "gettext",
+    "glob",
+    "grp",
+    "gzip",
+    "hashlib",
+    "heapq",
+    "hmac",
+    "html",
+    "http",
+    "idlelib",
+    "imaplib",
+    "imghdr",
+    "imp",
+    "importlib",
+    "inspect",
+    "io",
+    "ipaddress",
+    "itertools",
+    "json",
+    "keyword",
+    "lib2to3",
+    "linecache",
+    "locale",
+    "logging",
+    "lzma",
+    "mailbox",
+    "mailcap",
+    "marshal",
+    "math",
+    "mimetypes",
+    "mmap",
+    "modulefinder",
+    "multiprocessing",
+    "netrc",
+    "nis",
+    "nntplib",
+    "numbers",
+    "operator",
+    "optparse",
+    "os",
+    "ossaudiodev",
+    "parser",
+    "pathlib",
+    "pdb",
+    "pickle",
+    "pickletools",
+    "pipes",
+    "pkgutil",
+    "platform",
+    "plistlib",
+    "poplib",
+    "posix",
+    "posixpath",
+    "pprint",
+    "profile",
+    "pstats",
+    "pty",
+    "pwd",
+    "py_compile",
+    "pyclbr",
+    "pydoc",
+    "queue",
+    "quopri",
+    "random",
+    "re",
+    "readline",
+    "reprlib",
+    "resource",
+    "rlcompleter",
+    "runpy",
+    "sched",
+    "secrets",
+    "select",
+    "selectors",
+    "shelve",
+    "shlex",
+    "shutil",
+    "signal",
+    "site",
+    "smtpd",
+    "smtplib",
+    "sndhdr",
+    "socket",
+    "socketserver",
+    "spwd",
+    "sqlite3",
+    "sre_compile",
+    "sre_constants",
+    "sre_parse",
+    "ssl",
+    "stat",
+    "statistics",
+    "string",
+    "stringprep",
+    "struct",
+    "subprocess",
+    "sunau",
+    "symtable",
+    "sys",
+    "sysconfig",
+    "syslog",
+    "tabnanny",
+    "tarfile",
+    "telnetlib",
+    "tempfile",
+    "termios",
+    "test",
+    "textwrap",
+    "threading",
+    "time",
+    "timeit",
+    "tkinter",
+    "token",
+    "tokenize",
+    "tomllib",
+    "trace",
+    "traceback",
+    "tracemalloc",
+    "tty",
+    "turtle",
+    "turtledemo",
+    "types",
+    "typing",
+    "unicodedata",
+    "unittest",
+    "urllib",
+    "uu",
+    "uuid",
+    "venv",
+    "warnings",
+    "wave",
+    "weakref",
+    "webbrowser",
+    "winreg",
+    "winsound",
+    "wsgiref",
+    "xdrlib",
+    "xml",
+    "xmlrpc",
+    "zipapp",
+    "zipfile",
+    "zipimport",
+    "zlib",
     // Common underscore-prefixed internals
-    "_thread", "__future__", "_abc", "_collections_abc",
+    "_thread",
+    "__future__",
+    "_abc",
+    "_collections_abc",
 ];
 
 fn is_stdlib(first_segment: &str) -> bool {
@@ -183,15 +362,16 @@ mod tests {
     fn resolves_relative_import_single_dot() {
         let context = make_context(
             "/project",
-            vec![
-                "/project/app/models.py",
-                "/project/app/views.py",
-            ],
+            vec!["/project/app/models.py", "/project/app/views.py"],
         );
         let parse_result = ParseResult {
             imports: vec![RawImport {
                 specifier: ".models".into(),
-                names: vec![ImportName { name: "User".into(), alias: None, is_type: false }],
+                names: vec![ImportName {
+                    name: "User".into(),
+                    alias: None,
+                    is_type: false,
+                }],
                 ..Default::default()
             }],
             ..Default::default()
@@ -211,15 +391,16 @@ mod tests {
     fn resolves_relative_import_double_dot() {
         let context = make_context(
             "/project",
-            vec![
-                "/project/utils.py",
-                "/project/app/views.py",
-            ],
+            vec!["/project/utils.py", "/project/app/views.py"],
         );
         let parse_result = ParseResult {
             imports: vec![RawImport {
                 specifier: "..utils".into(),
-                names: vec![ImportName { name: "helper".into(), alias: None, is_type: false }],
+                names: vec![ImportName {
+                    name: "helper".into(),
+                    alias: None,
+                    is_type: false,
+                }],
                 ..Default::default()
             }],
             ..Default::default()
@@ -267,7 +448,10 @@ mod tests {
         let edges = resolver
             .resolve(Path::new("/project/main.py"), &parse_result, &context)
             .unwrap();
-        assert!(edges.is_empty(), "stdlib submodule import should produce no edge");
+        assert!(
+            edges.is_empty(),
+            "stdlib submodule import should produce no edge"
+        );
     }
 
     // AC43: Creates ConditionalImport edge for TYPE_CHECKING imports
@@ -280,7 +464,11 @@ mod tests {
         let parse_result = ParseResult {
             imports: vec![RawImport {
                 specifier: ".models".into(),
-                names: vec![ImportName { name: "User".into(), alias: None, is_type: false }],
+                names: vec![ImportName {
+                    name: "User".into(),
+                    alias: None,
+                    is_type: false,
+                }],
                 is_type_only: true,
                 ..Default::default()
             }],
@@ -297,10 +485,7 @@ mod tests {
     // Absolute local import resolution
     #[test]
     fn resolves_absolute_local_import() {
-        let context = make_context(
-            "/project",
-            vec!["/project/utils/helpers.py"],
-        );
+        let context = make_context("/project", vec!["/project/utils/helpers.py"]);
         let parse_result = ParseResult {
             imports: vec![RawImport {
                 specifier: "utils.helpers".into(),
@@ -320,10 +505,7 @@ mod tests {
     // Package import resolves to __init__.py
     #[test]
     fn resolves_package_import_to_init() {
-        let context = make_context(
-            "/project",
-            vec!["/project/mypackage/__init__.py"],
-        );
+        let context = make_context("/project", vec!["/project/mypackage/__init__.py"]);
         let parse_result = ParseResult {
             imports: vec![RawImport {
                 specifier: "mypackage".into(),
@@ -360,13 +542,7 @@ mod tests {
     // Multiple imports in one parse result
     #[test]
     fn resolves_multiple_imports() {
-        let context = make_context(
-            "/project",
-            vec![
-                "/project/models.py",
-                "/project/utils.py",
-            ],
-        );
+        let context = make_context("/project", vec!["/project/models.py", "/project/utils.py"]);
         let parse_result = ParseResult {
             imports: vec![
                 RawImport {

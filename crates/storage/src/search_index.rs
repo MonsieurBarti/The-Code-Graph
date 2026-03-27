@@ -142,12 +142,17 @@ mod tests {
             kind: SymbolKind::Function,
             location: Location {
                 file: "src/a.rs".into(),
-                line_start: 1, line_end: 10,
-                col_start: 0, col_end: 1,
+                line_start: 1,
+                line_end: 10,
+                col_start: 0,
+                col_end: 1,
             },
             visibility: Visibility::Public,
-            is_exported: true, is_async: false, is_test: false,
-            decorators: vec![], signature: None,
+            is_exported: true,
+            is_async: false,
+            is_test: false,
+            decorators: vec![],
+            signature: None,
         };
         store.upsert_symbol(&sym).unwrap();
         assert!(!store.search("AlphaName", 10).unwrap().is_empty());

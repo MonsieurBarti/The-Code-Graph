@@ -3,7 +3,9 @@ use std::path::Path;
 
 use domain::model::Language;
 
-use crate::{GoParser, JavaScriptParser, LanguageParser, PythonParser, RustParser, TypeScriptParser};
+use crate::{
+    GoParser, JavaScriptParser, LanguageParser, PythonParser, RustParser, TypeScriptParser,
+};
 
 /// Registry of language parsers with extension-based dispatch.
 pub struct ParserRegistry {
@@ -216,10 +218,7 @@ mod tests {
                     let result = parser.parse(source.as_bytes(), Path::new(&filename));
                     assert!(result.is_ok(), "parse failed for {filename}");
                     let pr = result.unwrap();
-                    assert!(
-                        !pr.symbols.is_empty(),
-                        "expected symbols from {filename}"
-                    );
+                    assert!(!pr.symbols.is_empty(), "expected symbols from {filename}");
                 })
             })
             .collect();

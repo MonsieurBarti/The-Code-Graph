@@ -127,10 +127,7 @@ mod tests {
         // Query 1: correct at position 1 → 1.0
         // Query 2: correct at position 3 → 1/3
         // Average: (1.0 + 1/3) / 2 = 2/3
-        let ranked = vec![
-            vec![s("a"), s("b"), s("c")],
-            vec![s("x"), s("y"), s("a")],
-        ];
+        let ranked = vec![vec![s("a"), s("b"), s("c")], vec![s("x"), s("y"), s("a")]];
         let truth = vec![vec![s("a")], vec![s("a")]];
         let expected = (1.0 + 1.0 / 3.0) / 2.0;
         assert!((mrr(&ranked, &truth) - expected).abs() < 1e-10);

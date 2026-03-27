@@ -2,8 +2,8 @@ use std::path::{Path, PathBuf};
 
 use domain::model::{Edge, EdgeKind, Language};
 
-use crate::ParseResult;
 use super::{ImportResolver, ResolveContext};
+use crate::ParseResult;
 
 /// Go import resolver — go.mod + module path resolution.
 pub struct GoResolver;

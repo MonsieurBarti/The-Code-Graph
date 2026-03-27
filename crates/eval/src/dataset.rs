@@ -62,8 +62,7 @@ pub fn eval_cache_dir() -> Result<PathBuf> {
     if let Ok(xdg) = std::env::var("XDG_CACHE_HOME") {
         return Ok(PathBuf::from(xdg).join("code-graph-eval"));
     }
-    let home =
-        std::env::var("HOME").map_err(|_| CodeGraphError::Other("HOME not set".into()))?;
+    let home = std::env::var("HOME").map_err(|_| CodeGraphError::Other("HOME not set".into()))?;
     Ok(PathBuf::from(home).join(".cache").join("code-graph-eval"))
 }
 
@@ -117,9 +116,7 @@ pub fn clone_or_cache(repo: &ManifestRepo, no_cache: bool) -> Result<PathBuf> {
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(CodeGraphError::Other(format!(
-            "git clone failed: {stderr}"
-        )));
+        return Err(CodeGraphError::Other(format!("git clone failed: {stderr}")));
     }
 
     std::fs::write(cache_path.join(".revision"), &repo.revision)
@@ -263,10 +260,7 @@ mod tests {
         assert_eq!(queries.len(), 1);
         assert_eq!(queries[0].repo, "sample-repo");
         assert_eq!(queries[0].query, "find all error handlers");
-        assert_eq!(
-            queries[0].expected,
-            vec!["src/error.rs", "src/handler.rs"]
-        );
+        assert_eq!(queries[0].expected, vec!["src/error.rs", "src/handler.rs"]);
     }
 
     #[test]
@@ -344,7 +338,11 @@ mod tests {
         let repo = test_repo();
 
         // Create the cache directory with a wrong revision marker.
-        let cache_dir = dir.path().join("code-graph-eval").join(&repo.name).join(&repo.revision);
+        let cache_dir = dir
+            .path()
+            .join("code-graph-eval")
+            .join(&repo.name)
+            .join(&repo.revision);
         std::fs::create_dir_all(&cache_dir).unwrap();
         let mut f = std::fs::File::create(cache_dir.join(".revision")).unwrap();
         f.write_all(b"wrong-revision").unwrap();
@@ -353,7 +351,10 @@ mod tests {
         let valid = validate_cache(&repo).unwrap();
         unsafe { std::env::remove_var("XDG_CACHE_HOME") };
 
-        assert!(!valid, "cache should be invalid when revision doesn't match");
+        assert!(
+            !valid,
+            "cache should be invalid when revision doesn't match"
+        );
     }
 
     #[test]
@@ -362,7 +363,11 @@ mod tests {
         let cache_root = dir.path().to_str().unwrap().to_string();
         let repo = test_repo();
 
-        let cache_dir = dir.path().join("code-graph-eval").join(&repo.name).join(&repo.revision);
+        let cache_dir = dir
+            .path()
+            .join("code-graph-eval")
+            .join(&repo.name)
+            .join(&repo.revision);
         std::fs::create_dir_all(&cache_dir).unwrap();
         std::fs::write(cache_dir.join(".revision"), &repo.revision).unwrap();
 
@@ -370,7 +375,10 @@ mod tests {
         let valid = validate_cache(&repo).unwrap();
         unsafe { std::env::remove_var("XDG_CACHE_HOME") };
 
-        assert!(valid, "cache should be valid when dir exists and revision matches");
+        assert!(
+            valid,
+            "cache should be valid when dir exists and revision matches"
+        );
     }
 
     // -- Clear cache --------------------------------------------------------
@@ -381,7 +389,11 @@ mod tests {
         let cache_root = dir.path().to_str().unwrap().to_string();
         let repo = test_repo();
 
-        let cache_dir = dir.path().join("code-graph-eval").join(&repo.name).join(&repo.revision);
+        let cache_dir = dir
+            .path()
+            .join("code-graph-eval")
+            .join(&repo.name)
+            .join(&repo.revision);
         std::fs::create_dir_all(&cache_dir).unwrap();
         std::fs::write(cache_dir.join(".revision"), &repo.revision).unwrap();
         assert!(cache_dir.exists(), "setup: cache dir should exist");
@@ -390,6 +402,9 @@ mod tests {
         clear_cache(&repo).unwrap();
         unsafe { std::env::remove_var("XDG_CACHE_HOME") };
 
-        assert!(!cache_dir.exists(), "cache dir should be removed after clear");
+        assert!(
+            !cache_dir.exists(),
+            "cache dir should be removed after clear"
+        );
     }
 }

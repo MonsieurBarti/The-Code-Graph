@@ -1,6 +1,6 @@
-use std::path::Path;
-use serde::Deserialize;
 use domain::error::{CodeGraphError, Result};
+use serde::Deserialize;
+use std::path::Path;
 
 #[derive(Debug, Clone, Default, Deserialize)]
 pub struct CodeGraphConfig {
@@ -29,10 +29,12 @@ pub fn load_config(project_root: &Path) -> Result<CodeGraphConfig> {
     if !config_path.exists() {
         return Ok(CodeGraphConfig::default());
     }
-    let content = std::fs::read_to_string(&config_path)
-        .map_err(|e| CodeGraphError::FileSystem { path: config_path.clone(), source: e })?;
-    toml::from_str(&content)
-        .map_err(|e| CodeGraphError::Other(format!("invalid config: {e}")))
+    let content =
+        std::fs::read_to_string(&config_path).map_err(|e| CodeGraphError::FileSystem {
+            path: config_path.clone(),
+            source: e,
+        })?;
+    toml::from_str(&content).map_err(|e| CodeGraphError::Other(format!("invalid config: {e}")))
 }
 
 #[cfg(test)]
@@ -52,13 +54,17 @@ mod tests {
         let tmp = tempfile::tempdir().unwrap();
         let dir = tmp.path().join(".code-graph");
         std::fs::create_dir_all(&dir).unwrap();
-        std::fs::write(dir.join("config.toml"), r#"
+        std::fs::write(
+            dir.join("config.toml"),
+            r#"
 [index]
 exclude = ["target", "node_modules"]
 
 [search]
 max_results = 50
-"#).unwrap();
+"#,
+        )
+        .unwrap();
         let config = load_config(tmp.path()).unwrap();
         let index = config.index.unwrap();
         assert_eq!(index.exclude.unwrap(), vec!["target", "node_modules"]);

@@ -1,12 +1,12 @@
-use std::path::{Path, PathBuf};
-use std::fs;
-use serde_json::{json, Value};
 use domain::error::{CodeGraphError, Result};
+use serde_json::{json, Value};
+use std::fs;
+use std::path::{Path, PathBuf};
 
-use super::SetupArgs;
 use super::setup_helpers::{
-    resolve_settings_path, ensure_gitignore_entry, remove_gitignore_entry, find_on_path,
+    ensure_gitignore_entry, find_on_path, remove_gitignore_entry, resolve_settings_path,
 };
+use super::SetupArgs;
 use crate::project::find_project_root;
 
 // ── Settings JSON management (T02) ──────────────────────────────────────────
@@ -15,26 +15,27 @@ pub(super) fn read_settings(path: &Path) -> Result<Value> {
     if !path.exists() {
         return Ok(json!({}));
     }
-    let content = fs::read_to_string(path).map_err(|e| {
-        CodeGraphError::FileSystem { path: path.to_path_buf(), source: e }
+    let content = fs::read_to_string(path).map_err(|e| CodeGraphError::FileSystem {
+        path: path.to_path_buf(),
+        source: e,
     })?;
-    serde_json::from_str(&content).map_err(|e| {
-        CodeGraphError::Other(format!("Invalid JSON in {}: {}", path.display(), e))
-    })
+    serde_json::from_str(&content)
+        .map_err(|e| CodeGraphError::Other(format!("Invalid JSON in {}: {}", path.display(), e)))
 }
 
 pub(super) fn write_settings(path: &Path, value: &Value) -> Result<()> {
     if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent).map_err(|e| {
-            CodeGraphError::FileSystem { path: parent.to_path_buf(), source: e }
+        fs::create_dir_all(parent).map_err(|e| CodeGraphError::FileSystem {
+            path: parent.to_path_buf(),
+            source: e,
         })?;
     }
-    let mut content = serde_json::to_string_pretty(value).map_err(|e| {
-        CodeGraphError::Other(format!("Failed to serialize settings: {}", e))
-    })?;
+    let mut content = serde_json::to_string_pretty(value)
+        .map_err(|e| CodeGraphError::Other(format!("Failed to serialize settings: {}", e)))?;
     content.push('\n');
-    fs::write(path, content).map_err(|e| {
-        CodeGraphError::FileSystem { path: path.to_path_buf(), source: e }
+    fs::write(path, content).map_err(|e| CodeGraphError::FileSystem {
+        path: path.to_path_buf(),
+        source: e,
     })
 }
 
@@ -106,7 +107,8 @@ impl std::fmt::Display for HookStatus {
 }
 
 fn expected_command(hook_def: &Value) -> Option<&str> {
-    hook_def.get("hooks")
+    hook_def
+        .get("hooks")
         .and_then(|h| h.as_array())
         .and_then(|a| a.first())
         .and_then(|h| h.get("command"))
@@ -114,7 +116,8 @@ fn expected_command(hook_def: &Value) -> Option<&str> {
 }
 
 fn check_hook_status(settings: &Value, event: &str, expected: &Value) -> HookStatus {
-    let entries = match settings.get("hooks")
+    let entries = match settings
+        .get("hooks")
         .and_then(|h| h.get(event))
         .and_then(|e| e.as_array())
     {
@@ -125,7 +128,8 @@ fn check_hook_status(settings: &Value, event: &str, expected: &Value) -> HookSta
     for entry in entries {
         if is_code_graph_hook(entry) {
             // Found a code-graph hook — check if command matches
-            let found_cmd = entry.get("hooks")
+            let found_cmd = entry
+                .get("hooks")
                 .and_then(|h| h.as_array())
                 .and_then(|a| a.first())
                 .and_then(|h| h.get("command"))
@@ -147,14 +151,20 @@ fn run_check(args: &SetupArgs, project_root: Option<&Path>) -> Result<()> {
     let jq_binary = find_on_path("jq");
     let settings_path = resolve_settings_path(project_root, args.global)?;
 
-    println!("code-graph binary: {}", match &cg_binary {
-        Some(p) => p.display().to_string(),
-        None => "not found".to_string(),
-    });
-    println!("jq: {}", match &jq_binary {
-        Some(p) => p.display().to_string(),
-        None => "not found".to_string(),
-    });
+    println!(
+        "code-graph binary: {}",
+        match &cg_binary {
+            Some(p) => p.display().to_string(),
+            None => "not found".to_string(),
+        }
+    );
+    println!(
+        "jq: {}",
+        match &jq_binary {
+            Some(p) => p.display().to_string(),
+            None => "not found".to_string(),
+        }
+    );
 
     let rel_path = if args.global {
         "~/.claude/settings.json".to_string()
@@ -179,7 +189,9 @@ fn run_check(args: &SetupArgs, project_root: Option<&Path>) -> Result<()> {
         println!("Status: all hooks installed");
         Ok(())
     } else {
-        Err(CodeGraphError::Other("Some hooks are missing or outdated".into()))
+        Err(CodeGraphError::Other(
+            "Some hooks are missing or outdated".into(),
+        ))
     }
 }
 
@@ -191,7 +203,10 @@ fn run_install(args: &SetupArgs, project_root: Option<&Path>) -> Result<()> {
 
     // Ensure hooks object exists
     if settings.get("hooks").is_none() {
-        settings.as_object_mut().unwrap().insert("hooks".to_string(), json!({}));
+        settings
+            .as_object_mut()
+            .unwrap()
+            .insert("hooks".to_string(), json!({}));
     }
 
     let defs = hook_definitions();
@@ -234,7 +249,11 @@ fn run_install(args: &SetupArgs, project_root: Option<&Path>) -> Result<()> {
         println!("Warning: jq not found — PostToolUse hook will not extract file paths. Install jq for per-file incremental indexing.");
     }
 
-    println!("Installed {} hooks to {}", defs.len(), settings_path.display());
+    println!(
+        "Installed {} hooks to {}",
+        defs.len(),
+        settings_path.display()
+    );
     Ok(())
 }
 
@@ -274,16 +293,20 @@ fn run_remove(args: &SetupArgs, project_root: Option<&Path>) -> Result<()> {
             let data_dir = root.join(".code-graph");
             if data_dir.is_dir() {
                 // Refuse to follow symlinks to avoid deleting unrelated directories
-                let meta = fs::symlink_metadata(&data_dir).map_err(|e| {
-                    CodeGraphError::FileSystem { path: data_dir.clone(), source: e }
-                })?;
+                let meta =
+                    fs::symlink_metadata(&data_dir).map_err(|e| CodeGraphError::FileSystem {
+                        path: data_dir.clone(),
+                        source: e,
+                    })?;
                 if meta.file_type().is_symlink() {
-                    return Err(CodeGraphError::Other(
-                        format!("{} is a symlink — refusing to purge", data_dir.display())
-                    ));
+                    return Err(CodeGraphError::Other(format!(
+                        "{} is a symlink — refusing to purge",
+                        data_dir.display()
+                    )));
                 }
-                fs::remove_dir_all(&data_dir).map_err(|e| {
-                    CodeGraphError::FileSystem { path: data_dir, source: e }
+                fs::remove_dir_all(&data_dir).map_err(|e| CodeGraphError::FileSystem {
+                    path: data_dir,
+                    source: e,
                 })?;
             }
         }
@@ -309,14 +332,14 @@ pub fn run_setup(args: &SetupArgs) -> Result<()> {
         return run_remove(args, project_root.as_deref());
     }
     // Install mode — platform required
-    let platform = args.platform.as_deref()
-        .ok_or_else(|| CodeGraphError::Other(
-            "platform required: code-graph setup claude".into()
-        ))?;
+    let platform = args.platform.as_deref().ok_or_else(|| {
+        CodeGraphError::Other("platform required: code-graph setup claude".into())
+    })?;
     if platform != "claude" {
-        return Err(CodeGraphError::Other(
-            format!("Unsupported platform '{}'. Supported: claude", platform)
-        ));
+        return Err(CodeGraphError::Other(format!(
+            "Unsupported platform '{}'. Supported: claude",
+            platform
+        )));
     }
     run_install(args, project_root.as_deref())
 }
@@ -386,7 +409,12 @@ mod tests {
         write_settings(&path, &value).unwrap();
         let content = fs::read_to_string(&path).unwrap();
         let parsed: Value = serde_json::from_str(&content).unwrap();
-        let keys: Vec<&str> = parsed.as_object().unwrap().keys().map(|k| k.as_str()).collect();
+        let keys: Vec<&str> = parsed
+            .as_object()
+            .unwrap()
+            .keys()
+            .map(|k| k.as_str())
+            .collect();
         assert_eq!(keys, vec!["alpha", "beta", "gamma"]);
     }
 
@@ -415,20 +443,33 @@ mod tests {
         let ss_hooks = ss["hooks"].as_array().unwrap();
         assert_eq!(ss_hooks.len(), 1);
         assert_eq!(ss_hooks[0]["type"], "command");
-        assert!(ss_hooks[0]["command"].as_str().unwrap().contains("code-graph index --incremental"));
+        assert!(ss_hooks[0]["command"]
+            .as_str()
+            .unwrap()
+            .contains("code-graph index --incremental"));
         assert_eq!(ss_hooks[0]["timeout"], 120);
 
         let ptu = post_tool_use_hook();
         assert_eq!(ptu["matcher"], "Edit|Write");
         let ptu_hooks = ptu["hooks"].as_array().unwrap();
         assert_eq!(ptu_hooks.len(), 1);
-        assert!(ptu_hooks[0]["command"].as_str().unwrap().contains("code-graph index --incremental"));
+        assert!(ptu_hooks[0]["command"]
+            .as_str()
+            .unwrap()
+            .contains("code-graph index --incremental"));
         assert_eq!(ptu_hooks[0]["timeout"], 15);
     }
 
     // ── T04 tests: install mode ─────────────────────────────────────────────
 
-    fn make_setup_args(platform: Option<&str>, global: bool, check: bool, remove: bool, clean: bool, purge: bool) -> SetupArgs {
+    fn make_setup_args(
+        platform: Option<&str>,
+        global: bool,
+        check: bool,
+        remove: bool,
+        clean: bool,
+        purge: bool,
+    ) -> SetupArgs {
         SetupArgs {
             platform: platform.map(String::from),
             global,
@@ -449,7 +490,8 @@ mod tests {
         run_install(&args, Some(root)).unwrap();
 
         let settings_path = root.join(".claude").join("settings.json");
-        let settings: Value = serde_json::from_str(&fs::read_to_string(&settings_path).unwrap()).unwrap();
+        let settings: Value =
+            serde_json::from_str(&fs::read_to_string(&settings_path).unwrap()).unwrap();
         assert!(settings["hooks"]["SessionStart"].as_array().unwrap().len() == 1);
         assert!(settings["hooks"]["PostToolUse"].as_array().unwrap().len() == 1);
         assert!(is_code_graph_hook(&settings["hooks"]["SessionStart"][0]));
@@ -462,14 +504,22 @@ mod tests {
         let root = dir.path();
         let settings_path = root.join(".claude").join("settings.json");
         fs::create_dir_all(settings_path.parent().unwrap()).unwrap();
-        fs::write(&settings_path, r#"{"env": {"DEBUG": "1"}, "permissions": {"allow": ["Read"]}}"#).unwrap();
+        fs::write(
+            &settings_path,
+            r#"{"env": {"DEBUG": "1"}, "permissions": {"allow": ["Read"]}}"#,
+        )
+        .unwrap();
 
         let args = make_setup_args(Some("claude"), false, false, false, false, false);
         run_install(&args, Some(root)).unwrap();
 
-        let settings: Value = serde_json::from_str(&fs::read_to_string(&settings_path).unwrap()).unwrap();
+        let settings: Value =
+            serde_json::from_str(&fs::read_to_string(&settings_path).unwrap()).unwrap();
         assert_eq!(settings["env"]["DEBUG"], "1");
-        assert!(settings["permissions"]["allow"].as_array().unwrap().contains(&Value::String("Read".into())));
+        assert!(settings["permissions"]["allow"]
+            .as_array()
+            .unwrap()
+            .contains(&Value::String("Read".into())));
         assert!(settings.get("hooks").is_some());
     }
 
@@ -486,14 +536,23 @@ mod tests {
                 ]
             }
         });
-        fs::write(&settings_path, serde_json::to_string_pretty(&existing).unwrap()).unwrap();
+        fs::write(
+            &settings_path,
+            serde_json::to_string_pretty(&existing).unwrap(),
+        )
+        .unwrap();
 
         let args = make_setup_args(Some("claude"), false, false, false, false, false);
         run_install(&args, Some(root)).unwrap();
 
-        let settings: Value = serde_json::from_str(&fs::read_to_string(&settings_path).unwrap()).unwrap();
+        let settings: Value =
+            serde_json::from_str(&fs::read_to_string(&settings_path).unwrap()).unwrap();
         let ss_arr = settings["hooks"]["SessionStart"].as_array().unwrap();
-        assert_eq!(ss_arr.len(), 2, "should have both original and code-graph hook");
+        assert_eq!(
+            ss_arr.len(),
+            2,
+            "should have both original and code-graph hook"
+        );
     }
 
     #[test]
@@ -506,9 +565,16 @@ mod tests {
         run_install(&args, Some(root)).unwrap();
 
         let settings_path = root.join(".claude").join("settings.json");
-        let settings: Value = serde_json::from_str(&fs::read_to_string(&settings_path).unwrap()).unwrap();
-        assert_eq!(settings["hooks"]["SessionStart"].as_array().unwrap().len(), 1);
-        assert_eq!(settings["hooks"]["PostToolUse"].as_array().unwrap().len(), 1);
+        let settings: Value =
+            serde_json::from_str(&fs::read_to_string(&settings_path).unwrap()).unwrap();
+        assert_eq!(
+            settings["hooks"]["SessionStart"].as_array().unwrap().len(),
+            1
+        );
+        assert_eq!(
+            settings["hooks"]["PostToolUse"].as_array().unwrap().len(),
+            1
+        );
     }
 
     #[test]
@@ -529,7 +595,8 @@ mod tests {
         let args = make_setup_args(Some("claude"), false, false, false, false, false);
         run_install(&args, Some(root)).unwrap();
 
-        let settings: Value = serde_json::from_str(&fs::read_to_string(&settings_path).unwrap()).unwrap();
+        let settings: Value =
+            serde_json::from_str(&fs::read_to_string(&settings_path).unwrap()).unwrap();
         let ss_arr = settings["hooks"]["SessionStart"].as_array().unwrap();
         assert_eq!(ss_arr.len(), 1, "should replace in place, not duplicate");
         let cmd = ss_arr[0]["hooks"][0]["command"].as_str().unwrap();
@@ -646,12 +713,17 @@ mod tests {
                 ]
             }
         });
-        fs::write(&settings_path, serde_json::to_string_pretty(&settings).unwrap()).unwrap();
+        fs::write(
+            &settings_path,
+            serde_json::to_string_pretty(&settings).unwrap(),
+        )
+        .unwrap();
 
         let args = make_setup_args(None, false, false, true, false, false);
         run_remove(&args, Some(root)).unwrap();
 
-        let result: Value = serde_json::from_str(&fs::read_to_string(&settings_path).unwrap()).unwrap();
+        let result: Value =
+            serde_json::from_str(&fs::read_to_string(&settings_path).unwrap()).unwrap();
         let arr = result["hooks"]["SessionStart"].as_array().unwrap();
         assert_eq!(arr.len(), 1, "should only have non-code-graph hook left");
         assert!(!is_code_graph_hook(&arr[0]));
@@ -671,13 +743,21 @@ mod tests {
                 ]
             }
         });
-        fs::write(&settings_path, serde_json::to_string_pretty(&settings).unwrap()).unwrap();
+        fs::write(
+            &settings_path,
+            serde_json::to_string_pretty(&settings).unwrap(),
+        )
+        .unwrap();
 
         let args = make_setup_args(None, false, false, true, false, false);
         run_remove(&args, Some(root)).unwrap();
 
-        let result: Value = serde_json::from_str(&fs::read_to_string(&settings_path).unwrap()).unwrap();
-        assert!(result["hooks"].get("SessionStart").is_none(), "empty event should be removed");
+        let result: Value =
+            serde_json::from_str(&fs::read_to_string(&settings_path).unwrap()).unwrap();
+        assert!(
+            result["hooks"].get("SessionStart").is_none(),
+            "empty event should be removed"
+        );
         assert!(result["hooks"]["PostToolUse"].as_array().unwrap().len() == 1);
     }
 
@@ -693,8 +773,12 @@ mod tests {
         run_remove(&remove_args, Some(root)).unwrap();
 
         let settings_path = root.join(".claude").join("settings.json");
-        let result: Value = serde_json::from_str(&fs::read_to_string(&settings_path).unwrap()).unwrap();
-        assert!(result.get("hooks").is_none(), "empty hooks object should be removed");
+        let result: Value =
+            serde_json::from_str(&fs::read_to_string(&settings_path).unwrap()).unwrap();
+        assert!(
+            result.get("hooks").is_none(),
+            "empty hooks object should be removed"
+        );
     }
 
     #[test]
@@ -718,7 +802,9 @@ mod tests {
         // Set up: install hooks + gitignore entry
         let install_args = make_setup_args(Some("claude"), false, false, false, false, false);
         run_install(&install_args, Some(root)).unwrap();
-        assert!(fs::read_to_string(root.join(".gitignore")).unwrap().contains(".code-graph/"));
+        assert!(fs::read_to_string(root.join(".gitignore"))
+            .unwrap()
+            .contains(".code-graph/"));
 
         // Remove with --clean
         let remove_args = make_setup_args(None, false, false, true, true, false);
@@ -762,12 +848,15 @@ mod tests {
     }
 
     fn run_install_via_dispatch(args: &SetupArgs, project_root: Option<&Path>) -> Result<()> {
-        let platform = args.platform.as_deref()
+        let platform = args
+            .platform
+            .as_deref()
             .ok_or_else(|| CodeGraphError::Other("platform required".into()))?;
         if platform != "claude" {
-            return Err(CodeGraphError::Other(
-                format!("Unsupported platform '{}'. Supported: claude", platform)
-            ));
+            return Err(CodeGraphError::Other(format!(
+                "Unsupported platform '{}'. Supported: claude",
+                platform
+            )));
         }
         run_install(args, project_root)
     }
@@ -784,12 +873,17 @@ mod tests {
                 "SessionStart": [session_start_hook()]
             }
         });
-        fs::write(&settings_path, serde_json::to_string_pretty(&settings).unwrap()).unwrap();
+        fs::write(
+            &settings_path,
+            serde_json::to_string_pretty(&settings).unwrap(),
+        )
+        .unwrap();
 
         let args = make_setup_args(None, false, false, true, false, false);
         run_remove(&args, Some(root)).unwrap();
 
-        let result: Value = serde_json::from_str(&fs::read_to_string(&settings_path).unwrap()).unwrap();
+        let result: Value =
+            serde_json::from_str(&fs::read_to_string(&settings_path).unwrap()).unwrap();
         assert_eq!(result["env"]["DEBUG"], "1");
     }
 
@@ -807,9 +901,16 @@ mod tests {
 
         // Verify settings JSON has correct structure
         let settings_path = root.join(".claude").join("settings.json");
-        let settings: Value = serde_json::from_str(&fs::read_to_string(&settings_path).unwrap()).unwrap();
-        assert_eq!(settings["hooks"]["SessionStart"].as_array().unwrap().len(), 1);
-        assert_eq!(settings["hooks"]["PostToolUse"].as_array().unwrap().len(), 1);
+        let settings: Value =
+            serde_json::from_str(&fs::read_to_string(&settings_path).unwrap()).unwrap();
+        assert_eq!(
+            settings["hooks"]["SessionStart"].as_array().unwrap().len(),
+            1
+        );
+        assert_eq!(
+            settings["hooks"]["PostToolUse"].as_array().unwrap().len(),
+            1
+        );
 
         // Check reports installed
         let check_args = make_setup_args(None, false, true, false, false, false);
@@ -839,14 +940,19 @@ mod tests {
                 ]
             }
         });
-        fs::write(&settings_path, serde_json::to_string_pretty(&existing).unwrap()).unwrap();
+        fs::write(
+            &settings_path,
+            serde_json::to_string_pretty(&existing).unwrap(),
+        )
+        .unwrap();
 
         // Install
         let args = make_setup_args(Some("claude"), false, false, false, false, false);
         run_install(&args, Some(root)).unwrap();
 
         // Verify both old and new hooks present
-        let settings: Value = serde_json::from_str(&fs::read_to_string(&settings_path).unwrap()).unwrap();
+        let settings: Value =
+            serde_json::from_str(&fs::read_to_string(&settings_path).unwrap()).unwrap();
         assert!(settings["hooks"]["PreToolUse"].as_array().unwrap().len() == 1);
         assert!(settings["hooks"]["SessionStart"].as_array().unwrap().len() == 1);
         assert!(settings["hooks"]["PostToolUse"].as_array().unwrap().len() == 1);
@@ -864,9 +970,16 @@ mod tests {
         run_install(&args, Some(root)).unwrap();
 
         let settings_path = root.join(".claude").join("settings.json");
-        let settings: Value = serde_json::from_str(&fs::read_to_string(&settings_path).unwrap()).unwrap();
-        assert_eq!(settings["hooks"]["SessionStart"].as_array().unwrap().len(), 1);
-        assert_eq!(settings["hooks"]["PostToolUse"].as_array().unwrap().len(), 1);
+        let settings: Value =
+            serde_json::from_str(&fs::read_to_string(&settings_path).unwrap()).unwrap();
+        assert_eq!(
+            settings["hooks"]["SessionStart"].as_array().unwrap().len(),
+            1
+        );
+        assert_eq!(
+            settings["hooks"]["PostToolUse"].as_array().unwrap().len(),
+            1
+        );
 
         // .gitignore should also have exactly one entry
         let gitignore = fs::read_to_string(root.join(".gitignore")).unwrap();
@@ -894,6 +1007,9 @@ mod tests {
 
         assert!(!data_dir.exists(), ".code-graph/ directory should be gone");
         let gitignore = fs::read_to_string(root.join(".gitignore")).unwrap();
-        assert!(!gitignore.contains(".code-graph/"), ".gitignore entry should be removed");
+        assert!(
+            !gitignore.contains(".code-graph/"),
+            ".gitignore entry should be removed"
+        );
     }
 }

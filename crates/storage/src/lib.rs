@@ -1,12 +1,12 @@
-pub mod schema;
-pub mod mapping;
 pub mod graph_store;
+pub mod mapping;
+pub mod schema;
 pub mod search_index;
 
-use std::path::Path;
 use domain::error::{CodeGraphError, Result};
 use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
+use std::path::Path;
 
 #[derive(Debug, Clone)]
 pub struct SqliteStore {
@@ -50,9 +50,7 @@ impl SqliteStore {
         Ok(Self { pool })
     }
 
-    pub(crate) fn conn(
-        &self,
-    ) -> Result<r2d2::PooledConnection<SqliteConnectionManager>> {
+    pub(crate) fn conn(&self) -> Result<r2d2::PooledConnection<SqliteConnectionManager>> {
         self.pool
             .get()
             .map_err(|e| CodeGraphError::Storage(e.to_string()))
@@ -129,14 +127,28 @@ mod tests {
     #[test]
     fn fts5_trigger_sync_on_store_file_data() {
         let store = SqliteStore::open_in_memory().unwrap();
-        let file = FileNode { path: "a.rs".into(), language: Language::Rust, hash: "h".into() };
+        let file = FileNode {
+            path: "a.rs".into(),
+            language: Language::Rust,
+            hash: "h".into(),
+        };
         let sym = SymbolNode {
             name: "BatchSymbol".into(),
             qualified_name: "a.rs::BatchSymbol".into(),
             kind: SymbolKind::Function,
-            location: Location { file: "a.rs".into(), line_start: 1, line_end: 5, col_start: 0, col_end: 0 },
-            visibility: Visibility::Public, is_exported: true, is_async: false, is_test: false,
-            decorators: vec![], signature: None,
+            location: Location {
+                file: "a.rs".into(),
+                line_start: 1,
+                line_end: 5,
+                col_start: 0,
+                col_end: 0,
+            },
+            visibility: Visibility::Public,
+            is_exported: true,
+            is_async: false,
+            is_test: false,
+            decorators: vec![],
+            signature: None,
         };
         store.store_file_data(&file, &[sym], &[]).unwrap();
         let results = store.search("BatchSymbol", 10).unwrap();
@@ -146,14 +158,28 @@ mod tests {
     #[test]
     fn cascade_delete_removes_from_fts() {
         let store = SqliteStore::open_in_memory().unwrap();
-        let file = FileNode { path: "a.rs".into(), language: Language::Rust, hash: "h".into() };
+        let file = FileNode {
+            path: "a.rs".into(),
+            language: Language::Rust,
+            hash: "h".into(),
+        };
         let sym = SymbolNode {
             name: "Doomed".into(),
             qualified_name: "a.rs::Doomed".into(),
             kind: SymbolKind::Class,
-            location: Location { file: "a.rs".into(), line_start: 1, line_end: 5, col_start: 0, col_end: 0 },
-            visibility: Visibility::Public, is_exported: true, is_async: false, is_test: false,
-            decorators: vec![], signature: None,
+            location: Location {
+                file: "a.rs".into(),
+                line_start: 1,
+                line_end: 5,
+                col_start: 0,
+                col_end: 0,
+            },
+            visibility: Visibility::Public,
+            is_exported: true,
+            is_async: false,
+            is_test: false,
+            decorators: vec![],
+            signature: None,
         };
         store.store_file_data(&file, &[sym], &[]).unwrap();
         store.remove_file("a.rs".as_ref()).unwrap();
@@ -164,7 +190,11 @@ mod tests {
     fn concurrent_reads_do_not_deadlock() {
         use std::thread;
         let store = SqliteStore::open_in_memory().unwrap();
-        let file = FileNode { path: "a.rs".into(), language: Language::Rust, hash: "h".into() };
+        let file = FileNode {
+            path: "a.rs".into(),
+            language: Language::Rust,
+            hash: "h".into(),
+        };
         store.upsert_file(&file).unwrap();
 
         let s1 = store.clone();
@@ -178,13 +208,28 @@ mod tests {
     #[test]
     fn store_file_data_atomicity() {
         let store = SqliteStore::open_in_memory().unwrap();
-        let file = FileNode { path: "a.rs".into(), language: Language::Rust, hash: "h".into() };
+        let file = FileNode {
+            path: "a.rs".into(),
+            language: Language::Rust,
+            hash: "h".into(),
+        };
         let sym = SymbolNode {
-            name: "X".into(), qualified_name: "a.rs::X".into(),
+            name: "X".into(),
+            qualified_name: "a.rs::X".into(),
             kind: SymbolKind::Function,
-            location: Location { file: "a.rs".into(), line_start: 1, line_end: 2, col_start: 0, col_end: 0 },
-            visibility: Visibility::Public, is_exported: false, is_async: false, is_test: false,
-            decorators: vec![], signature: None,
+            location: Location {
+                file: "a.rs".into(),
+                line_start: 1,
+                line_end: 2,
+                col_start: 0,
+                col_end: 0,
+            },
+            visibility: Visibility::Public,
+            is_exported: false,
+            is_async: false,
+            is_test: false,
+            decorators: vec![],
+            signature: None,
         };
         store.store_file_data(&file, &[sym], &[]).unwrap();
         assert!(store.get_file("a.rs".as_ref()).unwrap().is_some());

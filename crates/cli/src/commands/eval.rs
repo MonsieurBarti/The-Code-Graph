@@ -58,10 +58,7 @@ fn find_suites_dir() -> Result<std::path::PathBuf> {
         return Ok(cwd_suites);
     }
     if let Ok(exe) = std::env::current_exe() {
-        let exe_suites = exe
-            .parent()
-            .unwrap_or(exe.as_ref())
-            .join("eval/suites");
+        let exe_suites = exe.parent().unwrap_or(exe.as_ref()).join("eval/suites");
         if exe_suites.is_dir() {
             return Ok(exe_suites);
         }

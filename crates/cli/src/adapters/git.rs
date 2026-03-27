@@ -27,7 +27,9 @@ impl ShellGitProvider {
             ));
         }
 
-        Ok(String::from_utf8_lossy(&output.stdout).trim_end().to_string())
+        Ok(String::from_utf8_lossy(&output.stdout)
+            .trim_end()
+            .to_string())
     }
 }
 

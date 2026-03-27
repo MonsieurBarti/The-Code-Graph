@@ -1,23 +1,23 @@
-use domain::error::{CodeGraphError, Result};
-use domain::model::Confidence;
-use storage::SqliteStore;
-use std::path::PathBuf;
-use crate::project::find_project_root;
 use crate::adapters::fs::RealFileSystem;
 use crate::adapters::git::ShellGitProvider;
 use crate::adapters::parse::RayonParseProvider;
+use crate::project::find_project_root;
+use domain::error::{CodeGraphError, Result};
+use domain::model::Confidence;
+use std::path::PathBuf;
+use storage::SqliteStore;
 
 pub fn open_graph() -> Result<(SqliteStore, PathBuf)> {
-    let cwd = std::env::current_dir().map_err(|e| {
-        CodeGraphError::FileSystem { path: ".".into(), source: e }
+    let cwd = std::env::current_dir().map_err(|e| CodeGraphError::FileSystem {
+        path: ".".into(),
+        source: e,
     })?;
     let root = find_project_root(&cwd)?;
     let db_path = root.join(".code-graph").join("graph.db");
     if !db_path.exists() {
         return Err(CodeGraphError::IndexNotBuilt);
     }
-    let store = SqliteStore::open(&db_path)
-        .map_err(|e| CodeGraphError::Storage(format!("{e}")))?;
+    let store = SqliteStore::open(&db_path).map_err(|e| CodeGraphError::Storage(format!("{e}")))?;
 
     // Lazy freshness check — skips if daemon is running
     let data_dir = root.join(".code-graph");

@@ -1,7 +1,7 @@
-use std::path::{Path, PathBuf};
 use domain::error::{CodeGraphError, Result};
 use domain::ports::FileSystem;
-use sha2::{Sha256, Digest};
+use sha2::{Digest, Sha256};
+use std::path::{Path, PathBuf};
 
 pub struct RealFileSystem;
 
@@ -10,16 +10,21 @@ impl FileSystem for RealFileSystem {
         let mut builder = ignore::WalkBuilder::new(root);
         builder.add_custom_ignore_filename(".code-graphignore");
 
-        let files: Vec<PathBuf> = builder.build()
+        let files: Vec<PathBuf> = builder
+            .build()
             .filter_map(|entry| entry.ok())
             .filter(|entry| entry.file_type().is_some_and(|ft| ft.is_file()))
             .filter(|entry| {
-                entry.path().extension()
+                entry
+                    .path()
+                    .extension()
                     .and_then(|ext| ext.to_str())
                     .is_some_and(|ext| extensions.contains(&ext))
             })
             .map(|entry| {
-                entry.path().strip_prefix(root)
+                entry
+                    .path()
+                    .strip_prefix(root)
                     .unwrap_or(entry.path())
                     .to_path_buf()
             })
@@ -29,13 +34,17 @@ impl FileSystem for RealFileSystem {
     }
 
     fn read_file(&self, path: &Path) -> Result<String> {
-        std::fs::read_to_string(path)
-            .map_err(|e| CodeGraphError::FileSystem { path: path.into(), source: e })
+        std::fs::read_to_string(path).map_err(|e| CodeGraphError::FileSystem {
+            path: path.into(),
+            source: e,
+        })
     }
 
     fn file_hash(&self, path: &Path) -> Result<String> {
-        let content = std::fs::read(path)
-            .map_err(|e| CodeGraphError::FileSystem { path: path.into(), source: e })?;
+        let content = std::fs::read(path).map_err(|e| CodeGraphError::FileSystem {
+            path: path.into(),
+            source: e,
+        })?;
         let mut hasher = Sha256::new();
         hasher.update(&content);
         Ok(format!("{:x}", hasher.finalize()))

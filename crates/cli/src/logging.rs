@@ -9,8 +9,8 @@ pub fn init_logging(verbose: u8, debug: bool) {
         "warn"
     };
 
-    let filter = EnvFilter::try_from_env("CODE_GRAPH_LOG")
-        .unwrap_or_else(|_| EnvFilter::new(level));
+    let filter =
+        EnvFilter::try_from_env("CODE_GRAPH_LOG").unwrap_or_else(|_| EnvFilter::new(level));
 
     tracing_subscriber::fmt()
         .with_env_filter(filter)

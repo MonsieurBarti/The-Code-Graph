@@ -71,8 +71,7 @@ impl Displayable for IndexStats {
     }
 
     fn fmt_json(&self, w: &mut dyn Write) -> std::io::Result<()> {
-        let json = serde_json::to_string_pretty(&self)
-            .map_err(std::io::Error::other)?;
+        let json = serde_json::to_string_pretty(&self).map_err(std::io::Error::other)?;
         writeln!(w, "{json}")
     }
 }
@@ -130,8 +129,7 @@ impl Displayable for Vec<FindResult> {
     }
 
     fn fmt_json(&self, w: &mut dyn Write) -> std::io::Result<()> {
-        let json =
-            serde_json::to_string_pretty(self).map_err(std::io::Error::other)?;
+        let json = serde_json::to_string_pretty(self).map_err(std::io::Error::other)?;
         writeln!(w, "{json}")
     }
 }
@@ -158,8 +156,7 @@ impl Displayable for Vec<Reference> {
     }
 
     fn fmt_json(&self, w: &mut dyn Write) -> std::io::Result<()> {
-        let json =
-            serde_json::to_string_pretty(self).map_err(std::io::Error::other)?;
+        let json = serde_json::to_string_pretty(self).map_err(std::io::Error::other)?;
         writeln!(w, "{json}")
     }
 }
@@ -200,8 +197,7 @@ impl Displayable for Vec<SearchResult> {
     }
 
     fn fmt_json(&self, w: &mut dyn Write) -> std::io::Result<()> {
-        let json =
-            serde_json::to_string_pretty(self).map_err(std::io::Error::other)?;
+        let json = serde_json::to_string_pretty(self).map_err(std::io::Error::other)?;
         writeln!(w, "{json}")
     }
 }
@@ -228,8 +224,7 @@ impl Displayable for GraphStats {
     }
 
     fn fmt_json(&self, w: &mut dyn Write) -> std::io::Result<()> {
-        let json =
-            serde_json::to_string_pretty(self).map_err(std::io::Error::other)?;
+        let json = serde_json::to_string_pretty(self).map_err(std::io::Error::other)?;
         writeln!(w, "{json}")
     }
 }
@@ -239,10 +234,7 @@ impl Displayable for GraphStats {
 // ---------------------------------------------------------------------------
 
 /// Helper: format affected nodes grouped by confidence, sorted by depth.
-fn fmt_affected_compact(
-    affected: &[AffectedNode],
-    w: &mut dyn Write,
-) -> std::io::Result<()> {
+fn fmt_affected_compact(affected: &[AffectedNode], w: &mut dyn Write) -> std::io::Result<()> {
     let mut sorted: Vec<&AffectedNode> = affected.iter().collect();
     sorted.sort_by(|a, b| b.confidence.cmp(&a.confidence).then(a.depth.cmp(&b.depth)));
     for node in sorted {
@@ -267,10 +259,7 @@ fn fmt_affected_compact(
 }
 
 /// Helper: format affected nodes as table rows.
-fn fmt_affected_table(
-    affected: &[AffectedNode],
-    w: &mut dyn Write,
-) -> std::io::Result<()> {
+fn fmt_affected_table(affected: &[AffectedNode], w: &mut dyn Write) -> std::io::Result<()> {
     writeln!(w, "QualifiedName | Depth | Confidence | Path")?;
     writeln!(w, "--------------+-------+------------+-----")?;
     let mut sorted: Vec<&AffectedNode> = affected.iter().collect();
@@ -305,8 +294,7 @@ impl Displayable for ImpactReport {
     }
 
     fn fmt_json(&self, w: &mut dyn Write) -> std::io::Result<()> {
-        let json =
-            serde_json::to_string_pretty(self).map_err(std::io::Error::other)?;
+        let json = serde_json::to_string_pretty(self).map_err(std::io::Error::other)?;
         writeln!(w, "{json}")
     }
 }
@@ -363,8 +351,7 @@ impl Displayable for DiffImpactReport {
     }
 
     fn fmt_json(&self, w: &mut dyn Write) -> std::io::Result<()> {
-        let json =
-            serde_json::to_string_pretty(self).map_err(std::io::Error::other)?;
+        let json = serde_json::to_string_pretty(self).map_err(std::io::Error::other)?;
         writeln!(w, "{json}")
     }
 }
@@ -396,7 +383,10 @@ mod tests {
 
     #[test]
     fn output_format_from_flags_compact() {
-        assert_eq!(OutputFormat::from_flags(false, false), OutputFormat::Compact);
+        assert_eq!(
+            OutputFormat::from_flags(false, false),
+            OutputFormat::Compact
+        );
     }
 
     #[test]
@@ -769,8 +759,14 @@ mod tests {
         let high_shallow_pos = s.find("high_shallow").unwrap();
         let high_deep_pos = s.find("high_deep").unwrap();
         let low_deep_pos = s.find("low_deep").unwrap();
-        assert!(high_shallow_pos < high_deep_pos, "High confidence should come before lower");
-        assert!(high_deep_pos < low_deep_pos, "High confidence should come before Low");
+        assert!(
+            high_shallow_pos < high_deep_pos,
+            "High confidence should come before lower"
+        );
+        assert!(
+            high_deep_pos < low_deep_pos,
+            "High confidence should come before Low"
+        );
     }
 
     // -----------------------------------------------------------------------

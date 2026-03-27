@@ -199,7 +199,15 @@ fn extract_class(
 
     // Methods and properties inside the class body
     if let Some(body) = node.child_by_field_name("body") {
-        extract_class_body(source, file_path, &name, &qualified_name, body, symbols, edges);
+        extract_class_body(
+            source,
+            file_path,
+            &name,
+            &qualified_name,
+            body,
+            symbols,
+            edges,
+        );
     }
 }
 
@@ -279,9 +287,9 @@ fn extract_class_body(
             "decorated_definition" => {
                 let decorators = collect_decorators(source, stmt);
                 // Find the inner definition
-                let inner = stmt
-                    .children(&mut stmt.walk())
-                    .find(|c| c.is_named() && matches!(c.kind(), "function_definition" | "class_definition"));
+                let inner = stmt.children(&mut stmt.walk()).find(|c| {
+                    c.is_named() && matches!(c.kind(), "function_definition" | "class_definition")
+                });
                 if let Some(inner_node) = inner {
                     if inner_node.kind() == "function_definition" {
                         extract_method(
@@ -323,7 +331,10 @@ fn extract_method(
     let visibility = python_visibility(&name);
 
     // Determine kind: @property → Property, else Method
-    let kind = if decorators.iter().any(|d| d == "@property" || d == "property") {
+    let kind = if decorators
+        .iter()
+        .any(|d| d == "@property" || d == "property")
+    {
         SymbolKind::Property
     } else {
         SymbolKind::Method
@@ -366,8 +377,9 @@ fn extract_decorated(
     // Find the inner function_definition or class_definition
     let inner = {
         let mut cursor = node.walk();
-        let found = node.children(&mut cursor)
-            .find(|c| c.is_named() && matches!(c.kind(), "function_definition" | "class_definition"));
+        let found = node.children(&mut cursor).find(|c| {
+            c.is_named() && matches!(c.kind(), "function_definition" | "class_definition")
+        });
         found
     };
 
@@ -414,7 +426,8 @@ fn extract_assignment(
     // expression_statement → assignment
     let assignment = {
         let mut cursor = node.walk();
-        let found = node.children(&mut cursor)
+        let found = node
+            .children(&mut cursor)
             .find(|c| c.is_named() && c.kind() == "assignment");
         found
     };
@@ -533,11 +546,7 @@ fn is_type_checking_guard(node: &Node, source: &[u8]) -> bool {
 }
 
 /// Parse `import os`, `import os.path`, `import os as o`, `import a, b`
-fn parse_import_statement(
-    node: &Node,
-    source: &[u8],
-    is_type_only: bool,
-) -> Vec<RawImport> {
+fn parse_import_statement(node: &Node, source: &[u8], is_type_only: bool) -> Vec<RawImport> {
     let line = node.start_position().row + 1;
     let mut imports = Vec::new();
 
@@ -708,13 +717,11 @@ fn build_from_specifier(node: &Node, source: &[u8]) -> String {
             }
             ".".to_string()
         }
-        Some(mn) => {
-            match mn.kind() {
-                "relative_import" => relative_import_specifier(&mn, source),
-                "dotted_name" => mn.utf8_text(source).unwrap_or("").to_string(),
-                _ => mn.utf8_text(source).unwrap_or("").to_string(),
-            }
-        }
+        Some(mn) => match mn.kind() {
+            "relative_import" => relative_import_specifier(&mn, source),
+            "dotted_name" => mn.utf8_text(source).unwrap_or("").to_string(),
+            _ => mn.utf8_text(source).unwrap_or("").to_string(),
+        },
     }
 }
 
@@ -922,8 +929,14 @@ mod tests {
         let source = "class Calc:\n    def add(self, a, b):\n        return a + b\n    def sub(self, a, b):\n        return a - b\n";
         let result = parse_python(source);
 
-        assert!(result.symbols.iter().any(|s| s.name == "add" && s.kind == SymbolKind::Method));
-        assert!(result.symbols.iter().any(|s| s.name == "sub" && s.kind == SymbolKind::Method));
+        assert!(result
+            .symbols
+            .iter()
+            .any(|s| s.name == "add" && s.kind == SymbolKind::Method));
+        assert!(result
+            .symbols
+            .iter()
+            .any(|s| s.name == "sub" && s.kind == SymbolKind::Method));
 
         let child_of_count = result
             .edges
@@ -1103,7 +1116,8 @@ mod tests {
 
     #[test]
     fn ac21_type_checking_guard() {
-        let source = "from typing import TYPE_CHECKING\nif TYPE_CHECKING:\n    from .models import User\n";
+        let source =
+            "from typing import TYPE_CHECKING\nif TYPE_CHECKING:\n    from .models import User\n";
         let result = parse_python(source);
 
         let type_guarded = result
@@ -1175,7 +1189,11 @@ mod tests {
     #[test]
     fn visibility_public_function() {
         let result = parse_python("def public_func():\n    pass\n");
-        let sym = result.symbols.iter().find(|s| s.name == "public_func").unwrap();
+        let sym = result
+            .symbols
+            .iter()
+            .find(|s| s.name == "public_func")
+            .unwrap();
         assert_eq!(sym.visibility, Visibility::Public);
         assert!(sym.is_exported);
     }
@@ -1183,7 +1201,11 @@ mod tests {
     #[test]
     fn visibility_private_single_underscore() {
         let result = parse_python("def _private():\n    pass\n");
-        let sym = result.symbols.iter().find(|s| s.name == "_private").unwrap();
+        let sym = result
+            .symbols
+            .iter()
+            .find(|s| s.name == "_private")
+            .unwrap();
         assert_eq!(sym.visibility, Visibility::Private);
         assert!(!sym.is_exported);
     }
@@ -1191,7 +1213,11 @@ mod tests {
     #[test]
     fn visibility_private_double_underscore() {
         let result = parse_python("def __mangled():\n    pass\n");
-        let sym = result.symbols.iter().find(|s| s.name == "__mangled").unwrap();
+        let sym = result
+            .symbols
+            .iter()
+            .find(|s| s.name == "__mangled")
+            .unwrap();
         assert_eq!(sym.visibility, Visibility::Private);
     }
 
@@ -1199,7 +1225,11 @@ mod tests {
     fn visibility_dunder_is_public() {
         let source = "class Foo:\n    def __init__(self):\n        pass\n";
         let result = parse_python(source);
-        let sym = result.symbols.iter().find(|s| s.name == "__init__").unwrap();
+        let sym = result
+            .symbols
+            .iter()
+            .find(|s| s.name == "__init__")
+            .unwrap();
         assert_eq!(sym.visibility, Visibility::Public);
     }
 
@@ -1235,7 +1265,10 @@ mod tests {
     #[test]
     fn top_level_variable_assignment() {
         let result = parse_python("x = 42\n");
-        assert!(result.symbols.iter().any(|s| s.name == "x" && s.kind == SymbolKind::Variable));
+        assert!(result
+            .symbols
+            .iter()
+            .any(|s| s.name == "x" && s.kind == SymbolKind::Variable));
     }
 
     // -----------------------------------------------------------------------
@@ -1319,33 +1352,87 @@ x = 42
         let result = parse_python(source);
 
         // Symbols
-        assert!(result.symbols.iter().any(|s| s.name == "standalone_func" && s.kind == SymbolKind::Function));
-        assert!(result.symbols.iter().any(|s| s.name == "async_handler" && s.kind == SymbolKind::Function && s.is_async));
-        assert!(result.symbols.iter().any(|s| s.name == "decorated_func" && s.kind == SymbolKind::Function));
-        assert!(result.symbols.iter().any(|s| s.name == "BaseModel" && s.kind == SymbolKind::Class));
-        assert!(result.symbols.iter().any(|s| s.name == "MyModel" && s.kind == SymbolKind::Class));
-        assert!(result.symbols.iter().any(|s| s.name == "__init__" && s.kind == SymbolKind::Method));
-        assert!(result.symbols.iter().any(|s| s.name == "name" && s.kind == SymbolKind::Property));
-        assert!(result.symbols.iter().any(|s| s.name == "save" && s.kind == SymbolKind::Method && s.is_async));
-        assert!(result.symbols.iter().any(|s| s.name == "_private_method" && s.visibility == Visibility::Private));
-        assert!(result.symbols.iter().any(|s| s.name == "x" && s.kind == SymbolKind::Variable));
+        assert!(result
+            .symbols
+            .iter()
+            .any(|s| s.name == "standalone_func" && s.kind == SymbolKind::Function));
+        assert!(result
+            .symbols
+            .iter()
+            .any(|s| s.name == "async_handler" && s.kind == SymbolKind::Function && s.is_async));
+        assert!(result
+            .symbols
+            .iter()
+            .any(|s| s.name == "decorated_func" && s.kind == SymbolKind::Function));
+        assert!(result
+            .symbols
+            .iter()
+            .any(|s| s.name == "BaseModel" && s.kind == SymbolKind::Class));
+        assert!(result
+            .symbols
+            .iter()
+            .any(|s| s.name == "MyModel" && s.kind == SymbolKind::Class));
+        assert!(result
+            .symbols
+            .iter()
+            .any(|s| s.name == "__init__" && s.kind == SymbolKind::Method));
+        assert!(result
+            .symbols
+            .iter()
+            .any(|s| s.name == "name" && s.kind == SymbolKind::Property));
+        assert!(result
+            .symbols
+            .iter()
+            .any(|s| s.name == "save" && s.kind == SymbolKind::Method && s.is_async));
+        assert!(result
+            .symbols
+            .iter()
+            .any(|s| s.name == "_private_method" && s.visibility == Visibility::Private));
+        assert!(result
+            .symbols
+            .iter()
+            .any(|s| s.name == "x" && s.kind == SymbolKind::Variable));
 
         // Edges
-        let contains_count = result.edges.iter().filter(|e| e.kind == EdgeKind::Contains).count();
-        assert!(contains_count >= 5, "expected >= 5 Contains edges, got {contains_count}");
+        let contains_count = result
+            .edges
+            .iter()
+            .filter(|e| e.kind == EdgeKind::Contains)
+            .count();
+        assert!(
+            contains_count >= 5,
+            "expected >= 5 Contains edges, got {contains_count}"
+        );
 
-        let child_of_count = result.edges.iter().filter(|e| e.kind == EdgeKind::ChildOf).count();
-        assert!(child_of_count >= 3, "expected >= 3 ChildOf edges, got {child_of_count}");
+        let child_of_count = result
+            .edges
+            .iter()
+            .filter(|e| e.kind == EdgeKind::ChildOf)
+            .count();
+        assert!(
+            child_of_count >= 3,
+            "expected >= 3 ChildOf edges, got {child_of_count}"
+        );
 
-        let extends_count = result.edges.iter().filter(|e| e.kind == EdgeKind::Extends).count();
+        let extends_count = result
+            .edges
+            .iter()
+            .filter(|e| e.kind == EdgeKind::Extends)
+            .count();
         assert_eq!(extends_count, 1, "expected 1 Extends edge");
 
         // Imports
         assert!(result.imports.iter().any(|i| i.specifier == "os"));
-        assert!(result.imports.iter().any(|i| i.specifier == "numpy" && i.names[0].alias == Some("np".to_string())));
+        assert!(result
+            .imports
+            .iter()
+            .any(|i| i.specifier == "numpy" && i.names[0].alias == Some("np".to_string())));
         assert!(result.imports.iter().any(|i| i.specifier == "os.path"));
         assert!(result.imports.iter().any(|i| i.specifier == ".models"));
         assert!(result.imports.iter().any(|i| i.specifier == "..utils"));
-        assert!(result.imports.iter().any(|i| i.specifier == ".types" && i.is_type_only));
+        assert!(result
+            .imports
+            .iter()
+            .any(|i| i.specifier == ".types" && i.is_type_only));
     }
 }

@@ -45,8 +45,18 @@ mod tests {
     #[test]
     fn blast_radius_from_single_symbol() {
         let edges = vec![
-            Edge { kind: EdgeKind::Calls, source: "a::foo".into(), target: "b::bar".into(), metadata: None },
-            Edge { kind: EdgeKind::Calls, source: "b::bar".into(), target: "c::baz".into(), metadata: None },
+            Edge {
+                kind: EdgeKind::Calls,
+                source: "a::foo".into(),
+                target: "b::bar".into(),
+                metadata: None,
+            },
+            Edge {
+                kind: EdgeKind::Calls,
+                source: "b::bar".into(),
+                target: "c::baz".into(),
+                metadata: None,
+            },
         ];
         let graph = InMemoryGraph::from_edges(edges);
         let targets = vec![ImpactTarget::Symbol("a::foo".into())];
@@ -59,8 +69,18 @@ mod tests {
     #[test]
     fn blast_radius_from_file_target() {
         let edges = vec![
-            Edge { kind: EdgeKind::Contains, source: "a.rs".into(), target: "a.rs::foo".into(), metadata: None },
-            Edge { kind: EdgeKind::Calls, source: "a.rs::foo".into(), target: "b.rs::bar".into(), metadata: None },
+            Edge {
+                kind: EdgeKind::Contains,
+                source: "a.rs".into(),
+                target: "a.rs::foo".into(),
+                metadata: None,
+            },
+            Edge {
+                kind: EdgeKind::Calls,
+                source: "a.rs::foo".into(),
+                target: "b.rs::bar".into(),
+                metadata: None,
+            },
         ];
         let graph = InMemoryGraph::from_edges(edges);
         let targets = vec![ImpactTarget::File("a.rs".into())];

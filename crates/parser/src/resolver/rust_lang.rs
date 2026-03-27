@@ -3,8 +3,8 @@ use std::path::{Path, PathBuf};
 
 use domain::model::{Edge, EdgeKind, Language};
 
-use crate::ParseResult;
 use super::{ImportResolver, ResolveContext};
+use crate::ParseResult;
 
 /// Rust import resolver — module tree + use path resolution.
 pub struct RustResolver;
@@ -64,7 +64,10 @@ fn build_module_tree_recursive(
         None => return,
     };
 
-    let file_name = current_file.file_name().and_then(|n| n.to_str()).unwrap_or("");
+    let file_name = current_file
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("");
     let is_root_file = matches!(file_name, "lib.rs" | "main.rs" | "mod.rs");
 
     // For a flat file (e.g. auth.rs), submodules live in a same-named directory.
@@ -136,7 +139,11 @@ fn build_module_tree(context: &ResolveContext) -> ModuleTree {
 
 /// Given a file path, derive its crate module path (e.g. `src/auth/validate.rs` → `crate::auth::validate`).
 /// This is the inverse lookup: file → module path.
-fn file_to_module_path(project_root: &Path, file_path: &Path, module_tree: &ModuleTree) -> Option<String> {
+fn file_to_module_path(
+    project_root: &Path,
+    file_path: &Path,
+    module_tree: &ModuleTree,
+) -> Option<String> {
     for (module_path, mapped_file) in module_tree {
         if mapped_file == file_path {
             return Some(module_path.clone());
@@ -255,10 +262,10 @@ impl ImportResolver for RustResolver {
             let target_str = target_file.to_string_lossy().into_owned();
 
             // Determine edge kind: ReExport for pub use, ImportsFrom otherwise
-            let is_reexport = parse_result.exports.iter().any(|e| {
-                e.is_reexport
-                    && e.source_specifier.as_deref() == Some(&import.specifier)
-            });
+            let is_reexport = parse_result
+                .exports
+                .iter()
+                .any(|e| e.is_reexport && e.source_specifier.as_deref() == Some(&import.specifier));
 
             let edge_kind = if is_reexport {
                 EdgeKind::ReExport
@@ -401,7 +408,11 @@ mod tests {
 
         let edges = resolver.resolve(&main_rs, &importer, &context).unwrap();
 
-        assert_eq!(edges.len(), 1, "Expected one ImportsFrom edge, got: {edges:?}");
+        assert_eq!(
+            edges.len(),
+            1,
+            "Expected one ImportsFrom edge, got: {edges:?}"
+        );
         assert_eq!(edges[0].kind, EdgeKind::ImportsFrom);
         assert_eq!(edges[0].source, main_rs.to_string_lossy());
         assert_eq!(edges[0].target, auth_rs.to_string_lossy());
@@ -450,7 +461,11 @@ mod tests {
 
         let edges = resolver.resolve(&auth_rs, &parse_result, &context).unwrap();
 
-        assert_eq!(edges.len(), 1, "Expected one ImportsFrom edge, got: {edges:?}");
+        assert_eq!(
+            edges.len(),
+            1,
+            "Expected one ImportsFrom edge, got: {edges:?}"
+        );
         assert_eq!(edges[0].kind, EdgeKind::ImportsFrom);
         assert_eq!(edges[0].source, auth_rs.to_string_lossy());
         assert_eq!(edges[0].target, sub_rs.to_string_lossy());
@@ -581,7 +596,10 @@ mod tests {
         };
 
         let edges = resolver.resolve(&lib_rs, &parse_result, &context).unwrap();
-        assert!(edges.is_empty(), "unresolvable imports must not produce edges");
+        assert!(
+            edges.is_empty(),
+            "unresolvable imports must not produce edges"
+        );
     }
 
     // -----------------------------------------------------------------------
@@ -707,9 +725,15 @@ mod tests {
         // Note: super::something resolves to parent path "crate::auth", which maps to auth_rs.
         // "something" is just a name in auth module, not a submodule, so no deeper resolution.
         // But "crate::auth" IS in the module tree.
-        let edges = resolver.resolve(&validate_rs, &parse_result, &context).unwrap();
+        let edges = resolver
+            .resolve(&validate_rs, &parse_result, &context)
+            .unwrap();
 
-        assert_eq!(edges.len(), 1, "Expected ImportsFrom edge via super, got: {edges:?}");
+        assert_eq!(
+            edges.len(),
+            1,
+            "Expected ImportsFrom edge via super, got: {edges:?}"
+        );
         assert_eq!(edges[0].kind, EdgeKind::ImportsFrom);
         assert_eq!(edges[0].source, validate_rs.to_string_lossy());
         assert_eq!(edges[0].target, auth_rs.to_string_lossy());

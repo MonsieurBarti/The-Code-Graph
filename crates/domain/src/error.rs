@@ -11,7 +11,10 @@ pub enum CodeGraphError {
     #[error("git error: {0}")]
     Git(String),
     #[error("file system error: {path}: {source}")]
-    FileSystem { path: PathBuf, source: std::io::Error },
+    FileSystem {
+        path: PathBuf,
+        source: std::io::Error,
+    },
     #[error("no project found (no .git directory)")]
     NoProject,
     #[error("refused to index blocklisted root: {0}")]
@@ -37,7 +40,10 @@ mod tests {
         };
         let msg = format!("{err}");
         assert!(msg.contains("src/main.rs"), "missing file in: {msg}");
-        assert!(msg.contains("unexpected token"), "missing message in: {msg}");
+        assert!(
+            msg.contains("unexpected token"),
+            "missing message in: {msg}"
+        );
     }
 
     #[test]
@@ -53,7 +59,10 @@ mod tests {
     #[test]
     fn all_variants_display_nonempty() {
         let errors = vec![
-            CodeGraphError::Parse { file: "f".into(), message: "m".into() },
+            CodeGraphError::Parse {
+                file: "f".into(),
+                message: "m".into(),
+            },
             CodeGraphError::Resolution("r".into()),
             CodeGraphError::Storage("s".into()),
             CodeGraphError::Git("g".into()),

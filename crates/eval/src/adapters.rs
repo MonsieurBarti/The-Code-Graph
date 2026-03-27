@@ -44,13 +44,17 @@ impl domain::ports::FileSystem for EvalFileSystem {
     }
 
     fn read_file(&self, path: &Path) -> Result<String> {
-        std::fs::read_to_string(path)
-            .map_err(|e| CodeGraphError::FileSystem { path: path.into(), source: e })
+        std::fs::read_to_string(path).map_err(|e| CodeGraphError::FileSystem {
+            path: path.into(),
+            source: e,
+        })
     }
 
     fn file_hash(&self, path: &Path) -> Result<String> {
-        let content = std::fs::read(path)
-            .map_err(|e| CodeGraphError::FileSystem { path: path.into(), source: e })?;
+        let content = std::fs::read(path).map_err(|e| CodeGraphError::FileSystem {
+            path: path.into(),
+            source: e,
+        })?;
         let mut hasher = Sha256::new();
         hasher.update(&content);
         Ok(format!("{:x}", hasher.finalize()))
@@ -63,6 +67,12 @@ impl domain::ports::FileSystem for EvalFileSystem {
 
 pub struct EvalParseProvider {
     registry: ParserRegistry,
+}
+
+impl Default for EvalParseProvider {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl EvalParseProvider {

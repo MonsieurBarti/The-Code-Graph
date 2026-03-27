@@ -71,7 +71,14 @@ mod tests {
         let fs = MockFileSystem::new(vec![]);
         let git = MockGitProvider::new(); // no modified files
 
-        let result = ensure_fresh(&store, &parser, &fs, &git, Path::new("/project"), tmp.path());
+        let result = ensure_fresh(
+            &store,
+            &parser,
+            &fs,
+            &git,
+            Path::new("/project"),
+            tmp.path(),
+        );
         assert!(result.is_ok());
     }
 
@@ -85,14 +92,21 @@ mod tests {
             hash: "old_hash".into(),
         });
         let parser = MockParseProvider::new(vec![]);
-        let fs = MockFileSystem::new(vec![])
-            .with_hashes(vec![
-                (PathBuf::from("/project/src/a.ts"), "new_hash".into()),
-            ]);
+        let fs = MockFileSystem::new(vec![]).with_hashes(vec![(
+            PathBuf::from("/project/src/a.ts"),
+            "new_hash".into(),
+        )]);
         let git = MockGitProvider::with_modified(vec![PathBuf::from("src/a.ts")]);
 
         // Should attempt incremental update (won't fail even without read content — parser returns empty)
-        let result = ensure_fresh(&store, &parser, &fs, &git, Path::new("/project"), tmp.path());
+        let result = ensure_fresh(
+            &store,
+            &parser,
+            &fs,
+            &git,
+            Path::new("/project"),
+            tmp.path(),
+        );
         assert!(result.is_ok());
     }
 }

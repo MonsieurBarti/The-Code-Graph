@@ -16,6 +16,9 @@ use crate::{metrics, SuiteConfig};
 const MRR_TARGET: f64 = 0.30;
 const BLAST_PRECISION_TARGET: f64 = 0.40;
 
+/// Ranked results paired with ground-truth expectations.
+type RankedVsTruth = (Vec<Vec<String>>, Vec<Vec<String>>);
+
 pub fn confidence_from_str(s: &str) -> Result<Confidence> {
     match s.to_lowercase().as_str() {
         "high" => Ok(Confidence::High),
@@ -62,7 +65,7 @@ pub fn run_search_queries(
     store: &SqliteStore,
     queries: &[SearchQuery],
     limit: usize,
-) -> Result<(Vec<Vec<String>>, Vec<Vec<String>>)> {
+) -> Result<RankedVsTruth> {
     let query_uc = QueryUseCase::new(store.clone(), store.clone());
     let mut all_ranked = Vec::new();
     let mut all_truth = Vec::new();
@@ -78,7 +81,7 @@ pub fn run_search_queries(
 pub fn run_impact_scenarios(
     store: &SqliteStore,
     scenarios: &[ImpactScenario],
-) -> Result<(Vec<Vec<String>>, Vec<Vec<String>>)> {
+) -> Result<RankedVsTruth> {
     let impact_uc = ImpactUseCase::new(store.clone());
     let mut all_predicted = Vec::new();
     let mut all_actual = Vec::new();
@@ -205,8 +208,7 @@ pub fn run_impact_suite(config: &SuiteConfig) -> Result<ImpactSuiteResult> {
                 continue;
             }
             let scenarios = crate::dataset::parse_impact_queries(&query_file)?;
-            let repo_scenarios: Vec<_> =
-                scenarios.iter().filter(|s| s.repo == repo.name).collect();
+            let repo_scenarios: Vec<_> = scenarios.iter().filter(|s| s.repo == repo.name).collect();
 
             // Validate ground truth
             let all_expected: Vec<String> = repo_scenarios

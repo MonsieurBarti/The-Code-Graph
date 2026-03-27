@@ -1,23 +1,27 @@
-pub mod index;
-pub mod stubs;
-pub mod helpers;
-pub mod find;
-pub mod refs;
-pub mod callers;
 pub mod callees;
-pub mod search;
-pub mod stats;
-pub mod impact;
+pub mod callers;
 pub mod diff;
+pub mod eval;
+pub mod find;
+pub mod helpers;
+pub mod impact;
+pub mod index;
+pub mod refs;
+pub mod search;
 pub mod setup;
 pub mod setup_helpers;
+pub mod stats;
+pub mod stubs;
 pub mod watch;
-pub mod eval;
 
-use clap::{Parser, Subcommand, ArgAction};
+use clap::{ArgAction, Parser, Subcommand};
 
 #[derive(Parser)]
-#[command(name = "code-graph", version, about = "Index codebases into a queryable dependency graph")]
+#[command(
+    name = "code-graph",
+    version,
+    about = "Index codebases into a queryable dependency graph"
+)]
 pub struct Cli {
     /// Increase verbosity (-v info, -vv debug)
     #[arg(short, long, action = ArgAction::Count, global = true)]
