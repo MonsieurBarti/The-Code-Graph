@@ -9,6 +9,7 @@ pub mod search;
 pub mod stats;
 pub mod impact;
 pub mod diff;
+pub mod setup;
 pub mod watch;
 
 use clap::{Parser, Subcommand, ArgAction};
@@ -58,8 +59,8 @@ pub enum Commands {
     Stats,
     /// Watch for file changes and re-index
     Watch(WatchArgs),
-    /// Initialize project configuration
-    Setup,
+    /// Set up agent integration hooks
+    Setup(SetupArgs),
     /// Run evaluation suite
     Eval,
 }
@@ -162,6 +163,27 @@ pub struct SearchArgs {
     pub limit: usize,
 }
 
+#[derive(clap::Args)]
+pub struct SetupArgs {
+    /// Target platform (currently: "claude")
+    pub platform: Option<String>,
+    /// Install to ~/.claude/settings.json instead of .claude/settings.json
+    #[arg(long)]
+    pub global: bool,
+    /// Check hook installation status
+    #[arg(long)]
+    pub check: bool,
+    /// Remove all code-graph hooks
+    #[arg(long)]
+    pub remove: bool,
+    /// Also remove .code-graph/ from .gitignore (requires --remove)
+    #[arg(long, requires = "remove")]
+    pub clean: bool,
+    /// Also delete .code-graph/ directory entirely (requires --remove)
+    #[arg(long, requires = "remove")]
+    pub purge: bool,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -210,7 +232,11 @@ mod tests {
             vec!["code-graph", "watch", "--daemon"],
             vec!["code-graph", "watch", "--status"],
             vec!["code-graph", "watch", "--stop"],
-            vec!["code-graph", "setup"],
+            vec!["code-graph", "setup", "claude"],
+            vec!["code-graph", "setup", "--check"],
+            vec!["code-graph", "setup", "--remove"],
+            vec!["code-graph", "setup", "--remove", "--clean"],
+            vec!["code-graph", "setup", "--remove", "--purge"],
             vec!["code-graph", "eval"],
         ];
         for args in &commands {
