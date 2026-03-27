@@ -1,0 +1,93 @@
+{
+  "scenarios": [
+    {
+      "repo": "ripgrep",
+      "description": "Symbol impact of Stats struct — trait implementations for arithmetic and serialization",
+      "target": "crates/printer/src/stats.rs::Stats",
+      "depth": 3,
+      "confidence": "high",
+      "expected_affected": [
+        "crates/printer/src/stats.rs::Add",
+        "crates/printer/src/stats.rs::Add<&'a Stats>",
+        "crates/printer/src/stats.rs::AddAssign",
+        "crates/printer/src/stats.rs::AddAssign<&'a Stats>",
+        "crates/printer/src/stats.rs::serde::Serialize"
+      ]
+    },
+    {
+      "repo": "ripgrep",
+      "description": "Symbol impact of Glob struct — trait implementations for Display, Hash, FromStr",
+      "target": "crates/globset/src/glob.rs::Glob",
+      "depth": 3,
+      "confidence": "high",
+      "expected_affected": [
+        "crates/globset/src/glob.rs::PartialEq",
+        "crates/globset/src/glob.rs::std::hash::Hash",
+        "crates/globset/src/glob.rs::std::fmt::Display",
+        "crates/globset/src/glob.rs::std::str::FromStr"
+      ]
+    },
+    {
+      "repo": "ripgrep",
+      "description": "Symbol impact of ignore Error — error trait implementations and conversions",
+      "target": "crates/ignore/src/lib.rs::Error",
+      "depth": 3,
+      "confidence": "high",
+      "expected_affected": [
+        "crates/ignore/src/lib.rs::Clone",
+        "crates/ignore/src/lib.rs::std::error::Error",
+        "crates/ignore/src/lib.rs::std::fmt::Display",
+        "crates/ignore/src/lib.rs::From<std::io::Error>"
+      ]
+    },
+    {
+      "repo": "ripgrep",
+      "description": "Symbol impact of CommandError — error Display, Error, and From implementations",
+      "target": "crates/cli/src/process.rs::CommandError",
+      "depth": 3,
+      "confidence": "high",
+      "expected_affected": [
+        "crates/cli/src/process.rs::std::error::Error",
+        "crates/cli/src/process.rs::std::fmt::Display",
+        "crates/cli/src/process.rs::From<io::Error>"
+      ]
+    },
+    {
+      "repo": "ripgrep",
+      "description": "File-level impact of search module — all search worker types and methods",
+      "target": "crates/core/search.rs",
+      "depth": 3,
+      "confidence": "all",
+      "expected_affected": [
+        "crates/core/search.rs::Config",
+        "crates/core/search.rs::Config.default",
+        "crates/core/search.rs::SearchWorkerBuilder",
+        "crates/core/search.rs::SearchWorkerBuilder.new",
+        "crates/core/search.rs::SearchWorkerBuilder.build",
+        "crates/core/search.rs::SearchResult",
+        "crates/core/search.rs::SearchResult.has_match",
+        "crates/core/search.rs::SearchResult.stats",
+        "crates/core/search.rs::PatternMatcher",
+        "crates/core/search.rs::Printer"
+      ]
+    },
+    {
+      "repo": "ripgrep",
+      "description": "File-level impact of glob module — glob matching types and strategies",
+      "target": "crates/globset/src/glob.rs",
+      "depth": 3,
+      "confidence": "all",
+      "expected_affected": [
+        "crates/globset/src/glob.rs::MatchStrategy",
+        "crates/globset/src/glob.rs::Glob",
+        "crates/globset/src/glob.rs::GlobMatcher",
+        "crates/globset/src/glob.rs::GlobStrategic",
+        "crates/globset/src/glob.rs::GlobBuilder",
+        "crates/globset/src/glob.rs::PartialEq",
+        "crates/globset/src/glob.rs::std::hash::Hash",
+        "crates/globset/src/glob.rs::std::fmt::Display",
+        "crates/globset/src/glob.rs::std::str::FromStr"
+      ]
+    }
+  ]
+}
