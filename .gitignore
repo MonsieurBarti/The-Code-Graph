@@ -5,5 +5,8 @@ target/
 .dolt/
 *.db
 
+# Code-graph generated data
+.code-graph/
+
 # TFF worktrees (generated, contain build artifacts)
 .tff/worktrees/

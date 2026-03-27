@@ -7,7 +7,6 @@ pub mod ports;
 pub mod traversal;
 pub mod use_cases;
 
-#[cfg(test)]
 pub mod test_support;
 
 pub use error::{CodeGraphError, Result};
