@@ -19,7 +19,7 @@ impl<S: GraphStore, I: SearchIndex> QueryUseCase<S, I> {
     pub fn refs(&self, qualified_name: &str) -> Result<Vec<Reference>> {
         let edges = self.store.get_edges_to(qualified_name)?;
         Ok(edges.into_iter().map(|e| Reference {
-            source: e.source,
+            symbol: e.source,
             edge_kind: e.kind,
             location: None,
         }).collect())
@@ -29,7 +29,7 @@ impl<S: GraphStore, I: SearchIndex> QueryUseCase<S, I> {
         let edges = self.store.get_edges_to(qualified_name)?;
         Ok(edges.into_iter()
             .filter(|e| e.kind == EdgeKind::Calls)
-            .map(|e| Reference { source: e.source, edge_kind: e.kind, location: None })
+            .map(|e| Reference { symbol: e.source, edge_kind: e.kind, location: None })
             .collect())
     }
 
@@ -37,7 +37,7 @@ impl<S: GraphStore, I: SearchIndex> QueryUseCase<S, I> {
         let edges = self.store.get_edges_from(qualified_name)?;
         Ok(edges.into_iter()
             .filter(|e| e.kind == EdgeKind::Calls)
-            .map(|e| Reference { source: e.target, edge_kind: e.kind, location: None })
+            .map(|e| Reference { symbol: e.target, edge_kind: e.kind, location: None })
             .collect())
     }
 

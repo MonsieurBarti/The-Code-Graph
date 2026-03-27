@@ -446,15 +446,16 @@ impl GraphStore for SqliteStore {
         if !exact.is_empty() {
             return Ok(exact);
         }
-        // Phase 2: prefix fallback
-        let prefix_pattern = format!("{pattern}%");
+        // Phase 2: prefix fallback (escape LIKE metacharacters)
+        let escaped = pattern.replace('\\', "\\\\").replace('%', "\\%").replace('_', "\\_");
+        let prefix_pattern = format!("{escaped}%");
         let mut stmt = conn
             .prepare_cached(
                 "SELECT qualified_name, name, kind, file_path,
                         line_start, line_end, col_start, col_end,
                         visibility, is_exported, is_async, is_test,
                         decorators, signature
-                 FROM symbols WHERE name LIKE ?1",
+                 FROM symbols WHERE name LIKE ?1 ESCAPE '\\'",
             )
             .map_err(map_rusqlite_error)?;
         self.query_symbols(&mut stmt, rusqlite::params![&prefix_pattern])
@@ -910,5 +911,27 @@ mod tests {
         let results = store.find_by_name("Foo").unwrap();
         assert_eq!(results.len(), 1);
         assert_eq!(results[0].name, "foo");
+    }
+
+    #[test]
+    fn find_by_name_escapes_like_metacharacters() {
+        let store = test_store();
+        store.upsert_file(&sample_file()).unwrap();
+        store.upsert_symbol(&make_named_symbol("__init__", "src/main.rs::__init__")).unwrap();
+        store.upsert_symbol(&make_named_symbol("__init_extra", "src/main.rs::__init_extra")).unwrap();
+        store.upsert_symbol(&make_named_symbol("axbycz", "src/main.rs::axbycz")).unwrap();
+
+        // Exact match for __init__
+        let results = store.find_by_name("__init__").unwrap();
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].name, "__init__");
+
+        // Prefix search for "__init" should match both __init__ and __init_extra,
+        // but NOT "axbycz" (underscore must not act as single-char wildcard)
+        let results = store.find_by_name("__init").unwrap();
+        assert_eq!(results.len(), 2);
+        let mut names: Vec<&str> = results.iter().map(|s| s.name.as_str()).collect();
+        names.sort();
+        assert_eq!(names, vec!["__init__", "__init_extra"]);
     }
 }

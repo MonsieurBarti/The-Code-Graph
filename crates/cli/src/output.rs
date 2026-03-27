@@ -143,16 +143,16 @@ impl Displayable for Vec<FindResult> {
 impl Displayable for Vec<Reference> {
     fn fmt_compact(&self, w: &mut dyn Write) -> std::io::Result<()> {
         for r in self {
-            writeln!(w, "{} ({:?})", r.source, r.edge_kind)?;
+            writeln!(w, "{} ({:?})", r.symbol, r.edge_kind)?;
         }
         Ok(())
     }
 
     fn fmt_table(&self, w: &mut dyn Write) -> std::io::Result<()> {
-        writeln!(w, "Source | EdgeKind")?;
+        writeln!(w, "Symbol | EdgeKind")?;
         writeln!(w, "-------+---------")?;
         for r in self {
-            writeln!(w, "{} | {:?}", r.source, r.edge_kind)?;
+            writeln!(w, "{} | {:?}", r.symbol, r.edge_kind)?;
         }
         Ok(())
     }
@@ -539,12 +539,12 @@ mod tests {
     fn sample_references() -> Vec<Reference> {
         vec![
             Reference {
-                source: "src/lib.rs::bar".into(),
+                symbol: "src/lib.rs::bar".into(),
                 edge_kind: EdgeKind::Calls,
                 location: None,
             },
             Reference {
-                source: "src/lib.rs::baz".into(),
+                symbol: "src/lib.rs::baz".into(),
                 edge_kind: EdgeKind::ImportsFrom,
                 location: None,
             },
@@ -569,7 +569,7 @@ mod tests {
         let s = String::from_utf8(buf).unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&s).unwrap();
         assert!(parsed.is_array());
-        assert_eq!(parsed[0]["source"], "src/lib.rs::bar");
+        assert_eq!(parsed[0]["symbol"], "src/lib.rs::bar");
         assert_eq!(parsed[0]["edge_kind"], "Calls");
     }
 
@@ -579,7 +579,7 @@ mod tests {
         let mut buf = Vec::new();
         refs.fmt_table(&mut buf).unwrap();
         let s = String::from_utf8(buf).unwrap();
-        assert!(s.contains("Source | EdgeKind"));
+        assert!(s.contains("Symbol | EdgeKind"));
         assert!(s.contains("src/lib.rs::bar | Calls"));
     }
 
