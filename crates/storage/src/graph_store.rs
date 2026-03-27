@@ -839,4 +839,76 @@ mod tests {
         assert_eq!(got.location.line_start, sym.location.line_start);
         assert_eq!(got.location.line_end, sym.location.line_end);
     }
+
+    // --- find_by_name (T04) ---
+
+    fn make_named_symbol(name: &str, qn: &str) -> SymbolNode {
+        SymbolNode {
+            name: name.into(),
+            qualified_name: qn.into(),
+            kind: SymbolKind::Function,
+            location: Location {
+                file: "src/main.rs".into(),
+                line_start: 1,
+                line_end: 10,
+                col_start: 0,
+                col_end: 1,
+            },
+            visibility: Visibility::Public,
+            is_exported: true,
+            is_async: false,
+            is_test: false,
+            decorators: vec![],
+            signature: None,
+        }
+    }
+
+    #[test]
+    fn find_by_name_exact_match() {
+        let store = test_store();
+        store.upsert_file(&sample_file()).unwrap();
+        store.upsert_symbol(&make_named_symbol("foo", "src/main.rs::foo")).unwrap();
+        store.upsert_symbol(&make_named_symbol("foobar", "src/main.rs::foobar")).unwrap();
+        store.upsert_symbol(&make_named_symbol("bar", "src/main.rs::bar")).unwrap();
+
+        let results = store.find_by_name("foo").unwrap();
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].name, "foo");
+    }
+
+    #[test]
+    fn find_by_name_prefix_fallback() {
+        let store = test_store();
+        store.upsert_file(&sample_file()).unwrap();
+        store.upsert_symbol(&make_named_symbol("foobar", "src/main.rs::foobar")).unwrap();
+        store.upsert_symbol(&make_named_symbol("foobaz", "src/main.rs::foobaz")).unwrap();
+
+        let results = store.find_by_name("foo").unwrap();
+        assert_eq!(results.len(), 2);
+        let mut names: Vec<&str> = results.iter().map(|s| s.name.as_str()).collect();
+        names.sort();
+        assert_eq!(names, vec!["foobar", "foobaz"]);
+    }
+
+    #[test]
+    fn find_by_name_no_match() {
+        let store = test_store();
+        let results = store.find_by_name("nonexistent").unwrap();
+        assert!(results.is_empty());
+    }
+
+    #[test]
+    fn find_by_name_case_sensitive() {
+        // The exact-match phase (=) is case-sensitive, so "Foo" != "foo".
+        // However, SQLite LIKE is case-insensitive for ASCII, so the
+        // prefix fallback matches "foo" when searching "Foo".
+        let store = test_store();
+        store.upsert_file(&sample_file()).unwrap();
+        store.upsert_symbol(&make_named_symbol("foo", "src/main.rs::foo")).unwrap();
+
+        // Exact match skipped (case-sensitive =), but prefix LIKE catches it
+        let results = store.find_by_name("Foo").unwrap();
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].name, "foo");
+    }
 }

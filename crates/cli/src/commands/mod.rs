@@ -1,5 +1,6 @@
 pub mod index;
 pub mod stubs;
+pub mod helpers;
 
 use clap::{Parser, Subcommand, ArgAction};
 
@@ -75,11 +76,14 @@ pub struct RefsArgs {
 
 #[derive(clap::Args)]
 pub struct ImpactArgs {
-    /// Qualified name of the symbol to analyze
-    pub qualified_name: String,
+    /// Symbol name, qualified name, or file path to analyze
+    pub target: String,
     /// Maximum traversal depth
-    #[arg(long, default_value = "5")]
+    #[arg(long, default_value = "3")]
     pub depth: usize,
+    /// Minimum confidence level (high, medium, low, all)
+    #[arg(long, default_value = "all")]
+    pub confidence: String,
 }
 
 #[derive(clap::Args)]
@@ -89,6 +93,12 @@ pub struct DiffArgs {
     pub from: String,
     /// Git ref to compare to (default: working tree)
     pub to: Option<String>,
+    /// Maximum traversal depth
+    #[arg(long, default_value = "3")]
+    pub depth: usize,
+    /// Minimum confidence level (high, medium, low, all)
+    #[arg(long, default_value = "all")]
+    pub confidence: String,
 }
 
 #[derive(clap::Args)]
