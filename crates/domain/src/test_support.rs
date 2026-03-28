@@ -1,6 +1,8 @@
 use crate::error::Result;
 use crate::model::*;
-use crate::ports::{FileData, GraphStore, ParseProvider, SearchIndex};
+use crate::ports::{
+    EmbeddingProvider, FileData, GraphStore, ParseProvider, SearchIndex, VectorStore,
+};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
 
@@ -321,5 +323,129 @@ impl crate::ports::GitProvider for MockGitProvider {
 
     fn modified_files(&self) -> Result<Vec<PathBuf>> {
         Ok(self.modified.clone())
+    }
+}
+
+// ---------------------------------------------------------------------------
+// InMemoryVectorStore
+// ---------------------------------------------------------------------------
+
+/// In-memory VectorStore implementation for testing.
+/// Uses cosine similarity for nearest-neighbour search.
+pub struct InMemoryVectorStore {
+    pub entries: std::sync::Mutex<Vec<EmbeddingEntry>>,
+}
+
+impl Default for InMemoryVectorStore {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl InMemoryVectorStore {
+    pub fn new() -> Self {
+        Self {
+            entries: std::sync::Mutex::new(Vec::new()),
+        }
+    }
+}
+
+fn cosine_similarity(a: &[f32], b: &[f32]) -> f64 {
+    let dot: f32 = a.iter().zip(b.iter()).map(|(x, y)| x * y).sum();
+    let norm_a: f32 = a.iter().map(|x| x * x).sum::<f32>().sqrt();
+    let norm_b: f32 = b.iter().map(|x| x * x).sum::<f32>().sqrt();
+    if norm_a == 0.0 || norm_b == 0.0 {
+        return 0.0;
+    }
+    (dot / (norm_a * norm_b)) as f64
+}
+
+impl VectorStore for InMemoryVectorStore {
+    fn store_embeddings(&self, entries: &[EmbeddingEntry]) -> Result<()> {
+        let mut store = self.entries.lock().unwrap();
+        for entry in entries {
+            store.retain(|e| e.qualified_name != entry.qualified_name);
+            store.push(entry.clone());
+        }
+        Ok(())
+    }
+
+    fn search_nearest(&self, query_vec: &[f32], limit: usize) -> Result<Vec<(String, f64)>> {
+        let store = self.entries.lock().unwrap();
+        let mut scored: Vec<(String, f64)> = store
+            .iter()
+            .map(|e| {
+                let score = cosine_similarity(query_vec, &e.vector);
+                (e.qualified_name.clone(), score)
+            })
+            .collect();
+        scored.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+        scored.truncate(limit);
+        Ok(scored)
+    }
+
+    fn has_embeddings(&self) -> bool {
+        !self.entries.lock().unwrap().is_empty()
+    }
+
+    fn count(&self) -> Result<usize> {
+        Ok(self.entries.lock().unwrap().len())
+    }
+
+    fn remove_embeddings(&self, qualified_names: &[&str]) -> Result<()> {
+        let mut store = self.entries.lock().unwrap();
+        store.retain(|e| !qualified_names.contains(&e.qualified_name.as_str()));
+        Ok(())
+    }
+}
+
+// ---------------------------------------------------------------------------
+// InMemoryEmbeddingProvider
+// ---------------------------------------------------------------------------
+
+/// Deterministic mock EmbeddingProvider for testing.
+/// Returns a fixed-dimension vector derived from the text hash.
+pub struct InMemoryEmbeddingProvider {
+    pub dimension: usize,
+}
+
+impl Default for InMemoryEmbeddingProvider {
+    fn default() -> Self {
+        Self::new(4)
+    }
+}
+
+impl InMemoryEmbeddingProvider {
+    pub fn new(dimension: usize) -> Self {
+        Self { dimension }
+    }
+
+    fn text_to_vec(&self, text: &str) -> Vec<f32> {
+        let mut v = vec![0.0f32; self.dimension];
+        for (i, b) in text.bytes().enumerate() {
+            v[i % self.dimension] += b as f32;
+        }
+        // Normalise so cosine similarity is meaningful
+        let norm: f32 = v.iter().map(|x| x * x).sum::<f32>().sqrt();
+        if norm > 0.0 {
+            for x in &mut v {
+                *x /= norm;
+            }
+        }
+        v
+    }
+}
+
+impl EmbeddingProvider for InMemoryEmbeddingProvider {
+    fn embed_batch(&self, texts: &[String]) -> Result<Vec<Vec<f32>>> {
+        Ok(texts.iter().map(|t| self.text_to_vec(t)).collect())
+    }
+
+    fn embed_query(&self, text: &str) -> Result<Vec<f32>> {
+        Ok(self.text_to_vec(text))
+    }
+
+    fn dimension(&self) -> usize {
+        self.dimension
     }
 }
