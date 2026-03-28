@@ -192,6 +192,7 @@ impl SearchIndex for InMemoryGraphStore {
                 kind: s.kind,
                 file_path: s.location.file.clone(),
                 score: 1.0,
+                score_source: None,
             })
             .collect();
         Ok(results)

@@ -1,3 +1,4 @@
+pub mod embedding_store;
 pub mod graph_store;
 pub mod mapping;
 pub mod schema;
