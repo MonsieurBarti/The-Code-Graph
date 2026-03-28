@@ -1,10 +1,6 @@
 # State — M01
 
 ## Progress
-- Slices: 1/1 completed
-- Tasks: 11/11 completed
+- Slices: 0/0 completed
+- Tasks: 0/0 completed
 
-## Slices
-| Slice | Status | Tasks | Progress |
-|---|---|---|---|
-| Polish, Benchmarks & Performance | completed (#11) | 11/11 | 100% |
