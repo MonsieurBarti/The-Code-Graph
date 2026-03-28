@@ -1,5 +1,6 @@
 use crate::model::{
-    BucketKey, CloneConfig, Confidence, Edge, EdgeKind, Language, StructuralFingerprint, SymbolNode,
+    BucketKey, CloneCluster, CloneConfig, CloneMatch, CloneType, Confidence, Edge, EdgeKind,
+    Language, StructuralFingerprint, SymbolNode,
 };
 use std::collections::{HashMap, HashSet};
 
@@ -314,6 +315,191 @@ pub fn group_into_buckets(
         map.entry(bucket_key(fp)).or_default().push(fp);
     }
     map
+}
+
+// ---------------------------------------------------------------------------
+// T06 — Candidate comparison and connected-component clustering
+// ---------------------------------------------------------------------------
+
+/// Compare two source code snippets and return a `CloneMatch` if they are
+/// similar enough, or `None` otherwise.
+///
+/// - `cross_language`: structural-only path — immediately returns a
+///   `StructuralOnly` match with similarity 1.0.
+/// - Otherwise: raw Jaccard ≥ 0.95 → `Type1`; normalized Jaccard ≥ threshold
+///   → `Type2`; below threshold → `None`.
+/// - The `source` and `target` fields of the returned match are left empty;
+///   the caller is expected to fill them in.
+pub fn compare_pair(
+    source_code_a: &str,
+    source_code_b: &str,
+    cross_language: bool,
+    threshold: f64,
+) -> Option<CloneMatch> {
+    if cross_language {
+        return Some(CloneMatch {
+            source: String::new(),
+            target: String::new(),
+            similarity: 1.0,
+            clone_type: CloneType::StructuralOnly,
+        });
+    }
+
+    let tokens_a = tokenize(source_code_a);
+    let tokens_b = tokenize(source_code_b);
+
+    if tokens_a.is_empty() || tokens_b.is_empty() {
+        return None;
+    }
+
+    let raw_sim = jaccard_similarity(&tokens_a, &tokens_b);
+    if raw_sim >= 0.95 {
+        return Some(CloneMatch {
+            source: String::new(),
+            target: String::new(),
+            similarity: raw_sim,
+            clone_type: CloneType::Type1,
+        });
+    }
+
+    let norm_a = normalize_identifiers(&tokens_a);
+    let norm_b = normalize_identifiers(&tokens_b);
+    let norm_sim = jaccard_similarity(&norm_a, &norm_b);
+    if norm_sim >= threshold {
+        return Some(CloneMatch {
+            source: String::new(),
+            target: String::new(),
+            similarity: norm_sim,
+            clone_type: CloneType::Type2,
+        });
+    }
+
+    None
+}
+
+/// Cluster a slice of `CloneMatch` records into connected components using
+/// Union-Find, then return a sorted `Vec<CloneCluster>` (largest first).
+pub fn cluster_matches(matches: &[CloneMatch]) -> Vec<CloneCluster> {
+    if matches.is_empty() {
+        return Vec::new();
+    }
+
+    // Collect all unique node names and assign integer IDs.
+    let mut name_to_id: HashMap<String, usize> = HashMap::new();
+    let mut id_to_name: Vec<String> = Vec::new();
+
+    for m in matches {
+        for name in [m.source.as_str(), m.target.as_str()] {
+            if !name_to_id.contains_key(name) {
+                let id = id_to_name.len();
+                name_to_id.insert(name.to_string(), id);
+                id_to_name.push(name.to_string());
+            }
+        }
+    }
+
+    let n = id_to_name.len();
+
+    // Union-Find with path compression and union by rank.
+    let mut parent: Vec<usize> = (0..n).collect();
+    let mut rank: Vec<usize> = vec![0; n];
+
+    fn find(parent: &mut Vec<usize>, x: usize) -> usize {
+        if parent[x] != x {
+            parent[x] = find(parent, parent[x]);
+        }
+        parent[x]
+    }
+
+    fn union(parent: &mut Vec<usize>, rank: &mut Vec<usize>, x: usize, y: usize) {
+        let rx = find(parent, x);
+        let ry = find(parent, y);
+        if rx == ry {
+            return;
+        }
+        match rank[rx].cmp(&rank[ry]) {
+            std::cmp::Ordering::Less => parent[rx] = ry,
+            std::cmp::Ordering::Greater => parent[ry] = rx,
+            std::cmp::Ordering::Equal => {
+                parent[ry] = rx;
+                rank[rx] += 1;
+            }
+        }
+    }
+
+    for m in matches {
+        let a = name_to_id[m.source.as_str()];
+        let b = name_to_id[m.target.as_str()];
+        union(&mut parent, &mut rank, a, b);
+    }
+
+    // Group nodes by root.
+    let mut components: HashMap<usize, Vec<usize>> = HashMap::new();
+    for i in 0..n {
+        let root = find(&mut parent, i);
+        components.entry(root).or_default().push(i);
+    }
+
+    // Build one CloneCluster per component.
+    let mut clusters: Vec<CloneCluster> = components
+        .values()
+        .map(|member_ids| {
+            // Collect member names, sorted alphabetically.
+            let mut members: Vec<String> = member_ids
+                .iter()
+                .map(|&id| id_to_name[id].to_string())
+                .collect();
+            members.sort();
+
+            let member_set: HashSet<&str> = members.iter().map(String::as_str).collect();
+
+            // Intra-cluster matches: both endpoints are in this component.
+            let intra: Vec<&CloneMatch> = matches
+                .iter()
+                .filter(|m| member_set.contains(m.source.as_str()) && member_set.contains(m.target.as_str()))
+                .collect();
+
+            let avg_similarity = if intra.is_empty() {
+                0.0
+            } else {
+                intra.iter().map(|m| m.similarity).sum::<f64>() / intra.len() as f64
+            };
+
+            // Dominant clone type: Type1 > Type2 > StructuralOnly.
+            let dominant_type = if intra.iter().any(|m| m.clone_type == CloneType::Type1) {
+                CloneType::Type1
+            } else if intra.iter().any(|m| m.clone_type == CloneType::Type2) {
+                CloneType::Type2
+            } else {
+                CloneType::StructuralOnly
+            };
+
+            let representative = members[0].clone(); // first alphabetically
+
+            CloneCluster {
+                id: 0, // assigned after sorting
+                members,
+                avg_similarity,
+                clone_type: dominant_type,
+                representative,
+            }
+        })
+        .collect();
+
+    // Sort: largest first; break ties by representative name.
+    clusters.sort_by(|a, b| {
+        b.members
+            .len()
+            .cmp(&a.members.len())
+            .then_with(|| a.representative.cmp(&b.representative))
+    });
+
+    // Assign 1-indexed IDs.
+    for (i, cluster) in clusters.iter_mut().enumerate() {
+        cluster.id = i + 1;
+    }
+
+    clusters
 }
 
 #[cfg(test)]
@@ -674,5 +860,86 @@ mod tests {
             0,
             "ImportsFrom bit should NOT be set"
         );
+    }
+
+    // -----------------------------------------------------------------------
+    // T06 compare_pair and cluster_matches tests
+    // -----------------------------------------------------------------------
+
+    use crate::model::{CloneMatch, CloneType};
+
+    #[test]
+    fn compare_pair_type1_exact_match() {
+        let src = "fn foo(x: i32, y: i32) -> i32 { x + y }";
+        let result = compare_pair(src, src, false, 0.7);
+        assert!(result.is_some());
+        let m = result.unwrap();
+        assert_eq!(m.clone_type, CloneType::Type1);
+        assert!(m.similarity >= 0.95);
+    }
+
+    #[test]
+    fn compare_pair_type2_renamed_vars() {
+        let src_a = "fn add(x: i32, y: i32) -> i32 { x + y }";
+        let src_b = "fn sum(a: i32, b: i32) -> i32 { a + b }";
+        let result = compare_pair(src_a, src_b, false, 0.7);
+        assert!(result.is_some());
+        assert_eq!(result.unwrap().clone_type, CloneType::Type2);
+    }
+
+    #[test]
+    fn compare_pair_cross_language_structural_only() {
+        let result = compare_pair("", "", true, 0.7);
+        assert!(result.is_some());
+        assert_eq!(result.unwrap().clone_type, CloneType::StructuralOnly);
+    }
+
+    #[test]
+    fn compare_pair_below_threshold_returns_none() {
+        let src_a = "fn add(x: i32) -> i32 { x + 1 }";
+        let src_b = "class Foo { bar: string; baz(): void { console.log(this.bar); } }";
+        let result = compare_pair(src_a, src_b, false, 0.7);
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn cluster_transitive() {
+        let matches = vec![
+            CloneMatch { source: "a".into(), target: "b".into(), similarity: 0.8, clone_type: CloneType::Type2 },
+            CloneMatch { source: "b".into(), target: "c".into(), similarity: 0.75, clone_type: CloneType::Type2 },
+        ];
+        let clusters = cluster_matches(&matches);
+        assert_eq!(clusters.len(), 1);
+        assert_eq!(clusters[0].members.len(), 3);
+        assert_eq!(clusters[0].id, 1);
+    }
+
+    #[test]
+    fn cluster_separate_components() {
+        let matches = vec![
+            CloneMatch { source: "a".into(), target: "b".into(), similarity: 0.8, clone_type: CloneType::Type1 },
+            CloneMatch { source: "c".into(), target: "d".into(), similarity: 0.9, clone_type: CloneType::Type1 },
+        ];
+        let clusters = cluster_matches(&matches);
+        assert_eq!(clusters.len(), 2);
+    }
+
+    #[test]
+    fn cluster_empty_matches() {
+        assert!(cluster_matches(&[]).is_empty());
+    }
+
+    #[test]
+    fn cluster_ids_descending_by_size() {
+        let matches = vec![
+            CloneMatch { source: "a".into(), target: "b".into(), similarity: 0.8, clone_type: CloneType::Type2 },
+            CloneMatch { source: "c".into(), target: "d".into(), similarity: 0.9, clone_type: CloneType::Type1 },
+            CloneMatch { source: "c".into(), target: "e".into(), similarity: 0.85, clone_type: CloneType::Type1 },
+        ];
+        let clusters = cluster_matches(&matches);
+        assert_eq!(clusters[0].members.len(), 3); // c,d,e
+        assert_eq!(clusters[0].id, 1);
+        assert_eq!(clusters[1].members.len(), 2); // a,b
+        assert_eq!(clusters[1].id, 2);
     }
 }
