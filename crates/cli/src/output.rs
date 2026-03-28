@@ -2,8 +2,9 @@ use std::io::Write;
 
 use domain::model::{
     AffectedNode, CloneAnalysis, CloneCluster, Community, CommunityAnalysis, CriticalityScore,
-    DiffImpactReport, EmbedStats, EntryPointKind, FlowAnalysis, GraphStats, ImpactReport,
-    IndexStats, Reference, RiskAnalysis, RiskScore, RiskWeights, SearchResult, SymbolNode,
+    DeadCodeAnalysis, DiffImpactReport, EmbedStats, EntryPointKind, FlowAnalysis, GraphStats,
+    ImpactReport, IndexStats, Reference, RiskAnalysis, RiskScore, RiskWeights, SearchResult,
+    SymbolNode,
 };
 
 /// Wraps a RiskScore with contextual info for single-target display (AC3).
@@ -983,6 +984,58 @@ impl Displayable for Vec<Community> {
             }
         }
         Ok(())
+    }
+
+    fn fmt_json(&self, w: &mut dyn Write) -> std::io::Result<()> {
+        let json = serde_json::to_string_pretty(self).map_err(std::io::Error::other)?;
+        writeln!(w, "{json}")
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Displayable: DeadCodeAnalysis
+// ---------------------------------------------------------------------------
+
+impl Displayable for DeadCodeAnalysis {
+    fn fmt_compact(&self, w: &mut dyn Write) -> std::io::Result<()> {
+        writeln!(
+            w,
+            "Dead code: {} symbols (of {} total, {:.1}%)\n",
+            self.summary.dead_count, self.summary.total_symbols, self.summary.dead_percentage,
+        )?;
+        for ds in &self.dead_symbols {
+            let short_name = ds
+                .qualified_name
+                .split("::")
+                .last()
+                .unwrap_or(&ds.qualified_name);
+            writeln!(
+                w,
+                "  {}:{}    {}    {:?}",
+                ds.file_path, ds.line, short_name, ds.kind,
+            )?;
+        }
+        Ok(())
+    }
+
+    fn fmt_table(&self, w: &mut dyn Write) -> std::io::Result<()> {
+        writeln!(w, "File | Line | Symbol | Kind | Visibility")?;
+        writeln!(w, "-----+------+--------+------+-----------")?;
+        for ds in &self.dead_symbols {
+            writeln!(
+                w,
+                "{} | {} | {} | {:?} | {:?}",
+                ds.file_path, ds.line, ds.qualified_name, ds.kind, ds.visibility,
+            )?;
+        }
+        writeln!(
+            w,
+            "\nTotal: {} dead of {} ({:.1}%), {} excluded",
+            self.summary.dead_count,
+            self.summary.total_symbols,
+            self.summary.dead_percentage,
+            self.summary.excluded_count,
+        )
     }
 
     fn fmt_json(&self, w: &mut dyn Write) -> std::io::Result<()> {

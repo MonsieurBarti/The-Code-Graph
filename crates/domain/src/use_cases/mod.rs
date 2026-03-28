@@ -1,5 +1,6 @@
 pub mod clones;
 pub mod community;
+pub mod dead_code;
 pub mod embed;
 pub mod flow;
 pub mod impact;
