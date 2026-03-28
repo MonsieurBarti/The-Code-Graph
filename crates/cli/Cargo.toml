@@ -18,6 +18,7 @@ toml = "0.8"
 ignore = "0.4"
 rayon = "1.10"
 sha2 = "0.10"
+which = "7"
 
 [dev-dependencies]
 tempfile = "3"

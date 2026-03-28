@@ -252,6 +252,7 @@ fn resolve_python_import(
     current_file: &Path,
     project_root: &Path,
     file_tree: &[PathBuf],
+    package_roots: &[PathBuf],
 ) -> Option<PathBuf> {
     // Relative import — starts with one or more dots
     if specifier.starts_with('.') {
@@ -279,10 +280,41 @@ fn resolve_python_import(
         return None;
     }
 
-    // Local absolute import
+    // Local absolute import — try each package_root first, then fall back to project_root
     let rel: PathBuf = specifier.replace('.', "/").into();
+    for package_root in package_roots {
+        let candidate = package_root.join(&rel);
+        if let Some(resolved) = try_resolve(&candidate, file_tree) {
+            return Some(resolved);
+        }
+    }
     let candidate = project_root.join(rel);
     try_resolve(&candidate, file_tree)
+}
+
+// ---------------------------------------------------------------------------
+// PythonConfig
+// ---------------------------------------------------------------------------
+
+/// Configuration for the Python resolver (e.g. src/ layout support).
+pub struct PythonConfig {
+    pub package_roots: Vec<PathBuf>,
+}
+
+impl PythonConfig {
+    /// Detect src/ layout: if `project_root/src` exists, use it as a package root.
+    pub fn load(project_root: &Path) -> Self {
+        let src = project_root.join("src");
+        if src.is_dir() {
+            PythonConfig {
+                package_roots: vec![src],
+            }
+        } else {
+            PythonConfig {
+                package_roots: vec![],
+            }
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -290,7 +322,15 @@ fn resolve_python_import(
 // ---------------------------------------------------------------------------
 
 /// Python import resolver — filesystem prober + stdlib detection.
-pub struct PythonResolver;
+pub struct PythonResolver {
+    config: PythonConfig,
+}
+
+impl PythonResolver {
+    pub fn new(config: PythonConfig) -> Self {
+        PythonResolver { config }
+    }
+}
 
 impl ImportResolver for PythonResolver {
     fn languages(&self) -> &[Language] {
@@ -312,6 +352,7 @@ impl ImportResolver for PythonResolver {
                 file_path,
                 &context.project_root,
                 &context.file_tree,
+                &self.config.package_roots,
             );
 
             if let Some(target_path) = resolved {
@@ -345,9 +386,15 @@ mod tests {
 
     use domain::model::EdgeKind;
 
-    use super::PythonResolver;
+    use super::{PythonConfig, PythonResolver};
     use crate::resolver::{ImportResolver, ResolveContext};
     use crate::{ImportName, ParseResult, RawImport};
+
+    fn make_resolver() -> PythonResolver {
+        PythonResolver::new(PythonConfig {
+            package_roots: vec![],
+        })
+    }
 
     fn make_context(project_root: &str, file_tree: Vec<&str>) -> ResolveContext {
         ResolveContext {
@@ -376,7 +423,7 @@ mod tests {
             }],
             ..Default::default()
         };
-        let resolver = PythonResolver;
+        let resolver = make_resolver();
         let edges = resolver
             .resolve(Path::new("/project/app/views.py"), &parse_result, &context)
             .unwrap();
@@ -405,7 +452,7 @@ mod tests {
             }],
             ..Default::default()
         };
-        let resolver = PythonResolver;
+        let resolver = make_resolver();
         let edges = resolver
             .resolve(Path::new("/project/app/views.py"), &parse_result, &context)
             .unwrap();
@@ -426,7 +473,7 @@ mod tests {
             }],
             ..Default::default()
         };
-        let resolver = PythonResolver;
+        let resolver = make_resolver();
         let edges = resolver
             .resolve(Path::new("/project/main.py"), &parse_result, &context)
             .unwrap();
@@ -444,7 +491,7 @@ mod tests {
             }],
             ..Default::default()
         };
-        let resolver = PythonResolver;
+        let resolver = make_resolver();
         let edges = resolver
             .resolve(Path::new("/project/main.py"), &parse_result, &context)
             .unwrap();
@@ -474,7 +521,7 @@ mod tests {
             }],
             ..Default::default()
         };
-        let resolver = PythonResolver;
+        let resolver = make_resolver();
         let edges = resolver
             .resolve(Path::new("/project/app/views.py"), &parse_result, &context)
             .unwrap();
@@ -493,7 +540,7 @@ mod tests {
             }],
             ..Default::default()
         };
-        let resolver = PythonResolver;
+        let resolver = make_resolver();
         let edges = resolver
             .resolve(Path::new("/project/main.py"), &parse_result, &context)
             .unwrap();
@@ -513,7 +560,7 @@ mod tests {
             }],
             ..Default::default()
         };
-        let resolver = PythonResolver;
+        let resolver = make_resolver();
         let edges = resolver
             .resolve(Path::new("/project/main.py"), &parse_result, &context)
             .unwrap();
@@ -532,7 +579,7 @@ mod tests {
             }],
             ..Default::default()
         };
-        let resolver = PythonResolver;
+        let resolver = make_resolver();
         let edges = resolver
             .resolve(Path::new("/project/main.py"), &parse_result, &context)
             .unwrap();
@@ -560,10 +607,31 @@ mod tests {
             ],
             ..Default::default()
         };
-        let resolver = PythonResolver;
+        let resolver = make_resolver();
         let edges = resolver
             .resolve(Path::new("/project/main.py"), &parse_result, &context)
             .unwrap();
         assert_eq!(edges.len(), 2);
+    }
+}
+
+#[cfg(test)]
+mod config_tests {
+    use super::*;
+
+    #[test]
+    fn python_config_detects_src_dir() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(dir.path().join("src")).unwrap();
+        let config = PythonConfig::load(dir.path());
+        assert_eq!(config.package_roots.len(), 1);
+        assert_eq!(config.package_roots[0], dir.path().join("src"));
+    }
+
+    #[test]
+    fn python_config_empty_without_src() {
+        let dir = tempfile::tempdir().unwrap();
+        let config = PythonConfig::load(dir.path());
+        assert!(config.package_roots.is_empty());
     }
 }

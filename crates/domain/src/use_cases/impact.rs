@@ -20,8 +20,11 @@ impl<S: GraphStore> ImpactUseCase<S> {
         max_depth: usize,
         min_confidence: Confidence,
     ) -> Result<ImpactReport> {
-        let edges = self.store.all_edges()?;
-        let graph = InMemoryGraph::from_edges(edges);
+        let mut graph = InMemoryGraph::new();
+        self.store.edges_streaming(&mut |edge| {
+            graph.add_edge(edge);
+            Ok(())
+        })?;
         Ok(compute_blast_radius(
             &graph,
             targets,
@@ -36,9 +39,13 @@ impl<S: GraphStore> ImpactUseCase<S> {
         max_depth: usize,
         min_confidence: Confidence,
     ) -> Result<DiffImpactReport> {
-        let edges = self.store.all_edges()?;
-        let symbols = self.store.all_symbols()?;
-        let graph = InMemoryGraph::from_edges(edges);
+        let mut graph = InMemoryGraph::new();
+        self.store.edges_streaming(&mut |edge| {
+            graph.add_edge(edge);
+            Ok(())
+        })?;
+        let hunk_files: Vec<&std::path::Path> = hunks.iter().map(|h| h.file.as_path()).collect();
+        let symbols = self.store.symbols_for_files(&hunk_files)?;
         let changed = find_affected_symbols(hunks, &symbols);
         let targets: Vec<ImpactTarget> = changed
             .iter()

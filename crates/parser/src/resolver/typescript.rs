@@ -20,6 +20,7 @@ impl TypeScriptResolver {
 
     fn build_resolver() -> oxc_resolver::Resolver {
         oxc_resolver::Resolver::new(oxc_resolver::ResolveOptions {
+            tsconfig: Some(oxc_resolver::TsconfigDiscovery::Auto),
             extensions: vec![
                 ".ts".into(),
                 ".tsx".into(),
@@ -42,14 +43,16 @@ impl TypeScriptResolver {
 
     /// Resolve a specifier from a given file, returning the absolute resolved path.
     /// Returns None if the specifier cannot be resolved (e.g. node_modules not present).
+    ///
+    /// Uses `resolve_file` so that `TsconfigDiscovery::Auto` can walk up from the
+    /// importer file to discover `tsconfig.json` for path alias resolution.
     fn resolve_specifier(
         resolver: &oxc_resolver::Resolver,
         from_file: &Path,
         specifier: &str,
     ) -> Option<PathBuf> {
-        let dir = from_file.parent()?;
         resolver
-            .resolve(dir, specifier)
+            .resolve_file(from_file, specifier)
             .ok()
             .map(|r| r.into_path_buf())
     }
@@ -566,6 +569,86 @@ mod tests {
         assert!(
             edges.is_empty(),
             "Non-reexport exports should not create edges"
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // AC1: tsconfig path alias resolves with TsconfigDiscovery::Auto
+    // -----------------------------------------------------------------------
+    #[test]
+    fn tsconfig_path_alias_resolves() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path().canonicalize().unwrap();
+
+        fs::write(
+            root.join("tsconfig.json"),
+            r#"{"compilerOptions":{"baseUrl":".","paths":{"@/*":["src/*"]}}}"#,
+        )
+        .unwrap();
+        fs::create_dir_all(root.join("src")).unwrap();
+        fs::write(root.join("src/foo.ts"), "export const foo = 1;\n").unwrap();
+
+        let index = root.join("index.ts");
+        fs::write(&index, "import { foo } from '@/foo';\n").unwrap();
+
+        let resolver = TypeScriptResolver::new(&root);
+        let parse_result = ParseResult {
+            imports: vec![crate::RawImport {
+                specifier: "@/foo".into(),
+                names: vec![crate::ImportName {
+                    name: "foo".into(),
+                    alias: None,
+                    is_type: false,
+                }],
+                ..Default::default()
+            }],
+            ..Default::default()
+        };
+        let context = make_context(&root);
+        let edges = resolver.resolve(&index, &parse_result, &context).unwrap();
+        assert!(
+            !edges.is_empty(),
+            "path-mapped import should produce edges with tsconfig discovery"
+        );
+        assert!(
+            edges
+                .iter()
+                .any(|e| e.kind == EdgeKind::ImportsFrom && e.target.contains("src/foo.ts")),
+            "Expected ImportsFrom edge to src/foo.ts, got: {:?}",
+            edges
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // AC1: resolver works without tsconfig.json present
+    // -----------------------------------------------------------------------
+    #[test]
+    fn resolver_works_without_tsconfig() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path().canonicalize().unwrap();
+
+        let index = root.join("index.ts");
+        fs::write(&index, "import { foo } from './foo';\n").unwrap();
+        fs::write(root.join("foo.ts"), "export const foo = 1;\n").unwrap();
+
+        let resolver = TypeScriptResolver::new(&root);
+        let parse_result = ParseResult {
+            imports: vec![crate::RawImport {
+                specifier: "./foo".into(),
+                names: vec![crate::ImportName {
+                    name: "foo".into(),
+                    alias: None,
+                    is_type: false,
+                }],
+                ..Default::default()
+            }],
+            ..Default::default()
+        };
+        let context = make_context(&root);
+        let edges = resolver.resolve(&index, &parse_result, &context).unwrap();
+        assert!(
+            !edges.is_empty(),
+            "relative import should still resolve without tsconfig"
         );
     }
 }

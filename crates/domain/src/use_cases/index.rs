@@ -111,9 +111,10 @@ pub fn run_incremental_pipeline<S: GraphStore, P: ParseProvider, F: FileSystem>(
 
     // Phase 2: Find 1-hop dependents
     let mut dependent_set = Vec::new();
-    let all_symbols = store.all_symbols()?;
+    let path_refs: Vec<&Path> = reparse_set.iter().map(|p| p.as_path()).collect();
+    let file_symbols_all = store.symbols_for_files(&path_refs)?;
     for path in &reparse_set {
-        let file_symbols: Vec<_> = all_symbols
+        let file_symbols: Vec<_> = file_symbols_all
             .iter()
             .filter(|s| s.location.file == *path)
             .collect();
