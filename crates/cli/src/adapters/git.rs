@@ -113,6 +113,16 @@ fn parse_diff_output(output: &str) -> Result<Vec<DiffHunk>> {
     Ok(hunks)
 }
 
+/// Reject git ref strings that start with `-` to prevent argument injection.
+fn validate_git_ref(refspec: &str) -> Result<()> {
+    if refspec.starts_with('-') {
+        return Err(CodeGraphError::Git(format!(
+            "invalid git ref: '{refspec}' (must not start with '-')"
+        )));
+    }
+    Ok(())
+}
+
 const SUPPORTED_EXTENSIONS: &[&str] = &["ts", "tsx", "js", "jsx", "rs", "py", "go"];
 
 fn has_supported_extension(path: &Path) -> bool {
@@ -152,6 +162,8 @@ impl GitProvider for ShellGitProvider {
     }
 
     fn changed_files(&self, from: &str, to: &str) -> Result<Vec<PathBuf>> {
+        validate_git_ref(from)?;
+        validate_git_ref(to)?;
         let output = self.run_git(&["diff", "--name-only", from, to])?;
         Ok(output
             .lines()
@@ -161,6 +173,10 @@ impl GitProvider for ShellGitProvider {
     }
 
     fn diff_hunks(&self, from: &str, to: Option<&str>) -> Result<Vec<DiffHunk>> {
+        validate_git_ref(from)?;
+        if let Some(r) = to {
+            validate_git_ref(r)?;
+        }
         let output = match to {
             None => self.run_git(&["diff", "--unified=0", from])?,
             Some(r) => self.run_git(&["diff", "--unified=0", from, r])?,

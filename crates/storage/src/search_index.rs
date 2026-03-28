@@ -11,9 +11,20 @@ impl SearchIndex for SqliteStore {
             return Ok(vec![]);
         }
 
+        // Cap query length to prevent DoS via excessive FTS5 tokenization
+        const MAX_QUERY_LEN: usize = 500;
+        let query = if query.len() > MAX_QUERY_LEN {
+            &query[..MAX_QUERY_LEN]
+        } else {
+            query
+        };
+
         let conn = self.conn()?;
 
-        // Quote the query to prevent FTS5 syntax injection, then append * for prefix matching
+        // SAFETY INVARIANT: wrapping in double-quotes makes FTS5 treat the input as a
+        // literal phrase, disabling operators (AND, OR, NOT, column filters, ^).
+        // Internal double-quotes are escaped by doubling ("" → "). This invariant MUST
+        // be preserved — removing the outer quotes would re-enable FTS5 syntax injection.
         let sanitized = query.replace('"', "\"\"");
         let fts_query = format!("\"{sanitized}\"*");
 

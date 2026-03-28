@@ -27,7 +27,18 @@ pub fn daemon_status(data_dir: &Path) -> DaemonStatus {
 pub fn stop_daemon(data_dir: &Path) -> Result<()> {
     match pid::read_pid(data_dir) {
         Some(pid_val) => {
-            // SAFETY: sending SIGTERM to a process
+            if !pid::is_process_running(pid_val) {
+                pid::remove_pid(data_dir);
+                eprintln!("Cleaned up stale PID file (process {pid_val} not running)");
+                return Ok(());
+            }
+            if !pid::is_code_graph_process(pid_val) {
+                pid::remove_pid(data_dir);
+                return Err(CodeGraphError::Other(format!(
+                    "PID {pid_val} is not a code-graph process (PID reuse detected) — removed stale PID file"
+                )));
+            }
+            // SAFETY: sending SIGTERM to a verified code-graph process
             unsafe {
                 libc::kill(pid_val as i32, libc::SIGTERM);
             }
@@ -80,7 +91,7 @@ where
     G: domain::ports::GitProvider,
 {
     let my_pid = std::process::id();
-    pid::write_pid(data_dir, my_pid)?;
+    pid::write_pid_exclusive(data_dir, my_pid)?;
 
     // Init log rotation
     let log_dir = data_dir.to_path_buf();

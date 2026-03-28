@@ -12,7 +12,10 @@ pub(super) fn resolve_settings_path(project_root: Option<&Path>, global: bool) -
     if global {
         let home =
             std::env::var("HOME").map_err(|_| CodeGraphError::Other("$HOME is not set".into()))?;
-        Ok(PathBuf::from(home).join(".claude").join("settings.json"))
+        let home = std::fs::canonicalize(&home).map_err(|e| {
+            CodeGraphError::Other(format!("failed to canonicalize $HOME '{home}': {e}"))
+        })?;
+        Ok(home.join(".claude").join("settings.json"))
     } else {
         match project_root {
             Some(root) => Ok(root.join(".claude").join("settings.json")),

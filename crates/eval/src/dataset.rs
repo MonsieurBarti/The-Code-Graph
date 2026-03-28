@@ -97,6 +97,20 @@ pub fn clone_or_cache(repo: &ManifestRepo, no_cache: bool) -> Result<PathBuf> {
         return Ok(cache_path);
     }
 
+    // Validate inputs to prevent git argument injection
+    if repo.revision.starts_with('-') {
+        return Err(CodeGraphError::Other(format!(
+            "invalid revision: '{}' (must not start with '-')",
+            repo.revision
+        )));
+    }
+    if !repo.url.starts_with("https://") && !repo.url.starts_with("http://") {
+        return Err(CodeGraphError::Other(format!(
+            "invalid repo URL: '{}' (must be an HTTP(S) URL)",
+            repo.url
+        )));
+    }
+
     tracing::info!(repo = %repo.name, revision = %repo.revision, "Cloning");
     if cache_path.exists() {
         std::fs::remove_dir_all(&cache_path)

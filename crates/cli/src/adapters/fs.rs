@@ -8,6 +8,7 @@ pub struct RealFileSystem;
 impl FileSystem for RealFileSystem {
     fn list_files(&self, root: &Path, extensions: &[&str]) -> Result<Vec<PathBuf>> {
         let mut builder = ignore::WalkBuilder::new(root);
+        builder.follow_links(false);
         builder.add_custom_ignore_filename(".code-graphignore");
 
         let files: Vec<PathBuf> = builder
