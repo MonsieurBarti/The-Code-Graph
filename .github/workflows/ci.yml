@@ -54,6 +54,24 @@ jobs:
           key: ${{ runner.os }}-cargo-test-${{ hashFiles('**/Cargo.lock') }}
       - run: cargo test --workspace
 
+  test-embeddings:
+    name: Test embeddings (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-embeddings-${{ hashFiles('**/Cargo.lock') }}
+      - run: cargo test -p embeddings
+
   coverage:
     name: Coverage
     runs-on: ubuntu-latest
