@@ -4,81 +4,188 @@
     {
       "repo": "ripgrep",
       "query": "SearcherBuilder",
-      "expected": ["crates/searcher/src/searcher/mod.rs::SearcherBuilder"]
+      "expected": ["crates/searcher/src/searcher/mod.rs::SearcherBuilder"],
+      "category": "exact"
     },
     {
       "repo": "ripgrep",
       "query": "SearchWorkerBuilder",
-      "expected": ["crates/core/search.rs::SearchWorkerBuilder"]
+      "expected": ["crates/core/search.rs::SearchWorkerBuilder"],
+      "category": "exact"
     },
     {
       "repo": "ripgrep",
       "query": "HiArgs",
-      "expected": ["crates/core/flags/hiargs.rs::HiArgs"]
-    },
-    {
-      "repo": "ripgrep",
-      "query": "LowArgs",
-      "expected": ["crates/core/flags/lowargs.rs::LowArgs"]
-    },
-    {
-      "repo": "ripgrep",
-      "query": "Gitignore",
-      "expected": ["crates/ignore/src/gitignore.rs::Gitignore"]
+      "expected": ["crates/core/flags/hiargs.rs::HiArgs"],
+      "category": "exact"
     },
     {
       "repo": "ripgrep",
       "query": "WalkBuilder",
-      "expected": ["crates/ignore/src/walk.rs::WalkBuilder"]
+      "expected": ["crates/ignore/src/walk.rs::WalkBuilder"],
+      "category": "exact"
     },
     {
       "repo": "ripgrep",
       "query": "GlobSet",
-      "expected": ["crates/globset/src/lib.rs::GlobSet"]
-    },
-    {
-      "repo": "ripgrep",
-      "query": "StandardBuilder",
-      "expected": ["crates/printer/src/standard.rs::StandardBuilder"]
+      "expected": ["crates/globset/src/lib.rs::GlobSet"],
+      "category": "exact"
     },
     {
       "repo": "ripgrep",
       "query": "SinkMatch",
-      "expected": ["crates/searcher/src/sink.rs::SinkMatch"]
-    },
-    {
-      "repo": "ripgrep",
-      "query": "SinkFinish",
-      "expected": ["crates/searcher/src/sink.rs::SinkFinish"]
-    },
-    {
-      "repo": "ripgrep",
-      "query": "OverrideBuilder",
-      "expected": ["crates/ignore/src/overrides.rs::OverrideBuilder"]
+      "expected": ["crates/searcher/src/sink.rs::SinkMatch"],
+      "category": "exact"
     },
     {
       "repo": "ripgrep",
       "query": "PrinterPath",
-      "expected": ["crates/printer/src/util.rs::PrinterPath"]
+      "expected": ["crates/printer/src/util.rs::PrinterPath"],
+      "category": "exact"
     },
     {
       "repo": "ripgrep",
       "query": "ConfiguredHIR",
-      "expected": ["crates/regex/src/config.rs::ConfiguredHIR"]
+      "expected": ["crates/regex/src/config.rs::ConfiguredHIR"],
+      "category": "exact"
     },
     {
       "repo": "ripgrep",
       "query": "SearchResult",
-      "expected": ["crates/core/search.rs::SearchResult"]
+      "expected": ["crates/core/search.rs::SearchResult"],
+      "category": "exact"
     },
     {
       "repo": "ripgrep",
-      "query": "BinaryDetection",
+      "query": "OverrideBuilder",
+      "expected": ["crates/ignore/src/overrides.rs::OverrideBuilder"],
+      "category": "exact"
+    },
+    {
+      "repo": "ripgrep",
+      "query": "builder for constructing search configuration",
+      "expected": ["crates/searcher/src/searcher/mod.rs::SearcherBuilder"],
+      "category": "semantic"
+    },
+    {
+      "repo": "ripgrep",
+      "query": "file pattern matching and glob exclusion",
+      "expected": ["crates/ignore/src/gitignore.rs::Gitignore"],
+      "category": "semantic"
+    },
+    {
+      "repo": "ripgrep",
+      "query": "walk directory tree respecting ignore rules",
+      "expected": ["crates/ignore/src/walk.rs::WalkBuilder"],
+      "category": "semantic"
+    },
+    {
+      "repo": "ripgrep",
+      "query": "match binary content detection",
       "expected": [
         "crates/searcher/src/searcher/mod.rs::BinaryDetection",
-        "crates/searcher/src/line_buffer.rs::BinaryDetection",
-        "crates/core/flags/hiargs.rs::BinaryDetection"
-      ]
+        "crates/searcher/src/line_buffer.rs::BinaryDetection"
+      ],
+      "category": "semantic"
+    },
+    {
+      "repo": "ripgrep",
+      "query": "configure regex with case sensitivity options",
+      "expected": ["crates/regex/src/config.rs::ConfiguredHIR"],
+      "category": "semantic"
+    },
+    {
+      "repo": "ripgrep",
+      "query": "output format for matched lines with context",
+      "expected": ["crates/printer/src/standard.rs::StandardBuilder"],
+      "category": "semantic"
+    },
+    {
+      "repo": "ripgrep",
+      "query": "command line argument high-level parsed flags",
+      "expected": ["crates/core/flags/hiargs.rs::HiArgs"],
+      "category": "semantic"
+    },
+    {
+      "repo": "ripgrep",
+      "query": "file path display in search output",
+      "expected": ["crates/printer/src/util.rs::PrinterPath"],
+      "category": "semantic"
+    },
+    {
+      "repo": "ripgrep",
+      "query": "sink callback for each matched line",
+      "expected": ["crates/searcher/src/sink.rs::SinkMatch"],
+      "category": "semantic"
+    },
+    {
+      "repo": "ripgrep",
+      "query": "result statistics after searching a file",
+      "expected": ["crates/core/search.rs::SearchResult"],
+      "category": "semantic"
+    },
+    {
+      "repo": "ripgrep",
+      "query": "SearcherB",
+      "expected": ["crates/searcher/src/searcher/mod.rs::SearcherBuilder"],
+      "category": "partial"
+    },
+    {
+      "repo": "ripgrep",
+      "query": "WalkBuild",
+      "expected": ["crates/ignore/src/walk.rs::WalkBuilder"],
+      "category": "partial"
+    },
+    {
+      "repo": "ripgrep",
+      "query": "GlobS",
+      "expected": ["crates/globset/src/lib.rs::GlobSet"],
+      "category": "partial"
+    },
+    {
+      "repo": "ripgrep",
+      "query": "SinkFin",
+      "expected": ["crates/searcher/src/sink.rs::SinkFinish"],
+      "category": "partial"
+    },
+    {
+      "repo": "ripgrep",
+      "query": "StandardBuild",
+      "expected": ["crates/printer/src/standard.rs::StandardBuilder"],
+      "category": "partial"
+    },
+    {
+      "repo": "ripgrep",
+      "query": "OverrideBuild",
+      "expected": ["crates/ignore/src/overrides.rs::OverrideBuilder"],
+      "category": "partial"
+    },
+    {
+      "repo": "ripgrep",
+      "query": "BinaryDetect",
+      "expected": [
+        "crates/searcher/src/searcher/mod.rs::BinaryDetection",
+        "crates/searcher/src/line_buffer.rs::BinaryDetection"
+      ],
+      "category": "partial"
+    },
+    {
+      "repo": "ripgrep",
+      "query": "PrinterP",
+      "expected": ["crates/printer/src/util.rs::PrinterPath"],
+      "category": "partial"
+    },
+    {
+      "repo": "ripgrep",
+      "query": "HiArg",
+      "expected": ["crates/core/flags/hiargs.rs::HiArgs"],
+      "category": "partial"
+    },
+    {
+      "repo": "ripgrep",
+      "query": "SearchWork",
+      "expected": ["crates/core/search.rs::SearchWorkerBuilder"],
+      "category": "partial"
     }
   ]
 }
