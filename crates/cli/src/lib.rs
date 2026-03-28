@@ -24,6 +24,7 @@ pub fn run(cli: Cli) -> Result<()> {
         Commands::Search(args) => commands::search::run_search(args, output_format),
         Commands::Flows(args) => commands::flows::run_flows(args, output_format),
         Commands::Clones(args) => commands::clones::run_clones(args, output_format),
+        Commands::Communities(args) => commands::communities::run_communities(args, output_format),
         Commands::Stats => commands::stats::run_stats(output_format),
         Commands::Watch(args) => commands::watch::run_watch(args),
         Commands::Setup(args) => commands::setup::run_setup(args),

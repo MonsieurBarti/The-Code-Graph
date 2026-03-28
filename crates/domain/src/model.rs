@@ -272,6 +272,10 @@ pub struct GraphStats {
     pub avg_risk: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub p90_risk: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub community_count: Option<usize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub modularity: Option<f64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -564,6 +568,52 @@ pub struct RiskAnalysis {
     pub symbol_scores: Vec<RiskScore>,
     pub file_scores: Vec<FileRiskScore>,
     pub stats: RiskStats,
+}
+
+// ---------------------------------------------------------------------------
+// Community detection types
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Clone)]
+pub struct CommunityConfig {
+    pub resolution: f64,
+    pub min_community_size: usize,
+    pub seed: Option<u64>,
+}
+
+impl Default for CommunityConfig {
+    fn default() -> Self {
+        Self {
+            resolution: 1.0,
+            min_community_size: 2,
+            seed: None,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Community {
+    pub id: usize,
+    pub name: String,
+    pub members: Vec<String>,
+    pub modularity_contribution: f64,
+    pub internal_edges: usize,
+    pub boundary_edges: usize,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CommunityAnalysis {
+    pub communities: Vec<Community>,
+    pub modularity: f64,
+    pub stats: CommunityStats,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CommunityStats {
+    pub count: usize,
+    pub avg_size: f64,
+    pub largest_size: usize,
+    pub isolated_nodes: usize,
 }
 
 // ---------------------------------------------------------------------------
@@ -895,6 +945,8 @@ mod tests {
                 most_duplicated: None,
                 avg_risk: None,
                 p90_risk: None,
+                community_count: None,
+                modularity: None,
             },
             GraphStats
         );
@@ -1002,6 +1054,8 @@ mod tests {
             most_duplicated: None,
             avg_risk: None,
             p90_risk: None,
+            community_count: None,
+            modularity: None,
         };
         let json = serde_json::to_string(&stats).unwrap();
         assert!(!json.contains("entry_point_count"));
@@ -1074,6 +1128,8 @@ mod tests {
             most_duplicated: None,
             avg_risk: None,
             p90_risk: None,
+            community_count: None,
+            modularity: None,
         };
         let json = serde_json::to_string(&stats).unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();

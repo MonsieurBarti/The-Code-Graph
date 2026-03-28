@@ -1,6 +1,7 @@
 pub mod callees;
 pub mod callers;
 pub mod clones;
+pub mod communities;
 pub mod diff;
 pub mod eval;
 pub mod find;
@@ -70,6 +71,8 @@ pub enum Commands {
     Flows(FlowsArgs),
     /// Detect code clones across the codebase
     Clones(ClonesArgs),
+    /// Detect communities of tightly-coupled symbols
+    Communities(CommunitiesArgs),
     /// Show graph statistics
     Stats,
     /// Watch for file changes and re-index
@@ -233,6 +236,27 @@ pub struct ClonesArgs {
 }
 
 #[derive(clap::Args)]
+pub struct CommunitiesArgs {
+    /// Show details for a specific community
+    pub community_id: Option<usize>,
+    /// Modularity resolution parameter
+    #[arg(long)]
+    pub resolution: Option<f64>,
+    /// Minimum community size to display
+    #[arg(long)]
+    pub min_size: Option<usize>,
+    /// Random seed for reproducibility
+    #[arg(long)]
+    pub seed: Option<u64>,
+    /// Show which community a symbol belongs to
+    #[arg(long)]
+    pub symbol: Option<String>,
+    /// Maximum communities to display
+    #[arg(long, default_value = "20")]
+    pub limit: usize,
+}
+
+#[derive(clap::Args)]
 pub struct SetupArgs {
     /// Target platform (currently: "claude")
     pub platform: Option<String>,
@@ -344,6 +368,18 @@ mod tests {
             vec!["code-graph", "eval"],
             vec!["code-graph", "eval", "--suite", "search"],
             vec!["code-graph", "eval", "--no-cache"],
+            vec!["code-graph", "communities"],
+            vec!["code-graph", "communities", "--resolution", "1.5"],
+            vec![
+                "code-graph",
+                "communities",
+                "--seed",
+                "42",
+                "--min-size",
+                "3",
+            ],
+            vec!["code-graph", "communities", "1"],
+            vec!["code-graph", "communities", "--symbol", "src/main.rs::main"],
         ];
         for args in &commands {
             Cli::parse_from(args.iter());

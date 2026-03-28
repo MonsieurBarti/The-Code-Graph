@@ -9,6 +9,7 @@ pub struct CodeGraphConfig {
     pub watch: Option<WatchConfig>,
     pub flows: Option<FlowsConfig>,
     pub risk: Option<RiskCliConfig>,
+    pub communities: Option<CommunitiesConfig>,
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]
@@ -40,6 +41,13 @@ pub struct RiskCliConfig {
     pub weight_sensitivity: Option<f64>,
     pub extra_security_patterns: Option<Vec<String>>,
     pub excluded_security_patterns: Option<Vec<String>>,
+}
+
+#[derive(Debug, Clone, Default, Deserialize)]
+pub struct CommunitiesConfig {
+    pub resolution: Option<f64>,
+    pub min_community_size: Option<usize>,
+    pub seed: Option<u64>,
 }
 
 pub fn load_config(project_root: &Path) -> Result<CodeGraphConfig> {
@@ -114,6 +122,28 @@ excluded_entry_points = ["src/test_helper.rs::setup"]
             flows.excluded_entry_points.unwrap(),
             vec!["src/test_helper.rs::setup"]
         );
+    }
+
+    #[test]
+    fn communities_config_parses() {
+        let tmp = tempfile::tempdir().unwrap();
+        let dir = tmp.path().join(".code-graph");
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(
+            dir.join("config.toml"),
+            r#"
+[communities]
+resolution = 1.5
+min_community_size = 3
+seed = 42
+"#,
+        )
+        .unwrap();
+        let config = load_config(tmp.path()).unwrap();
+        let cc = config.communities.unwrap();
+        assert!((cc.resolution.unwrap() - 1.5).abs() < f64::EPSILON);
+        assert_eq!(cc.min_community_size.unwrap(), 3);
+        assert_eq!(cc.seed.unwrap(), 42);
     }
 
     #[test]
