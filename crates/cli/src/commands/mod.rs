@@ -1,5 +1,6 @@
 pub mod callees;
 pub mod callers;
+pub mod clones;
 pub mod diff;
 pub mod eval;
 pub mod find;
@@ -64,6 +65,8 @@ pub enum Commands {
     Search(SearchArgs),
     /// Analyze execution flows and criticality
     Flows(FlowsArgs),
+    /// Detect code clones across the codebase
+    Clones(ClonesArgs),
     /// Show graph statistics
     Stats,
     /// Watch for file changes and re-index
@@ -196,6 +199,19 @@ pub struct FlowsArgs {
     /// Maximum number of results to display
     #[arg(long, default_value = "20")]
     pub limit: usize,
+}
+
+#[derive(clap::Args)]
+pub struct ClonesArgs {
+    /// Similarity threshold (0.0-1.0)
+    #[arg(long, default_value = "0.7")]
+    pub threshold: f64,
+    /// Minimum symbol body lines
+    #[arg(long, default_value = "5")]
+    pub min_lines: usize,
+    /// Show detailed members of a specific cluster
+    #[arg(long)]
+    pub cluster: Option<usize>,
 }
 
 #[derive(clap::Args)]
