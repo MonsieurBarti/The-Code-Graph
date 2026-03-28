@@ -71,6 +71,7 @@ jobs:
             target
           key: ${{ runner.os }}-cargo-embeddings-${{ hashFiles('**/Cargo.lock') }}
       - run: cargo test -p embeddings
+      - run: cargo test -p cli --features embeddings
 
   coverage:
     name: Coverage

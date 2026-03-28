@@ -27,7 +27,12 @@ impl<S: GraphStore, E: EmbeddingProvider, V: VectorStore> EmbedUseCase<S, E, V> 
     }
 
     /// Embed all symbols, skipping those whose text representation is unchanged.
-    pub fn embed_all(&self, config: &EmbeddingConfig) -> Result<EmbedStats> {
+    /// Calls `on_batch(embedded_so_far, total_to_embed)` after each batch.
+    pub fn embed_all(
+        &self,
+        config: &EmbeddingConfig,
+        on_batch: impl Fn(usize, usize),
+    ) -> Result<EmbedStats> {
         let symbols = self.store.all_symbols()?;
         let edges = self.store.all_edges()?;
         let edge_map = build_edge_map(&edges);
@@ -58,6 +63,7 @@ impl<S: GraphStore, E: EmbeddingProvider, V: VectorStore> EmbedUseCase<S, E, V> 
             to_embed.push((sym.qualified_name.clone(), text, hash));
         }
 
+        let total_to_embed = to_embed.len();
         let mut embedded = 0usize;
         for chunk in to_embed.chunks(config.batch_size) {
             let texts: Vec<String> = chunk.iter().map(|(_, t, _)| t.clone()).collect();
@@ -73,6 +79,7 @@ impl<S: GraphStore, E: EmbeddingProvider, V: VectorStore> EmbedUseCase<S, E, V> 
                 .collect();
             self.vector_store.store_embeddings(&entries)?;
             embedded += entries.len();
+            on_batch(embedded, total_to_embed);
         }
 
         Ok(EmbedStats {
@@ -180,7 +187,9 @@ mod tests {
         store.insert_symbol(make_symbol("foo"));
         store.insert_symbol(make_symbol("bar"));
         let uc = EmbedUseCase::new(store, provider, vs);
-        let stats = uc.embed_all(&EmbeddingConfig::default()).unwrap();
+        let stats = uc
+            .embed_all(&EmbeddingConfig::default(), |_, _| {})
+            .unwrap();
         assert_eq!(stats.total_symbols, 2);
         assert_eq!(stats.embedded, 2);
         assert_eq!(stats.skipped, 0);
@@ -192,10 +201,14 @@ mod tests {
         store.insert_symbol(make_symbol("foo"));
         let uc = EmbedUseCase::new(store, provider, Arc::clone(&vs));
         // First run
-        let stats1 = uc.embed_all(&EmbeddingConfig::default()).unwrap();
+        let stats1 = uc
+            .embed_all(&EmbeddingConfig::default(), |_, _| {})
+            .unwrap();
         assert_eq!(stats1.embedded, 1);
         // Second run — same symbols, same text → should skip
-        let stats2 = uc.embed_all(&EmbeddingConfig::default()).unwrap();
+        let stats2 = uc
+            .embed_all(&EmbeddingConfig::default(), |_, _| {})
+            .unwrap();
         assert_eq!(stats2.skipped, 1);
         assert_eq!(stats2.embedded, 0);
     }
@@ -207,7 +220,9 @@ mod tests {
         store.insert_symbol(make_symbol("bar"));
 
         let uc = EmbedUseCase::new(store.clone(), provider.clone(), Arc::clone(&vs));
-        let _ = uc.embed_all(&EmbeddingConfig::default()).unwrap();
+        let _ = uc
+            .embed_all(&EmbeddingConfig::default(), |_, _| {})
+            .unwrap();
 
         // Add an edge: foo calls bar — changes foo's text representation
         store.insert_edge(Edge {
@@ -219,7 +234,9 @@ mod tests {
 
         // Re-embed with the updated store but same vector store
         let uc2 = EmbedUseCase::new(store, provider, Arc::clone(&vs));
-        let stats2 = uc2.embed_all(&EmbeddingConfig::default()).unwrap();
+        let stats2 = uc2
+            .embed_all(&EmbeddingConfig::default(), |_, _| {})
+            .unwrap();
         // foo's text changed (now includes "calls bar"), bar's callers changed too
         assert!(stats2.embedded > 0);
     }
@@ -231,7 +248,8 @@ mod tests {
         store.insert_symbol(make_symbol("bar"));
 
         let uc = EmbedUseCase::new(store, provider.clone(), Arc::clone(&vs));
-        uc.embed_all(&EmbeddingConfig::default()).unwrap();
+        uc.embed_all(&EmbeddingConfig::default(), |_, _| {})
+            .unwrap();
         assert_eq!(vs.count().unwrap(), 2);
 
         // Create a new store with only "foo" — "bar" becomes an orphan
@@ -248,7 +266,9 @@ mod tests {
     fn embed_empty_store_returns_zero() {
         let (store, provider, vs) = setup();
         let uc = EmbedUseCase::new(store, provider, vs);
-        let stats = uc.embed_all(&EmbeddingConfig::default()).unwrap();
+        let stats = uc
+            .embed_all(&EmbeddingConfig::default(), |_, _| {})
+            .unwrap();
         assert_eq!(stats.total_symbols, 0);
         assert_eq!(stats.embedded, 0);
     }

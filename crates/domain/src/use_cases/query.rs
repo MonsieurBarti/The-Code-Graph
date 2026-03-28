@@ -1,4 +1,4 @@
-use crate::analysis::search::{detect_kind_boost, rrf_merge};
+use crate::analysis::search::{detect_kind_boost, qualified_name_boost, rrf_merge};
 use crate::error::Result;
 use crate::model::*;
 use crate::ports::{EmbeddingProvider, GraphStore, SearchIndex, VectorStore};
@@ -143,6 +143,7 @@ impl<S: GraphStore, I: SearchIndex> QueryUseCase<S, I> {
         } else {
             vec![]
         };
+        let qn_boost = qualified_name_boost(query);
 
         // Resolve qualified names to SearchResult, applying kind boost
         let mut results: Vec<SearchResult> = merged
@@ -150,6 +151,10 @@ impl<S: GraphStore, I: SearchIndex> QueryUseCase<S, I> {
             .take(limit)
             .filter_map(|(qn, mut score)| {
                 let sym = self.store.get_symbol(&qn).ok().flatten()?;
+                // Apply qualified-name exact-match boost (2.0x for :: queries)
+                if qn_boost > 1.0 && qn.contains(query) {
+                    score *= qn_boost;
+                }
                 if !kind_boosts.is_empty() {
                     for kb in &kind_boosts {
                         if sym.kind == kb.kind {

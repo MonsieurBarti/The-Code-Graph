@@ -99,11 +99,11 @@ pub struct KindBoost {
 
 /// Detect likely symbol kinds from query shape to boost relevance scores.
 /// Returns an empty vec when the query is a qualified name (contains `::`)
-/// because qualified names already pinpoint the exact symbol.
+/// because qualified names use exact-match boosting instead (see `qualified_name_boost`).
 pub fn detect_kind_boost(query: &str) -> Vec<KindBoost> {
     let mut boosts = Vec::new();
     if query.contains("::") {
-        return boosts; // qualified name pattern — no kind boost
+        return boosts; // qualified name pattern — use qualified_name_boost instead
     }
     let first = query.chars().next().unwrap_or('a');
     if first.is_uppercase() && !query.contains('_') {
@@ -124,6 +124,17 @@ pub fn detect_kind_boost(query: &str) -> Vec<KindBoost> {
         }
     }
     boosts
+}
+
+/// Returns 2.0 if the query contains `::` and is a qualified-name pattern,
+/// 1.0 otherwise. Applied as a multiplier to results whose qualified_name
+/// contains the query as a substring.
+pub fn qualified_name_boost(query: &str) -> f64 {
+    if query.contains("::") {
+        2.0
+    } else {
+        1.0
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -217,7 +228,17 @@ mod tests {
     #[test]
     fn detect_kind_boost_qualified() {
         let boosts = detect_kind_boost("auth::validate");
-        assert!(boosts.is_empty()); // :: pattern has no kind boost, just exact match
+        assert!(boosts.is_empty()); // :: pattern uses qualified_name_boost instead
+    }
+
+    #[test]
+    fn qualified_name_boost_with_colons() {
+        assert!((qualified_name_boost("auth::validate") - 2.0).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn qualified_name_boost_without_colons() {
+        assert!((qualified_name_boost("validate_token") - 1.0).abs() < f64::EPSILON);
     }
 
     // ------------------------------------------------------------------
