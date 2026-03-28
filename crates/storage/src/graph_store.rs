@@ -472,6 +472,8 @@ impl GraphStore for SqliteStore {
             files,
             symbols,
             edges,
+            entry_point_count: None,
+            avg_criticality: None,
         })
     }
 

@@ -7,6 +7,7 @@ pub struct CodeGraphConfig {
     pub index: Option<IndexConfig>,
     pub search: Option<SearchConfig>,
     pub watch: Option<WatchConfig>,
+    pub flows: Option<FlowsConfig>,
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]
@@ -22,6 +23,12 @@ pub struct SearchConfig {
 #[derive(Debug, Clone, Default, Deserialize)]
 pub struct WatchConfig {
     pub debounce_ms: Option<u64>,
+}
+
+#[derive(Debug, Clone, Default, Deserialize)]
+pub struct FlowsConfig {
+    pub extra_entry_points: Option<Vec<String>>,
+    pub excluded_entry_points: Option<Vec<String>>,
 }
 
 pub fn load_config(project_root: &Path) -> Result<CodeGraphConfig> {
@@ -70,6 +77,32 @@ max_results = 50
         assert_eq!(index.exclude.unwrap(), vec!["target", "node_modules"]);
         let search = config.search.unwrap();
         assert_eq!(search.max_results.unwrap(), 50);
+    }
+
+    #[test]
+    fn flows_config_parses() {
+        let tmp = tempfile::tempdir().unwrap();
+        let dir = tmp.path().join(".code-graph");
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(
+            dir.join("config.toml"),
+            r#"
+[flows]
+extra_entry_points = ["src/custom.rs::handler"]
+excluded_entry_points = ["src/test_helper.rs::setup"]
+"#,
+        )
+        .unwrap();
+        let config = load_config(tmp.path()).unwrap();
+        let flows = config.flows.unwrap();
+        assert_eq!(
+            flows.extra_entry_points.unwrap(),
+            vec!["src/custom.rs::handler"]
+        );
+        assert_eq!(
+            flows.excluded_entry_points.unwrap(),
+            vec!["src/test_helper.rs::setup"]
+        );
     }
 
     #[test]

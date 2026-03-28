@@ -1,8 +1,8 @@
 use std::io::Write;
 
 use domain::model::{
-    AffectedNode, DiffImpactReport, GraphStats, ImpactReport, IndexStats, Reference, SearchResult,
-    SymbolNode,
+    AffectedNode, CriticalityScore, DiffImpactReport, EntryPointKind, FlowAnalysis, GraphStats,
+    ImpactReport, IndexStats, Reference, SearchResult, SymbolNode,
 };
 
 #[derive(Debug, Clone, serde::Serialize)]
@@ -208,11 +208,18 @@ impl Displayable for Vec<SearchResult> {
 
 impl Displayable for GraphStats {
     fn fmt_compact(&self, w: &mut dyn Write) -> std::io::Result<()> {
-        writeln!(
+        write!(
             w,
             "Files: {} | Symbols: {} | Edges: {}",
             self.files, self.symbols, self.edges
-        )
+        )?;
+        if let Some(ep) = self.entry_point_count {
+            write!(w, "\nEntry points: {ep}")?;
+            if let Some(ac) = self.avg_criticality {
+                write!(w, " | Avg criticality: {ac:.3}")?;
+            }
+        }
+        writeln!(w)
     }
 
     fn fmt_table(&self, w: &mut dyn Write) -> std::io::Result<()> {
@@ -220,7 +227,132 @@ impl Displayable for GraphStats {
         writeln!(w, "--------+------")?;
         writeln!(w, "Files   | {}", self.files)?;
         writeln!(w, "Symbols | {}", self.symbols)?;
-        writeln!(w, "Edges   | {}", self.edges)
+        writeln!(w, "Edges   | {}", self.edges)?;
+        if let Some(ep) = self.entry_point_count {
+            writeln!(w, "Entry pts | {ep}")?;
+        }
+        if let Some(ac) = self.avg_criticality {
+            writeln!(w, "Avg crit  | {ac:.3}")?;
+        }
+        Ok(())
+    }
+
+    fn fmt_json(&self, w: &mut dyn Write) -> std::io::Result<()> {
+        let json = serde_json::to_string_pretty(self).map_err(std::io::Error::other)?;
+        writeln!(w, "{json}")
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Displayable: FlowAnalysis
+// ---------------------------------------------------------------------------
+
+fn format_entry_point_summary(analysis: &FlowAnalysis) -> String {
+    let mut counts: std::collections::HashMap<&str, usize> = std::collections::HashMap::new();
+    for ep in &analysis.entry_points {
+        let label = match ep.kind {
+            EntryPointKind::Main => "main",
+            EntryPointKind::Test => "test",
+            EntryPointKind::HttpHandler => "http",
+            EntryPointKind::CliCommand => "cli",
+            EntryPointKind::PublicRoot => "public-root",
+        };
+        *counts.entry(label).or_default() += 1;
+    }
+    let parts: Vec<String> = counts.iter().map(|(k, v)| format!("{v} {k}")).collect();
+    parts.join(", ")
+}
+
+impl Displayable for FlowAnalysis {
+    fn fmt_compact(&self, w: &mut dyn Write) -> std::io::Result<()> {
+        let summary = format_entry_point_summary(self);
+        writeln!(
+            w,
+            "Entry points: {} detected ({})",
+            self.stats.total_entry_points, summary
+        )?;
+        writeln!(
+            w,
+            "Flows: {} total, showing {}",
+            self.stats.total_flows,
+            self.flows.len()
+        )?;
+        writeln!(w)?;
+        for (i, flow) in self.flows.iter().enumerate() {
+            let path_str = flow.path.join(" -> ");
+            let truncated = if flow.truncated { " [truncated]" } else { "" };
+            writeln!(
+                w,
+                "[{}] {} (depth {}){}",
+                i + 1,
+                path_str,
+                flow.depth,
+                truncated
+            )?;
+        }
+        Ok(())
+    }
+
+    fn fmt_table(&self, w: &mut dyn Write) -> std::io::Result<()> {
+        writeln!(w, "# | Entry | Path | Depth | Truncated")?;
+        writeln!(w, "--+-------+------+-------+----------")?;
+        for (i, flow) in self.flows.iter().enumerate() {
+            writeln!(
+                w,
+                "{} | {} | {} | {} | {}",
+                i + 1,
+                flow.entry,
+                flow.path.join(" -> "),
+                flow.depth,
+                flow.truncated
+            )?;
+        }
+        Ok(())
+    }
+
+    fn fmt_json(&self, w: &mut dyn Write) -> std::io::Result<()> {
+        let json = serde_json::to_string_pretty(self).map_err(std::io::Error::other)?;
+        writeln!(w, "{json}")
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Displayable: Vec<CriticalityScore>
+// ---------------------------------------------------------------------------
+
+impl Displayable for Vec<CriticalityScore> {
+    fn fmt_compact(&self, w: &mut dyn Write) -> std::io::Result<()> {
+        for (i, score) in self.iter().enumerate() {
+            let entry = if score.is_entry_point { "yes" } else { "no" };
+            writeln!(
+                w,
+                "{} {}  betweenness={:.3}  flows={}  entry={}",
+                i + 1,
+                score.qualified_name,
+                score.betweenness,
+                score.flow_count,
+                entry
+            )?;
+        }
+        Ok(())
+    }
+
+    fn fmt_table(&self, w: &mut dyn Write) -> std::io::Result<()> {
+        writeln!(w, "# | Symbol | Betweenness | Flows | Entry?")?;
+        writeln!(w, "--+--------+-------------+-------+-------")?;
+        for (i, score) in self.iter().enumerate() {
+            let entry = if score.is_entry_point { "yes" } else { "no" };
+            writeln!(
+                w,
+                "{} | {} | {:.3} | {} | {}",
+                i + 1,
+                score.qualified_name,
+                score.betweenness,
+                score.flow_count,
+                entry
+            )?;
+        }
+        Ok(())
     }
 
     fn fmt_json(&self, w: &mut dyn Write) -> std::io::Result<()> {
@@ -627,6 +759,8 @@ mod tests {
             files: 10,
             symbols: 50,
             edges: 100,
+            entry_point_count: None,
+            avg_criticality: None,
         }
     }
 
@@ -816,5 +950,161 @@ mod tests {
         assert!(s.contains("foo"));
         assert!(s.contains("Impact:"));
         assert!(s.contains("QualifiedName | Depth | Confidence | Path"));
+    }
+
+    // -----------------------------------------------------------------------
+    // FlowAnalysis tests
+    // -----------------------------------------------------------------------
+
+    fn sample_flow_analysis() -> FlowAnalysis {
+        use domain::model::{EntryPoint, ExecutionFlow, FlowStats};
+        FlowAnalysis {
+            entry_points: vec![EntryPoint {
+                qualified_name: "main".into(),
+                kind: EntryPointKind::Main,
+                confidence: 1.0,
+            }],
+            flows: vec![ExecutionFlow {
+                entry: "main".into(),
+                path: vec!["main".into(), "db.connect".into()],
+                depth: 2,
+                truncated: false,
+            }],
+            criticality: vec![],
+            stats: FlowStats {
+                total_entry_points: 1,
+                total_flows: 1,
+                max_depth: 2,
+                avg_depth: 2.0,
+            },
+        }
+    }
+
+    fn sample_criticality() -> Vec<CriticalityScore> {
+        vec![CriticalityScore {
+            qualified_name: "db.query".into(),
+            betweenness: 0.847,
+            flow_count: 312,
+            is_entry_point: false,
+        }]
+    }
+
+    #[test]
+    fn flow_analysis_compact_format() {
+        let analysis = sample_flow_analysis();
+        let mut buf = Vec::new();
+        analysis.fmt_compact(&mut buf).unwrap();
+        let s = String::from_utf8(buf).unwrap();
+        assert!(s.contains("Entry points: 1"));
+        assert!(s.contains("main"));
+        assert!(s.contains("db.connect"));
+    }
+
+    #[test]
+    fn flow_analysis_table_format() {
+        let analysis = sample_flow_analysis();
+        let mut buf = Vec::new();
+        analysis.fmt_table(&mut buf).unwrap();
+        let s = String::from_utf8(buf).unwrap();
+        assert!(s.contains("Entry"));
+        assert!(s.contains("Path"));
+        assert!(s.contains("main"));
+    }
+
+    #[test]
+    fn flow_analysis_json_format() {
+        let analysis = sample_flow_analysis();
+        let mut buf = Vec::new();
+        analysis.fmt_json(&mut buf).unwrap();
+        let s = String::from_utf8(buf).unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(&s).unwrap();
+        assert_eq!(parsed["stats"]["total_flows"], 1);
+        assert_eq!(parsed["flows"][0]["entry"], "main");
+    }
+
+    #[test]
+    fn criticality_compact_format() {
+        let scores = sample_criticality();
+        let mut buf = Vec::new();
+        scores.fmt_compact(&mut buf).unwrap();
+        let s = String::from_utf8(buf).unwrap();
+        assert!(s.contains("db.query"));
+        assert!(s.contains("0.847"));
+    }
+
+    #[test]
+    fn criticality_table_format() {
+        let scores = sample_criticality();
+        let mut buf = Vec::new();
+        scores.fmt_table(&mut buf).unwrap();
+        let s = String::from_utf8(buf).unwrap();
+        assert!(s.contains("Symbol"));
+        assert!(s.contains("Betweenness"));
+        assert!(s.contains("db.query"));
+        assert!(s.contains("0.847"));
+        assert!(s.contains("312"));
+    }
+
+    #[test]
+    fn criticality_json_format() {
+        let scores = sample_criticality();
+        let mut buf = Vec::new();
+        scores.fmt_json(&mut buf).unwrap();
+        let s = String::from_utf8(buf).unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(&s).unwrap();
+        assert!(parsed.is_array());
+        assert_eq!(parsed[0]["qualified_name"], "db.query");
+        assert_eq!(parsed[0]["betweenness"], 0.847);
+    }
+
+    // -----------------------------------------------------------------------
+    // GraphStats with flow fields tests (T07)
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn graph_stats_compact_with_flow_fields() {
+        let stats = GraphStats {
+            files: 234,
+            symbols: 1892,
+            edges: 5431,
+            entry_point_count: Some(12),
+            avg_criticality: Some(0.034),
+        };
+        let mut buf = Vec::new();
+        stats.fmt_compact(&mut buf).unwrap();
+        let s = String::from_utf8(buf).unwrap();
+        assert!(s.contains("Entry points: 12"));
+        assert!(s.contains("Avg criticality: 0.034"));
+    }
+
+    #[test]
+    fn graph_stats_compact_without_flow_fields() {
+        let stats = GraphStats {
+            files: 10,
+            symbols: 50,
+            edges: 100,
+            entry_point_count: None,
+            avg_criticality: None,
+        };
+        let mut buf = Vec::new();
+        stats.fmt_compact(&mut buf).unwrap();
+        let s = String::from_utf8(buf).unwrap();
+        assert!(!s.contains("Entry points"));
+        assert!(!s.contains("Avg criticality"));
+    }
+
+    #[test]
+    fn graph_stats_zero_symbols_shows_zero_flow_fields() {
+        let stats = GraphStats {
+            files: 0,
+            symbols: 0,
+            edges: 0,
+            entry_point_count: Some(0),
+            avg_criticality: Some(0.0),
+        };
+        let mut buf = Vec::new();
+        stats.fmt_compact(&mut buf).unwrap();
+        let s = String::from_utf8(buf).unwrap();
+        assert!(s.contains("Entry points: 0"));
     }
 }
