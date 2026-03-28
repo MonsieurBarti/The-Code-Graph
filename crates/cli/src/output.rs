@@ -1118,6 +1118,8 @@ mod tests {
             most_duplicated: None,
             avg_risk: None,
             p90_risk: None,
+            community_count: None,
+            modularity: None,
         }
     }
 
@@ -1431,6 +1433,8 @@ mod tests {
             most_duplicated: None,
             avg_risk: None,
             p90_risk: None,
+            community_count: None,
+            modularity: None,
         };
         let mut buf = Vec::new();
         stats.fmt_compact(&mut buf).unwrap();
@@ -1452,6 +1456,8 @@ mod tests {
             most_duplicated: None,
             avg_risk: None,
             p90_risk: None,
+            community_count: None,
+            modularity: None,
         };
         let mut buf = Vec::new();
         stats.fmt_compact(&mut buf).unwrap();
@@ -1473,6 +1479,8 @@ mod tests {
             most_duplicated: None,
             avg_risk: None,
             p90_risk: None,
+            community_count: None,
+            modularity: None,
         };
         let mut buf = Vec::new();
         stats.fmt_compact(&mut buf).unwrap();
@@ -1493,6 +1501,8 @@ mod tests {
             most_duplicated: None,
             avg_risk: Some(0.23),
             p90_risk: Some(0.61),
+            community_count: None,
+            modularity: None,
         };
         let mut buf = Vec::new();
         stats.fmt_compact(&mut buf).unwrap();
@@ -1514,6 +1524,8 @@ mod tests {
             most_duplicated: None,
             avg_risk: Some(0.30),
             p90_risk: Some(0.55),
+            community_count: None,
+            modularity: None,
         };
         let mut buf = Vec::new();
         stats.fmt_table(&mut buf).unwrap();
