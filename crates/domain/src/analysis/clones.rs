@@ -1,5 +1,6 @@
 // Clone detection analysis — implemented in T03-T06
 
+use crate::model::{BucketKey, StructuralFingerprint};
 use std::collections::{HashMap, HashSet};
 
 /// Split source code into tokens.
@@ -155,6 +156,64 @@ pub fn jaccard_similarity(a: &[String], b: &[String]) -> f64 {
     intersection as f64 / union as f64
 }
 
+// ---------------------------------------------------------------------------
+// T04 — Quantize-and-concatenate bucketing
+// ---------------------------------------------------------------------------
+
+/// Quantize a call count into a 2-bit bin.
+/// 0 → 0, 1–2 → 1, 3–5 → 2, 6+ → 3
+fn count_bin(count: usize) -> u8 {
+    match count {
+        0 => 0,
+        1..=2 => 1,
+        3..=5 => 2,
+        _ => 3,
+    }
+}
+
+/// Quantize a line count into a 2-bit bin.
+/// 0–5 → 0, 6–15 → 1, 16–50 → 2, 51+ → 3
+fn line_bin(lines: usize) -> u8 {
+    match lines {
+        0..=5 => 0,
+        6..=15 => 1,
+        16..=50 => 2,
+        _ => 3,
+    }
+}
+
+/// Quantize a child count into a 2-bit bin.
+/// 0 → 0, 1–3 → 1, 4+ → 2
+fn child_bin(count: usize) -> u8 {
+    match count {
+        0 => 0,
+        1..=3 => 1,
+        _ => 2,
+    }
+}
+
+/// Compute the coarse bucket key for a structural fingerprint.
+pub fn bucket_key(fp: &StructuralFingerprint) -> BucketKey {
+    BucketKey {
+        kind: fp.symbol_kind,
+        callee_bin: count_bin(fp.callee_count),
+        caller_bin: count_bin(fp.caller_count),
+        line_bin: line_bin(fp.body_line_count),
+        child_bin: child_bin(fp.child_count),
+    }
+}
+
+/// Group a slice of fingerprints by their bucket key.
+pub fn group_into_buckets(
+    fingerprints: &[StructuralFingerprint],
+) -> HashMap<BucketKey, Vec<&StructuralFingerprint>> {
+    let mut map: HashMap<BucketKey, Vec<&StructuralFingerprint>> = HashMap::new();
+    for fp in fingerprints {
+        map.entry(bucket_key(fp)).or_default().push(fp);
+    }
+    map
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -261,5 +320,120 @@ mod tests {
     #[test]
     fn jaccard_both_empty() {
         assert!((jaccard_similarity(&[], &[]) - 1.0).abs() < f64::EPSILON);
+    }
+
+    // -----------------------------------------------------------------------
+    // T04 bucketing tests
+    // -----------------------------------------------------------------------
+
+    use crate::model::{Language, SymbolKind};
+    use std::path::PathBuf;
+
+    #[test]
+    fn bucket_key_groups_similar_symbols() {
+        let fp1 = StructuralFingerprint {
+            qualified_name: "a::foo".into(),
+            symbol_kind: SymbolKind::Function,
+            callee_count: 2,
+            caller_count: 1,
+            edge_kind_set: 0,
+            body_line_count: 10,
+            child_count: 0,
+            language: Language::Rust,
+            file: PathBuf::from("a.rs"),
+        };
+        let fp2 = StructuralFingerprint {
+            qualified_name: "b::bar".into(),
+            symbol_kind: SymbolKind::Function,
+            callee_count: 1,
+            caller_count: 1,
+            edge_kind_set: 0,
+            body_line_count: 10,
+            child_count: 0,
+            language: Language::Rust,
+            file: PathBuf::from("b.rs"),
+        };
+        assert_eq!(bucket_key(&fp1), bucket_key(&fp2)); // both callee in bin 1 (1-2)
+    }
+
+    #[test]
+    fn bucket_key_separates_different_kinds() {
+        let fp1 = StructuralFingerprint {
+            qualified_name: "a::foo".into(),
+            symbol_kind: SymbolKind::Function,
+            callee_count: 0,
+            caller_count: 0,
+            edge_kind_set: 0,
+            body_line_count: 10,
+            child_count: 0,
+            language: Language::Rust,
+            file: PathBuf::from("a.rs"),
+        };
+        let fp2 = StructuralFingerprint {
+            qualified_name: "a::bar".into(),
+            symbol_kind: SymbolKind::Method,
+            callee_count: 0,
+            caller_count: 0,
+            edge_kind_set: 0,
+            body_line_count: 10,
+            child_count: 0,
+            language: Language::Rust,
+            file: PathBuf::from("a.rs"),
+        };
+        assert_ne!(bucket_key(&fp1), bucket_key(&fp2));
+    }
+
+    #[test]
+    fn group_into_buckets_correct_grouping() {
+        let fps = vec![
+            StructuralFingerprint {
+                qualified_name: "a::f1".into(),
+                symbol_kind: SymbolKind::Function,
+                callee_count: 1,
+                caller_count: 0,
+                edge_kind_set: 0,
+                body_line_count: 10,
+                child_count: 0,
+                language: Language::Rust,
+                file: PathBuf::from("a.rs"),
+            },
+            StructuralFingerprint {
+                qualified_name: "b::f2".into(),
+                symbol_kind: SymbolKind::Function,
+                callee_count: 2,
+                caller_count: 0,
+                edge_kind_set: 0,
+                body_line_count: 12,
+                child_count: 0,
+                language: Language::Rust,
+                file: PathBuf::from("b.rs"),
+            },
+            StructuralFingerprint {
+                qualified_name: "c::f3".into(),
+                symbol_kind: SymbolKind::Class,
+                callee_count: 1,
+                caller_count: 0,
+                edge_kind_set: 0,
+                body_line_count: 10,
+                child_count: 0,
+                language: Language::Rust,
+                file: PathBuf::from("c.rs"),
+            },
+        ];
+        let buckets = group_into_buckets(&fps);
+        assert_eq!(buckets.len(), 2); // f1,f2 in one bucket; f3 in another
+        let max_bucket = buckets.values().map(|v| v.len()).max().unwrap();
+        assert_eq!(max_bucket, 2);
+    }
+
+    #[test]
+    fn count_bin_boundaries() {
+        assert_eq!(count_bin(0), 0);
+        assert_eq!(count_bin(1), 1);
+        assert_eq!(count_bin(2), 1);
+        assert_eq!(count_bin(3), 2);
+        assert_eq!(count_bin(5), 2);
+        assert_eq!(count_bin(6), 3);
+        assert_eq!(count_bin(100), 3);
     }
 }
