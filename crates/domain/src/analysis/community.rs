@@ -1,6 +1,8 @@
 // Leiden community detection algorithm
 
 use crate::model::{Edge, EdgeKind, SymbolNode};
+use rand::rngs::StdRng;
+use rand::seq::SliceRandom;
 use std::collections::HashMap;
 
 #[allow(dead_code)]
@@ -141,6 +143,166 @@ fn compute_modularity(graph: &LeidenGraph, partition: &Partition, gamma: f64) ->
     q
 }
 
+#[allow(dead_code)]
+fn local_moving(
+    graph: &LeidenGraph,
+    partition: &mut Partition,
+    gamma: f64,
+    rng: &mut StdRng,
+) -> bool {
+    if graph.n == 0 {
+        return false;
+    }
+    let m2 = 2.0 * graph.total_weight;
+    if m2 == 0.0 {
+        return false;
+    }
+    let mut any_moved = false;
+    let mut order: Vec<usize> = (0..graph.n).collect();
+    order.shuffle(rng);
+
+    let mut improved = true;
+    while improved {
+        improved = false;
+        for &node in &order {
+            let old_comm = partition.community[node];
+            let ki = graph.degree[node];
+            if ki == 0.0 {
+                continue;
+            }
+
+            // Compute edge weight to each neighboring community
+            let mut comm_edge_weight: HashMap<usize, f64> = HashMap::new();
+            for &(neighbor, w) in &graph.neighbors[node] {
+                *comm_edge_weight
+                    .entry(partition.community[neighbor])
+                    .or_default() += w;
+            }
+
+            // Compute delta for removing node from current community
+            let w_old = comm_edge_weight.get(&old_comm).copied().unwrap_or(0.0);
+            let sigma_old = partition.community_weight[old_comm] - ki;
+            let remove_gain =
+                -w_old / graph.total_weight + gamma * ki * sigma_old / (m2 * graph.total_weight);
+
+            let mut best_comm = old_comm;
+            let mut best_gain = 0.0;
+
+            // Sort candidates for deterministic tie-breaking
+            let mut candidates: Vec<(usize, f64)> = comm_edge_weight
+                .iter()
+                .filter(|(&c, _)| c != old_comm)
+                .map(|(&c, &w)| (c, w))
+                .collect();
+            candidates.sort_by_key(|&(c, _)| c);
+
+            for (target_comm, w_target) in candidates {
+                let sigma_target = partition.community_weight[target_comm];
+                let insert_gain = w_target / graph.total_weight
+                    - gamma * ki * sigma_target / (m2 * graph.total_weight);
+                let total_gain = remove_gain + insert_gain;
+                if total_gain > best_gain {
+                    best_gain = total_gain;
+                    best_comm = target_comm;
+                }
+            }
+
+            if best_comm != old_comm {
+                partition.move_node(node, best_comm, graph);
+                improved = true;
+                any_moved = true;
+            }
+        }
+    }
+    any_moved
+}
+
+#[allow(dead_code)]
+fn refinement(
+    graph: &LeidenGraph,
+    partition: &Partition,
+    gamma: f64,
+    rng: &mut StdRng,
+) -> Partition {
+    // Start from singletons — each node is its own sub-community
+    let mut refined = Partition::singleton_with_graph(graph);
+
+    let m2 = 2.0 * graph.total_weight;
+    if m2 == 0.0 {
+        return refined;
+    }
+
+    // Process each Phase 1 community separately
+    let communities = partition.distinct_communities();
+    for phase1_comm in communities {
+        let members: Vec<usize> = (0..graph.n)
+            .filter(|&i| partition.community[i] == phase1_comm)
+            .collect();
+        if members.len() <= 1 {
+            continue;
+        }
+
+        // Randomize visit order within this community
+        let mut order = members.clone();
+        order.shuffle(rng);
+
+        for &node in &order {
+            let cur_sub = refined.community[node];
+            let ki = graph.degree[node];
+            if ki == 0.0 {
+                continue;
+            }
+
+            // Find adjacent sub-communities within the same Phase 1 community
+            let mut sub_edge_weight: HashMap<usize, f64> = HashMap::new();
+            for &(neighbor, w) in &graph.neighbors[node] {
+                if partition.community[neighbor] == phase1_comm {
+                    let sub = refined.community[neighbor];
+                    if sub != cur_sub {
+                        *sub_edge_weight.entry(sub).or_default() += w;
+                    }
+                }
+            }
+
+            let w_old = {
+                let mut w = 0.0;
+                for &(neighbor, weight) in &graph.neighbors[node] {
+                    if refined.community[neighbor] == cur_sub && neighbor != node {
+                        w += weight;
+                    }
+                }
+                w
+            };
+            let sigma_old = refined.community_weight[cur_sub] - ki;
+            let remove_gain =
+                -w_old / graph.total_weight + gamma * ki * sigma_old / (m2 * graph.total_weight);
+
+            let mut best_sub = cur_sub;
+            let mut best_gain = 0.0;
+
+            let mut candidates: Vec<(usize, f64)> =
+                sub_edge_weight.iter().map(|(&c, &w)| (c, w)).collect();
+            candidates.sort_by_key(|&(c, _)| c);
+
+            for (target_sub, w_target) in candidates {
+                let sigma_target = refined.community_weight[target_sub];
+                let insert_gain = w_target / graph.total_weight
+                    - gamma * ki * sigma_target / (m2 * graph.total_weight);
+                let total_gain = remove_gain + insert_gain;
+                if total_gain > best_gain {
+                    best_gain = total_gain;
+                    best_sub = target_sub;
+                }
+            }
+
+            if best_sub != cur_sub {
+                refined.move_node(node, best_sub, graph);
+            }
+        }
+    }
+    refined
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -268,5 +430,179 @@ mod tests {
         let edges = vec![make_edge(EdgeKind::Calls, "m::a", "m::b")];
         let graph = LeidenGraph::from_symbols_and_edges(&symbols, &edges);
         assert!((graph.degree[graph.node_to_index["m::c"]] - 0.0).abs() < f64::EPSILON);
+    }
+
+    // ---- T03: Local Moving tests ----
+
+    /// Helper: Two K4 cliques connected by a single bridge edge
+    fn build_two_cliques_bridge() -> (Vec<SymbolNode>, Vec<Edge>) {
+        let mut symbols = Vec::new();
+        let mut edges = Vec::new();
+        for i in 0..4 {
+            symbols.push(make_symbol(
+                &format!("a{i}"),
+                &format!("a::a{i}"),
+                SymbolKind::Function,
+            ));
+            symbols.push(make_symbol(
+                &format!("b{i}"),
+                &format!("b::b{i}"),
+                SymbolKind::Function,
+            ));
+        }
+        // Clique A: all pairs
+        for i in 0..4 {
+            for j in (i + 1)..4 {
+                edges.push(make_edge(
+                    EdgeKind::Calls,
+                    &format!("a::a{i}"),
+                    &format!("a::a{j}"),
+                ));
+            }
+        }
+        // Clique B: all pairs
+        for i in 0..4 {
+            for j in (i + 1)..4 {
+                edges.push(make_edge(
+                    EdgeKind::Calls,
+                    &format!("b::b{i}"),
+                    &format!("b::b{j}"),
+                ));
+            }
+        }
+        // Bridge
+        edges.push(make_edge(EdgeKind::Calls, "a::a0", "b::b0"));
+        (symbols, edges)
+    }
+
+    #[test]
+    fn local_moving_merges_triangle() {
+        let symbols = vec![
+            make_symbol("a", "m::a", SymbolKind::Function),
+            make_symbol("b", "m::b", SymbolKind::Function),
+            make_symbol("c", "m::c", SymbolKind::Function),
+        ];
+        let edges = vec![
+            make_edge(EdgeKind::Calls, "m::a", "m::b"),
+            make_edge(EdgeKind::Calls, "m::b", "m::c"),
+            make_edge(EdgeKind::Calls, "m::a", "m::c"),
+        ];
+        let graph = LeidenGraph::from_symbols_and_edges(&symbols, &edges);
+        let mut partition = Partition::singleton_with_graph(&graph);
+        let mut rng = StdRng::seed_from_u64(42);
+        let moved = local_moving(&graph, &mut partition, 1.0, &mut rng);
+        assert!(moved);
+        assert_eq!(partition.community[0], partition.community[1]);
+        assert_eq!(partition.community[1], partition.community[2]);
+    }
+
+    #[test]
+    fn local_moving_separates_two_cliques() {
+        let (symbols, edges) = build_two_cliques_bridge();
+        let graph = LeidenGraph::from_symbols_and_edges(&symbols, &edges);
+        let mut partition = Partition::singleton_with_graph(&graph);
+        let mut rng = StdRng::seed_from_u64(42);
+        local_moving(&graph, &mut partition, 1.0, &mut rng);
+        let distinct: std::collections::HashSet<usize> =
+            partition.community.iter().copied().collect();
+        assert!(
+            distinct.len() >= 2,
+            "expected at least 2 communities, got {}",
+            distinct.len()
+        );
+    }
+
+    #[test]
+    fn local_moving_no_edges_no_moves() {
+        let symbols = vec![
+            make_symbol("a", "m::a", SymbolKind::Function),
+            make_symbol("b", "m::b", SymbolKind::Function),
+        ];
+        let graph = LeidenGraph::from_symbols_and_edges(&symbols, &[]);
+        let mut partition = Partition::singleton_with_graph(&graph);
+        let mut rng = StdRng::seed_from_u64(42);
+        let moved = local_moving(&graph, &mut partition, 1.0, &mut rng);
+        assert!(!moved);
+    }
+
+    #[test]
+    fn local_moving_deterministic_with_same_seed() {
+        let (symbols, edges) = build_two_cliques_bridge();
+        let graph = LeidenGraph::from_symbols_and_edges(&symbols, &edges);
+
+        let mut p1 = Partition::singleton_with_graph(&graph);
+        let mut rng1 = StdRng::seed_from_u64(42);
+        local_moving(&graph, &mut p1, 1.0, &mut rng1);
+
+        let mut p2 = Partition::singleton_with_graph(&graph);
+        let mut rng2 = StdRng::seed_from_u64(42);
+        local_moving(&graph, &mut p2, 1.0, &mut rng2);
+
+        assert_eq!(p1.community, p2.community);
+    }
+
+    // ---- T04: Refinement tests ----
+
+    /// BFS connectivity check for a subset of nodes in the graph
+    fn is_connected(graph: &LeidenGraph, members: &[usize]) -> bool {
+        use std::collections::{HashSet, VecDeque};
+        if members.is_empty() {
+            return true;
+        }
+        let member_set: HashSet<usize> = members.iter().copied().collect();
+        let mut visited = HashSet::new();
+        let mut queue = VecDeque::new();
+        visited.insert(members[0]);
+        queue.push_back(members[0]);
+        while let Some(node) = queue.pop_front() {
+            for &(neighbor, _) in &graph.neighbors[node] {
+                if member_set.contains(&neighbor) && visited.insert(neighbor) {
+                    queue.push_back(neighbor);
+                }
+            }
+        }
+        visited.len() == members.len()
+    }
+
+    #[test]
+    fn refinement_preserves_connectivity() {
+        let (symbols, edges) = build_two_cliques_bridge();
+        let graph = LeidenGraph::from_symbols_and_edges(&symbols, &edges);
+
+        // Simulate Phase 1 having merged everything into one community
+        let mut partition = Partition::singleton_with_graph(&graph);
+        for i in 1..graph.n {
+            partition.move_node(i, 0, &graph);
+        }
+
+        let mut rng = StdRng::seed_from_u64(42);
+        let refined = refinement(&graph, &partition, 1.0, &mut rng);
+
+        for c in refined.distinct_communities() {
+            let members: Vec<usize> = (0..graph.n)
+                .filter(|&i| refined.community[i] == c)
+                .collect();
+            if members.len() > 1 {
+                assert!(
+                    is_connected(&graph, &members),
+                    "Community {} with {} members is not connected",
+                    c,
+                    members.len()
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn refinement_singletons_remain_singletons() {
+        let symbols = vec![
+            make_symbol("a", "m::a", SymbolKind::Function),
+            make_symbol("b", "m::b", SymbolKind::Function),
+        ];
+        let graph = LeidenGraph::from_symbols_and_edges(&symbols, &[]);
+        let partition = Partition::singleton_with_graph(&graph);
+        let mut rng = StdRng::seed_from_u64(42);
+        let refined = refinement(&graph, &partition, 1.0, &mut rng);
+        assert_ne!(refined.community[0], refined.community[1]);
     }
 }
