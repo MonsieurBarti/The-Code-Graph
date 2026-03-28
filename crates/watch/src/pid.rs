@@ -18,9 +18,14 @@ pub fn write_pid_exclusive(data_dir: &Path, pid: u32) -> Result<()> {
         .open(&path)
         .map_err(|e| {
             if e.kind() == std::io::ErrorKind::AlreadyExists {
-                CodeGraphError::Other("PID file already exists — another daemon may be starting".into())
+                CodeGraphError::Other(
+                    "PID file already exists — another daemon may be starting".into(),
+                )
             } else {
-                CodeGraphError::FileSystem { path: path.clone(), source: e }
+                CodeGraphError::FileSystem {
+                    path: path.clone(),
+                    source: e,
+                }
             }
         })?;
     file.write_all(pid.to_string().as_bytes())
