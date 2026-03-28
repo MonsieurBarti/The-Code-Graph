@@ -36,21 +36,11 @@ impl InMemoryGraph {
     }
 
     pub fn from_edges(edges: Vec<Edge>) -> Self {
-        let mut outgoing: HashMap<String, Vec<(String, EdgeKind)>> = HashMap::new();
-        let mut incoming: HashMap<String, Vec<(String, EdgeKind)>> = HashMap::new();
-
+        let mut graph = Self::new();
         for edge in edges {
-            outgoing
-                .entry(edge.source.clone())
-                .or_default()
-                .push((edge.target.clone(), edge.kind));
-            incoming
-                .entry(edge.target.clone())
-                .or_default()
-                .push((edge.source.clone(), edge.kind));
+            graph.add_edge(edge);
         }
-
-        InMemoryGraph { outgoing, incoming }
+        graph
     }
 
     pub fn bfs(&self, start: &str, direction: Direction, max_depth: usize) -> Vec<TraversalResult> {

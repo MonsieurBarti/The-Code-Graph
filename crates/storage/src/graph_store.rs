@@ -575,69 +575,73 @@ impl GraphStore for SqliteStore {
             return Ok(vec![]);
         }
         let conn = self.conn()?;
-        let placeholders: String = (1..=paths.len())
-            .map(|i| format!("?{i}"))
-            .collect::<Vec<_>>()
-            .join(", ");
-        let sql = format!(
-            "SELECT qualified_name, name, kind, file_path,
-                    line_start, line_end, col_start, col_end,
-                    visibility, is_exported, is_async, is_test,
-                    decorators, signature
-             FROM symbols WHERE file_path IN ({placeholders})"
-        );
-        let mut stmt = conn.prepare(&sql).map_err(map_rusqlite_error)?;
-        let params: Vec<&str> = paths
-            .iter()
-            .map(|p| p.to_str().unwrap_or_default())
-            .collect();
-        let rows = stmt
-            .query_map(rusqlite::params_from_iter(params), |row| {
-                Ok((
-                    row.get::<_, String>(0)?,
-                    row.get::<_, String>(1)?,
-                    row.get::<_, String>(2)?,
-                    row.get::<_, String>(3)?,
-                    row.get::<_, i64>(4)?,
-                    row.get::<_, i64>(5)?,
-                    row.get::<_, i64>(6)?,
-                    row.get::<_, i64>(7)?,
-                    row.get::<_, String>(8)?,
-                    row.get::<_, i32>(9)?,
-                    row.get::<_, i32>(10)?,
-                    row.get::<_, i32>(11)?,
-                    row.get::<_, Option<String>>(12)?,
-                    row.get::<_, Option<String>>(13)?,
-                ))
-            })
-            .map_err(map_rusqlite_error)?;
+        // Chunk paths to stay within SQLite's SQLITE_MAX_VARIABLE_NUMBER limit
+        const CHUNK_SIZE: usize = 500;
         let mut symbols = Vec::new();
-        for row in rows {
-            let (qn, name, kind, file, ls, le, cs, ce, vis, exp, asy, tst, dec, sig) =
-                row.map_err(map_rusqlite_error)?;
-            let decorators: Vec<String> = match dec {
-                Some(ref s) => serde_json::from_str(s)
-                    .map_err(|e| domain::error::CodeGraphError::Storage(e.to_string()))?,
-                None => vec![],
-            };
-            symbols.push(SymbolNode {
-                qualified_name: qn,
-                name,
-                kind: symbol_kind_from_str(&kind)?,
-                location: Location {
-                    file: file.into(),
-                    line_start: ls as usize,
-                    line_end: le as usize,
-                    col_start: cs as usize,
-                    col_end: ce as usize,
-                },
-                visibility: visibility_from_str(&vis)?,
-                is_exported: exp != 0,
-                is_async: asy != 0,
-                is_test: tst != 0,
-                decorators,
-                signature: sig,
-            });
+        for chunk in paths.chunks(CHUNK_SIZE) {
+            let placeholders: String = (1..=chunk.len())
+                .map(|i| format!("?{i}"))
+                .collect::<Vec<_>>()
+                .join(", ");
+            let sql = format!(
+                "SELECT qualified_name, name, kind, file_path,
+                        line_start, line_end, col_start, col_end,
+                        visibility, is_exported, is_async, is_test,
+                        decorators, signature
+                 FROM symbols WHERE file_path IN ({placeholders})"
+            );
+            let mut stmt = conn.prepare(&sql).map_err(map_rusqlite_error)?;
+            let params: Vec<&str> = chunk
+                .iter()
+                .map(|p| p.to_str().unwrap_or_default())
+                .collect();
+            let rows = stmt
+                .query_map(rusqlite::params_from_iter(params), |row| {
+                    Ok((
+                        row.get::<_, String>(0)?,
+                        row.get::<_, String>(1)?,
+                        row.get::<_, String>(2)?,
+                        row.get::<_, String>(3)?,
+                        row.get::<_, i64>(4)?,
+                        row.get::<_, i64>(5)?,
+                        row.get::<_, i64>(6)?,
+                        row.get::<_, i64>(7)?,
+                        row.get::<_, String>(8)?,
+                        row.get::<_, i32>(9)?,
+                        row.get::<_, i32>(10)?,
+                        row.get::<_, i32>(11)?,
+                        row.get::<_, Option<String>>(12)?,
+                        row.get::<_, Option<String>>(13)?,
+                    ))
+                })
+                .map_err(map_rusqlite_error)?;
+            for row in rows {
+                let (qn, name, kind, file, ls, le, cs, ce, vis, exp, asy, tst, dec, sig) =
+                    row.map_err(map_rusqlite_error)?;
+                let decorators: Vec<String> = match dec {
+                    Some(ref s) => serde_json::from_str(s)
+                        .map_err(|e| domain::error::CodeGraphError::Storage(e.to_string()))?,
+                    None => vec![],
+                };
+                symbols.push(SymbolNode {
+                    qualified_name: qn,
+                    name,
+                    kind: symbol_kind_from_str(&kind)?,
+                    location: Location {
+                        file: file.into(),
+                        line_start: ls as usize,
+                        line_end: le as usize,
+                        col_start: cs as usize,
+                        col_end: ce as usize,
+                    },
+                    visibility: visibility_from_str(&vis)?,
+                    is_exported: exp != 0,
+                    is_async: asy != 0,
+                    is_test: tst != 0,
+                    decorators,
+                    signature: sig,
+                });
+            }
         }
         Ok(symbols)
     }

@@ -19,15 +19,3 @@ pub fn load_fixtures(ext: &str) -> Vec<(PathBuf, Vec<u8>)> {
     files.sort_by(|a, b| a.0.cmp(&b.0));
     files
 }
-
-/// Scale fixtures by duplicating them with unique names.
-pub fn scale_fixtures(base: &[(PathBuf, Vec<u8>)], target_count: usize) -> Vec<(PathBuf, Vec<u8>)> {
-    let mut scaled = Vec::with_capacity(target_count);
-    for (i, (path, content)) in base.iter().cycle().enumerate().take(target_count) {
-        let stem = path.file_stem().unwrap().to_string_lossy();
-        let ext = path.extension().unwrap().to_string_lossy();
-        let new_path = path.with_file_name(format!("{stem}_{i}.{ext}"));
-        scaled.push((new_path, content.clone()));
-    }
-    scaled
-}
