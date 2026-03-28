@@ -3,3 +3,4 @@ pub mod change_detection;
 pub mod clones;
 pub mod flow;
 pub mod impact;
+pub mod risk;

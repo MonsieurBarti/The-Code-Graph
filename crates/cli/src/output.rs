@@ -2,8 +2,16 @@ use std::io::Write;
 
 use domain::model::{
     AffectedNode, CloneAnalysis, CloneCluster, CriticalityScore, DiffImpactReport, EntryPointKind,
-    FlowAnalysis, GraphStats, ImpactReport, IndexStats, Reference, SearchResult, SymbolNode,
+    FlowAnalysis, GraphStats, ImpactReport, IndexStats, Reference, RiskAnalysis, RiskScore,
+    RiskWeights, SearchResult, SymbolNode,
 };
+
+/// Wraps a RiskScore with contextual info for single-target display (AC3).
+pub struct RiskScoreDetail {
+    pub score: RiskScore,
+    pub matched_patterns: Vec<String>,
+    pub weights: RiskWeights,
+}
 
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct FindResult {
@@ -228,6 +236,12 @@ impl Displayable for GraphStats {
                 write!(w, " | Most duplicated: {md}")?;
             }
         }
+        if let Some(ar) = self.avg_risk {
+            write!(w, "\nAvg risk: {ar:.2}")?;
+            if let Some(p90) = self.p90_risk {
+                write!(w, " | P90 risk: {p90:.2}")?;
+            }
+        }
         writeln!(w)
     }
 
@@ -251,6 +265,12 @@ impl Displayable for GraphStats {
         }
         if let Some(ref md) = self.most_duplicated {
             writeln!(w, "Most dupl | {md}")?;
+        }
+        if let Some(ar) = self.avg_risk {
+            writeln!(w, "Avg risk  | {ar:.2}")?;
+        }
+        if let Some(p90) = self.p90_risk {
+            writeln!(w, "P90 risk  | {p90:.2}")?;
         }
         Ok(())
     }
@@ -635,6 +655,191 @@ impl Displayable for Vec<CloneCluster> {
     }
 }
 
+// ---------------------------------------------------------------------------
+// Displayable: RiskAnalysis (file-level view)
+// ---------------------------------------------------------------------------
+
+impl Displayable for RiskAnalysis {
+    fn fmt_compact(&self, w: &mut dyn Write) -> std::io::Result<()> {
+        writeln!(
+            w,
+            "Files by risk (top {} of {}):",
+            self.file_scores.len(),
+            self.stats.files_scored
+        )?;
+        writeln!(w, "#  File                              Risk   Driver")?;
+        for (i, f) in self.file_scores.iter().enumerate() {
+            writeln!(
+                w,
+                "{:<2} {:<34} {:.2}   {}",
+                i + 1,
+                f.path.display(),
+                f.composite,
+                f.highest_symbol
+            )?;
+        }
+        Ok(())
+    }
+
+    fn fmt_table(&self, w: &mut dyn Write) -> std::io::Result<()> {
+        writeln!(w, "# | File | Risk | Driver")?;
+        writeln!(w, "--+------+------+-------")?;
+        for (i, f) in self.file_scores.iter().enumerate() {
+            writeln!(
+                w,
+                "{} | {} | {:.2} | {}",
+                i + 1,
+                f.path.display(),
+                f.composite,
+                f.highest_symbol
+            )?;
+        }
+        Ok(())
+    }
+
+    fn fmt_json(&self, w: &mut dyn Write) -> std::io::Result<()> {
+        let json = serde_json::to_string_pretty(self).map_err(std::io::Error::other)?;
+        writeln!(w, "{json}")
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Displayable: Vec<RiskScore> (symbol list)
+// ---------------------------------------------------------------------------
+
+impl Displayable for Vec<RiskScore> {
+    fn fmt_compact(&self, w: &mut dyn Write) -> std::io::Result<()> {
+        writeln!(
+            w,
+            "#  Symbol                             Risk  Crit  Coup  Test  Sec"
+        )?;
+        for (i, s) in self.iter().enumerate() {
+            writeln!(
+                w,
+                "{:<2} {:<34} {:.2}  {:.2}  {:.2}  {:.2}  {:.2}",
+                i + 1,
+                s.qualified_name,
+                s.composite,
+                s.factors.criticality,
+                s.factors.coupling,
+                s.factors.test_gap,
+                s.factors.sensitivity,
+            )?;
+        }
+        Ok(())
+    }
+
+    fn fmt_table(&self, w: &mut dyn Write) -> std::io::Result<()> {
+        writeln!(w, "# | Symbol | Risk | Crit | Coup | Test | Sec")?;
+        writeln!(w, "--+--------+------+------+------+------+----")?;
+        for (i, s) in self.iter().enumerate() {
+            writeln!(
+                w,
+                "{} | {} | {:.2} | {:.2} | {:.2} | {:.2} | {:.2}",
+                i + 1,
+                s.qualified_name,
+                s.composite,
+                s.factors.criticality,
+                s.factors.coupling,
+                s.factors.test_gap,
+                s.factors.sensitivity,
+            )?;
+        }
+        Ok(())
+    }
+
+    fn fmt_json(&self, w: &mut dyn Write) -> std::io::Result<()> {
+        let json = serde_json::to_string_pretty(self).map_err(std::io::Error::other)?;
+        writeln!(w, "{json}")
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Displayable: RiskScoreDetail (single target with context — AC3)
+// ---------------------------------------------------------------------------
+
+impl Displayable for RiskScoreDetail {
+    fn fmt_compact(&self, w: &mut dyn Write) -> std::io::Result<()> {
+        let s = &self.score;
+        writeln!(w, "{}  risk = {:.2}", s.qualified_name, s.composite)?;
+        writeln!(
+            w,
+            "  criticality:  {:.2}  (betweenness centrality)",
+            s.factors.criticality
+        )?;
+        writeln!(
+            w,
+            "  coupling:     {:.2}  (degree centrality)",
+            s.factors.coupling
+        )?;
+        let test_label = if s.factors.test_gap > 0.5 {
+            "no TestedBy edges"
+        } else {
+            "has TestedBy edges"
+        };
+        writeln!(
+            w,
+            "  test_gap:     {:.2}  ({})",
+            s.factors.test_gap, test_label
+        )?;
+        let sec_label = if self.matched_patterns.is_empty() {
+            "no match".to_string()
+        } else {
+            format!("matches: {}", self.matched_patterns.join(", "))
+        };
+        writeln!(
+            w,
+            "  sensitivity:  {:.2}  ({})",
+            s.factors.sensitivity, sec_label
+        )?;
+        let wt = &self.weights;
+        writeln!(
+            w,
+            "  weights: crit={:.2} coup={:.2} test={:.2} sec={:.2}",
+            wt.criticality, wt.coupling, wt.test_gap, wt.sensitivity
+        )
+    }
+
+    fn fmt_table(&self, w: &mut dyn Write) -> std::io::Result<()> {
+        let s = &self.score;
+        writeln!(w, "Factor | Value | Description")?;
+        writeln!(w, "-------+-------+------------")?;
+        writeln!(
+            w,
+            "criticality | {:.2} | betweenness centrality",
+            s.factors.criticality
+        )?;
+        writeln!(
+            w,
+            "coupling | {:.2} | degree centrality",
+            s.factors.coupling
+        )?;
+        writeln!(w, "test_gap | {:.2} | test coverage", s.factors.test_gap)?;
+        let sec_label = if self.matched_patterns.is_empty() {
+            "no match".to_string()
+        } else {
+            format!("matches: {}", self.matched_patterns.join(", "))
+        };
+        writeln!(
+            w,
+            "sensitivity | {:.2} | {}",
+            s.factors.sensitivity, sec_label
+        )?;
+        writeln!(w, "COMPOSITE | {:.2} |", s.composite)?;
+        let wt = &self.weights;
+        writeln!(
+            w,
+            "weights | crit={:.2} coup={:.2} test={:.2} sec={:.2}",
+            wt.criticality, wt.coupling, wt.test_gap, wt.sensitivity
+        )
+    }
+
+    fn fmt_json(&self, w: &mut dyn Write) -> std::io::Result<()> {
+        let json = serde_json::to_string_pretty(&self.score).map_err(std::io::Error::other)?;
+        writeln!(w, "{json}")
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -911,6 +1116,8 @@ mod tests {
             clone_clusters: None,
             duplication_pct: None,
             most_duplicated: None,
+            avg_risk: None,
+            p90_risk: None,
         }
     }
 
@@ -1222,6 +1429,8 @@ mod tests {
             clone_clusters: None,
             duplication_pct: None,
             most_duplicated: None,
+            avg_risk: None,
+            p90_risk: None,
         };
         let mut buf = Vec::new();
         stats.fmt_compact(&mut buf).unwrap();
@@ -1241,6 +1450,8 @@ mod tests {
             clone_clusters: None,
             duplication_pct: None,
             most_duplicated: None,
+            avg_risk: None,
+            p90_risk: None,
         };
         let mut buf = Vec::new();
         stats.fmt_compact(&mut buf).unwrap();
@@ -1260,10 +1471,157 @@ mod tests {
             clone_clusters: None,
             duplication_pct: None,
             most_duplicated: None,
+            avg_risk: None,
+            p90_risk: None,
         };
         let mut buf = Vec::new();
         stats.fmt_compact(&mut buf).unwrap();
         let s = String::from_utf8(buf).unwrap();
         assert!(s.contains("Entry points: 0"));
+    }
+
+    #[test]
+    fn graph_stats_compact_with_risk_fields() {
+        let stats = GraphStats {
+            files: 234,
+            symbols: 1892,
+            edges: 5431,
+            entry_point_count: Some(12),
+            avg_criticality: Some(0.034),
+            clone_clusters: None,
+            duplication_pct: None,
+            most_duplicated: None,
+            avg_risk: Some(0.23),
+            p90_risk: Some(0.61),
+        };
+        let mut buf = Vec::new();
+        stats.fmt_compact(&mut buf).unwrap();
+        let s = String::from_utf8(buf).unwrap();
+        assert!(s.contains("Avg risk: 0.23"));
+        assert!(s.contains("P90 risk: 0.61"));
+    }
+
+    #[test]
+    fn graph_stats_table_with_risk_fields() {
+        let stats = GraphStats {
+            files: 10,
+            symbols: 50,
+            edges: 100,
+            entry_point_count: None,
+            avg_criticality: None,
+            clone_clusters: None,
+            duplication_pct: None,
+            most_duplicated: None,
+            avg_risk: Some(0.30),
+            p90_risk: Some(0.55),
+        };
+        let mut buf = Vec::new();
+        stats.fmt_table(&mut buf).unwrap();
+        let s = String::from_utf8(buf).unwrap();
+        assert!(s.contains("Avg risk  | 0.30"));
+        assert!(s.contains("P90 risk  | 0.55"));
+    }
+
+    // -----------------------------------------------------------------------
+    // RiskAnalysis tests
+    // -----------------------------------------------------------------------
+
+    fn sample_risk_analysis() -> domain::model::RiskAnalysis {
+        domain::model::RiskAnalysis {
+            symbol_scores: vec![domain::model::RiskScore {
+                qualified_name: "src/auth.rs::validate".into(),
+                composite: 0.78,
+                factors: domain::model::RiskFactors {
+                    criticality: 0.72,
+                    coupling: 0.81,
+                    test_gap: 1.00,
+                    sensitivity: 1.00,
+                },
+            }],
+            file_scores: vec![domain::model::FileRiskScore {
+                path: "src/auth.rs".into(),
+                composite: 0.78,
+                symbol_count: 1,
+                highest_symbol: "validate".into(),
+            }],
+            stats: domain::model::RiskStats {
+                symbols_scored: 1,
+                files_scored: 1,
+                avg_risk: 0.78,
+                median_risk: 0.78,
+                p90_risk: 0.78,
+            },
+        }
+    }
+
+    #[test]
+    fn risk_analysis_compact_format() {
+        let analysis = sample_risk_analysis();
+        let mut buf = Vec::new();
+        analysis.fmt_compact(&mut buf).unwrap();
+        let s = String::from_utf8(buf).unwrap();
+        assert!(s.contains("Files by risk"));
+        assert!(s.contains("src/auth.rs"));
+        assert!(s.contains("0.78"));
+        assert!(s.contains("validate"));
+    }
+
+    #[test]
+    fn risk_analysis_json_format() {
+        let analysis = sample_risk_analysis();
+        let mut buf = Vec::new();
+        analysis.fmt_json(&mut buf).unwrap();
+        let s = String::from_utf8(buf).unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(&s).unwrap();
+        assert!(parsed["file_scores"].is_array());
+        assert_eq!(parsed["stats"]["avg_risk"], 0.78);
+    }
+
+    #[test]
+    fn risk_score_vec_compact_format() {
+        let scores = vec![domain::model::RiskScore {
+            qualified_name: "src/auth.rs::validate".into(),
+            composite: 0.82,
+            factors: domain::model::RiskFactors {
+                criticality: 0.72,
+                coupling: 0.81,
+                test_gap: 1.0,
+                sensitivity: 1.0,
+            },
+        }];
+        let mut buf = Vec::new();
+        scores.fmt_compact(&mut buf).unwrap();
+        let s = String::from_utf8(buf).unwrap();
+        assert!(s.contains("Symbol"));
+        assert!(s.contains("src/auth.rs::validate"));
+        assert!(s.contains("0.82"));
+    }
+
+    #[test]
+    fn risk_score_detail_compact_format() {
+        let detail = RiskScoreDetail {
+            score: domain::model::RiskScore {
+                qualified_name: "src/auth.rs::validate".into(),
+                composite: 0.82,
+                factors: domain::model::RiskFactors {
+                    criticality: 0.72,
+                    coupling: 0.81,
+                    test_gap: 1.0,
+                    sensitivity: 1.0,
+                },
+            },
+            matched_patterns: vec!["auth".into()],
+            weights: domain::model::RiskWeights::default(),
+        };
+        let mut buf = Vec::new();
+        detail.fmt_compact(&mut buf).unwrap();
+        let s = String::from_utf8(buf).unwrap();
+        assert!(s.contains("risk = 0.82"));
+        assert!(s.contains("criticality:  0.72"));
+        assert!(s.contains("coupling:     0.81"));
+        assert!(s.contains("test_gap:     1.00"));
+        assert!(s.contains("sensitivity:  1.00"));
+        assert!(s.contains("matches: auth"));
+        assert!(s.contains("weights: crit=0.30 coup=0.25 test=0.25 sec=0.20"));
     }
 }
