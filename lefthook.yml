@@ -1,0 +1,26 @@
+pre-commit:
+  piped: true
+  commands:
+    fmt:
+      run: cargo fmt
+      glob: "*.rs"
+      stage_fixed: true
+      priority: 1
+    clippy:
+      run: cargo clippy --workspace -- -Dwarnings
+      glob: "*.rs"
+      priority: 2
+    test:
+      run: cargo test --workspace
+      glob: "*.rs"
+      priority: 3
+
+pre-push:
+  parallel: true
+  commands:
+    full-test:
+      run: cargo test --workspace
+    bench-check:
+      run: cargo bench --no-run
+    audit:
+      run: cargo audit
