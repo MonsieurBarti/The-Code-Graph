@@ -7,4 +7,4 @@
 ## Slices
 | Slice | Status | Tasks | Progress |
 |---|---|---|---|
-| Polish, Benchmarks & Performance | reviewing | 11/11 | 100% |
+| Polish, Benchmarks & Performance | shipping (#11) | 11/11 | 100% |
