@@ -41,7 +41,7 @@ impl<S: GraphStore, F: FileSystem> CloneUseCase<S, F> {
         let mut file_cache: HashMap<PathBuf, String> = HashMap::new();
         let mut all_matches: Vec<CloneMatch> = Vec::new();
 
-        for (_key, bucket) in &buckets {
+        for bucket in buckets.values() {
             if bucket.len() < 2 {
                 continue;
             }

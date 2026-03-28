@@ -484,14 +484,14 @@ pub fn cluster_matches(matches: &[CloneMatch]) -> Vec<CloneCluster> {
     let mut parent: Vec<usize> = (0..n).collect();
     let mut rank: Vec<usize> = vec![0; n];
 
-    fn find(parent: &mut Vec<usize>, x: usize) -> usize {
+    fn find(parent: &mut [usize], x: usize) -> usize {
         if parent[x] != x {
             parent[x] = find(parent, parent[x]);
         }
         parent[x]
     }
 
-    fn union(parent: &mut Vec<usize>, rank: &mut Vec<usize>, x: usize, y: usize) {
+    fn union(parent: &mut [usize], rank: &mut [usize], x: usize, y: usize) {
         let rx = find(parent, x);
         let ry = find(parent, y);
         if rx == ry {
