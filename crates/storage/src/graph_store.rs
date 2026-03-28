@@ -649,9 +649,7 @@ impl GraphStore for SqliteStore {
     fn edges_streaming(&self, callback: &mut dyn FnMut(Edge) -> Result<()>) -> Result<()> {
         let conn = self.conn()?;
         let mut stmt = conn
-            .prepare_cached(
-                "SELECT kind, source_qualified, target_qualified, metadata FROM edges",
-            )
+            .prepare_cached("SELECT kind, source_qualified, target_qualified, metadata FROM edges")
             .map_err(map_rusqlite_error)?;
         let rows = stmt
             .query_map([], |row| {
@@ -1067,37 +1065,63 @@ mod tests {
     fn symbols_for_files_returns_filtered_subset() {
         let store = test_store();
         // Insert file for a.rs
-        store.upsert_file(&FileNode {
-            path: "src/a.rs".into(),
-            language: Language::Rust,
-            hash: "h1".into(),
-        }).unwrap();
+        store
+            .upsert_file(&FileNode {
+                path: "src/a.rs".into(),
+                language: Language::Rust,
+                hash: "h1".into(),
+            })
+            .unwrap();
         // Insert file for b.rs
-        store.upsert_file(&FileNode {
-            path: "src/b.rs".into(),
-            language: Language::Rust,
-            hash: "h2".into(),
-        }).unwrap();
+        store
+            .upsert_file(&FileNode {
+                path: "src/b.rs".into(),
+                language: Language::Rust,
+                hash: "h2".into(),
+            })
+            .unwrap();
         // Symbols in a.rs
-        store.upsert_symbol(&SymbolNode {
-            name: "foo".into(),
-            qualified_name: "src/a.rs::foo".into(),
-            kind: SymbolKind::Function,
-            location: Location { file: "src/a.rs".into(), line_start: 1, line_end: 10, col_start: 0, col_end: 1 },
-            visibility: Visibility::Public,
-            is_exported: true, is_async: false, is_test: false,
-            decorators: vec![], signature: None,
-        }).unwrap();
+        store
+            .upsert_symbol(&SymbolNode {
+                name: "foo".into(),
+                qualified_name: "src/a.rs::foo".into(),
+                kind: SymbolKind::Function,
+                location: Location {
+                    file: "src/a.rs".into(),
+                    line_start: 1,
+                    line_end: 10,
+                    col_start: 0,
+                    col_end: 1,
+                },
+                visibility: Visibility::Public,
+                is_exported: true,
+                is_async: false,
+                is_test: false,
+                decorators: vec![],
+                signature: None,
+            })
+            .unwrap();
         // Symbols in b.rs
-        store.upsert_symbol(&SymbolNode {
-            name: "bar".into(),
-            qualified_name: "src/b.rs::bar".into(),
-            kind: SymbolKind::Function,
-            location: Location { file: "src/b.rs".into(), line_start: 1, line_end: 10, col_start: 0, col_end: 1 },
-            visibility: Visibility::Public,
-            is_exported: true, is_async: false, is_test: false,
-            decorators: vec![], signature: None,
-        }).unwrap();
+        store
+            .upsert_symbol(&SymbolNode {
+                name: "bar".into(),
+                qualified_name: "src/b.rs::bar".into(),
+                kind: SymbolKind::Function,
+                location: Location {
+                    file: "src/b.rs".into(),
+                    line_start: 1,
+                    line_end: 10,
+                    col_start: 0,
+                    col_end: 1,
+                },
+                visibility: Visibility::Public,
+                is_exported: true,
+                is_async: false,
+                is_test: false,
+                decorators: vec![],
+                signature: None,
+            })
+            .unwrap();
         // Filter for a.rs only
         let results = store.symbols_for_files(&[Path::new("src/a.rs")]).unwrap();
         assert_eq!(results.len(), 1);
@@ -1116,29 +1140,37 @@ mod tests {
     #[test]
     fn edges_streaming_invokes_callback_per_row() {
         let store = test_store();
-        store.upsert_edge(&Edge {
-            kind: EdgeKind::Calls,
-            source: "a::foo".into(),
-            target: "b::bar".into(),
-            metadata: None,
-        }).unwrap();
-        store.upsert_edge(&Edge {
-            kind: EdgeKind::ImportsFrom,
-            source: "c::baz".into(),
-            target: "d::qux".into(),
-            metadata: None,
-        }).unwrap();
-        store.upsert_edge(&Edge {
-            kind: EdgeKind::Contains,
-            source: "e::quux".into(),
-            target: "f::corge".into(),
-            metadata: None,
-        }).unwrap();
+        store
+            .upsert_edge(&Edge {
+                kind: EdgeKind::Calls,
+                source: "a::foo".into(),
+                target: "b::bar".into(),
+                metadata: None,
+            })
+            .unwrap();
+        store
+            .upsert_edge(&Edge {
+                kind: EdgeKind::ImportsFrom,
+                source: "c::baz".into(),
+                target: "d::qux".into(),
+                metadata: None,
+            })
+            .unwrap();
+        store
+            .upsert_edge(&Edge {
+                kind: EdgeKind::Contains,
+                source: "e::quux".into(),
+                target: "f::corge".into(),
+                metadata: None,
+            })
+            .unwrap();
         let mut count = 0usize;
-        store.edges_streaming(&mut |_edge| {
-            count += 1;
-            Ok(())
-        }).unwrap();
+        store
+            .edges_streaming(&mut |_edge| {
+                count += 1;
+                Ok(())
+            })
+            .unwrap();
         assert_eq!(count, 3);
         assert_eq!(store.all_edges().unwrap().len(), 3);
     }

@@ -44,10 +44,7 @@ impl<S: GraphStore> ImpactUseCase<S> {
             graph.add_edge(edge);
             Ok(())
         })?;
-        let hunk_files: Vec<&std::path::Path> = hunks
-            .iter()
-            .map(|h| h.file.as_path())
-            .collect();
+        let hunk_files: Vec<&std::path::Path> = hunks.iter().map(|h| h.file.as_path()).collect();
         let symbols = self.store.symbols_for_files(&hunk_files)?;
         let changed = find_affected_symbols(hunks, &symbols);
         let targets: Vec<ImpactTarget> = changed

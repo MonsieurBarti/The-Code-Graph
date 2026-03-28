@@ -22,7 +22,10 @@ pub trait GraphStore: Send + Sync {
     /// Returns symbols only for the specified file paths.
     fn symbols_for_files(&self, paths: &[&Path]) -> Result<Vec<SymbolNode>> {
         let all = self.all_symbols()?;
-        Ok(all.into_iter().filter(|s| paths.contains(&&*s.location.file)).collect())
+        Ok(all
+            .into_iter()
+            .filter(|s| paths.contains(&&*s.location.file))
+            .collect())
     }
 
     /// Processes edges row-by-row via callback.

@@ -6,7 +6,12 @@ fn bench_parse_throughput(c: &mut Criterion) {
     let registry = parser::ParserRegistry::new();
     let mut group = c.benchmark_group("parse_throughput");
 
-    for (ext, label) in &[("ts", "typescript"), ("py", "python"), ("rs", "rust"), ("go", "golang")] {
+    for (ext, label) in &[
+        ("ts", "typescript"),
+        ("py", "python"),
+        ("rs", "rust"),
+        ("go", "golang"),
+    ] {
         let mut files = Vec::new();
         if let Ok(entries) = std::fs::read_dir(&fixtures_dir) {
             for entry in entries.flatten() {

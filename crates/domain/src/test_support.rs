@@ -19,8 +19,12 @@ impl Clone for InMemoryGraphStore {
             files: self.files.clone(),
             symbols: self.symbols.clone(),
             edges: self.edges.clone(),
-            symbols_for_files_calls: AtomicUsize::new(self.symbols_for_files_calls.load(Ordering::Relaxed)),
-            edges_streaming_calls: AtomicUsize::new(self.edges_streaming_calls.load(Ordering::Relaxed)),
+            symbols_for_files_calls: AtomicUsize::new(
+                self.symbols_for_files_calls.load(Ordering::Relaxed),
+            ),
+            edges_streaming_calls: AtomicUsize::new(
+                self.edges_streaming_calls.load(Ordering::Relaxed),
+            ),
         }
     }
 }
@@ -133,7 +137,12 @@ impl GraphStore for InMemoryGraphStore {
 
     fn symbols_for_files(&self, paths: &[&Path]) -> Result<Vec<SymbolNode>> {
         self.symbols_for_files_calls.fetch_add(1, Ordering::Relaxed);
-        Ok(self.symbols.iter().filter(|s| paths.contains(&&*s.location.file)).cloned().collect())
+        Ok(self
+            .symbols
+            .iter()
+            .filter(|s| paths.contains(&&*s.location.file))
+            .cloned()
+            .collect())
     }
 
     fn edges_streaming(&self, callback: &mut dyn FnMut(Edge) -> Result<()>) -> Result<()> {

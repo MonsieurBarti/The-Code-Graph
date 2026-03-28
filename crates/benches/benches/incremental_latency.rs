@@ -41,7 +41,11 @@ fn bench_incremental_latency(c: &mut Criterion) {
 
     let mut group = c.benchmark_group("incremental_latency");
     group.bench_function("symbols_for_files_1", |b| {
-        b.iter(|| store.symbols_for_files(&[Path::new("src/file_50.rs")]).unwrap());
+        b.iter(|| {
+            store
+                .symbols_for_files(&[Path::new("src/file_50.rs")])
+                .unwrap()
+        });
     });
     group.bench_function("symbols_for_files_10", |b| {
         let paths: Vec<String> = (0..10).map(|i| format!("src/file_{i}.rs")).collect();

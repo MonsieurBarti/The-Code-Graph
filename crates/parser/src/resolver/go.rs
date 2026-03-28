@@ -12,7 +12,9 @@ pub struct GoConfig {
 
 impl GoConfig {
     pub fn load(project_root: &Path) -> Self {
-        GoConfig { module_path: parse_go_mod(project_root) }
+        GoConfig {
+            module_path: parse_go_mod(project_root),
+        }
     }
 }
 
@@ -22,7 +24,9 @@ pub struct GoResolver {
 }
 
 impl GoResolver {
-    pub fn new(config: GoConfig) -> Self { Self { config } }
+    pub fn new(config: GoConfig) -> Self {
+        Self { config }
+    }
 }
 
 /// Parse go.mod from the filesystem and extract the module path.
@@ -496,9 +500,16 @@ mod config_tests {
     #[test]
     fn go_config_loads_module_path() {
         let dir = tempfile::tempdir().unwrap();
-        std::fs::write(dir.path().join("go.mod"), "module github.com/example/app\n\ngo 1.21\n").unwrap();
+        std::fs::write(
+            dir.path().join("go.mod"),
+            "module github.com/example/app\n\ngo 1.21\n",
+        )
+        .unwrap();
         let config = GoConfig::load(dir.path());
-        assert_eq!(config.module_path.as_deref(), Some("github.com/example/app"));
+        assert_eq!(
+            config.module_path.as_deref(),
+            Some("github.com/example/app")
+        );
     }
 
     #[test]
