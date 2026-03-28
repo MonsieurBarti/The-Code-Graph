@@ -268,6 +268,18 @@ mod tests {
     }
 
     #[test]
+    fn parse_clones_command() {
+        let cli = Cli::parse_from(["code-graph", "clones"]);
+        if let Commands::Clones(args) = cli.command {
+            assert!((args.threshold - 0.7).abs() < f64::EPSILON);
+            assert_eq!(args.min_lines, 5);
+            assert!(args.cluster.is_none());
+        } else {
+            panic!("expected Clones command");
+        }
+    }
+
+    #[test]
     fn all_subcommands_parse() {
         let commands = [
             vec!["code-graph", "index"],
@@ -282,6 +294,11 @@ mod tests {
             vec!["code-graph", "flows", "--rank"],
             vec!["code-graph", "flows", "--symbol", "foo::bar"],
             vec!["code-graph", "flows", "--depth", "10", "--limit", "50"],
+            vec!["code-graph", "clones"],
+            vec!["code-graph", "clones", "--threshold", "0.8"],
+            vec!["code-graph", "clones", "--min-lines", "10"],
+            vec!["code-graph", "clones", "--cluster", "1"],
+            vec!["code-graph", "clones", "--threshold", "0.9", "--min-lines", "3", "--cluster", "2"],
             vec!["code-graph", "stats"],
             vec!["code-graph", "watch"],
             vec!["code-graph", "watch", "--daemon"],
