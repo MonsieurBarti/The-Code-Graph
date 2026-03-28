@@ -303,12 +303,156 @@ fn refinement(
     refined
 }
 
+/// Collapse communities into super-nodes, producing an aggregated graph.
+/// Returns None if every node is already its own community (no aggregation possible).
+#[allow(dead_code)]
+fn aggregate(graph: &LeidenGraph, partition: &Partition) -> Option<(LeidenGraph, Vec<usize>)> {
+    let communities = partition.distinct_communities();
+    if communities.len() == graph.n {
+        return None;
+    }
+
+    // Map old community IDs to dense indices
+    let mut comm_ids: Vec<usize> = communities.into_iter().collect();
+    comm_ids.sort();
+    let comm_to_new: HashMap<usize, usize> = comm_ids
+        .iter()
+        .enumerate()
+        .map(|(new_idx, &old_id)| (old_id, new_idx))
+        .collect();
+    let n_new = comm_ids.len();
+
+    // mapping[original_node] = new super-node index
+    let mapping: Vec<usize> = partition.community.iter().map(|c| comm_to_new[c]).collect();
+
+    // Build aggregated inter-community edge weights
+    let mut agg_edges: HashMap<(usize, usize), f64> = HashMap::new();
+    for u in 0..graph.n {
+        let cu = mapping[u];
+        for &(v, w) in &graph.neighbors[u] {
+            let cv = mapping[v];
+            if cu < cv {
+                *agg_edges.entry((cu, cv)).or_default() += w;
+            }
+        }
+    }
+
+    let mut neighbors: Vec<Vec<(usize, f64)>> = vec![Vec::new(); n_new];
+    // Degree of each super-node = sum of degrees of constituent nodes
+    let mut degree = vec![0.0; n_new];
+    for (i, &d) in graph.degree.iter().enumerate() {
+        degree[mapping[i]] += d;
+    }
+    // total_weight is preserved (internal edges become self-loops conceptually)
+    let total_weight = graph.total_weight;
+
+    for (&(u, v), &w) in &agg_edges {
+        neighbors[u].push((v, w));
+        neighbors[v].push((u, w));
+    }
+
+    let mut index_to_node = vec![String::new(); n_new];
+    let mut node_to_index = HashMap::new();
+    for (new_idx, &old_comm) in comm_ids.iter().enumerate() {
+        let name = format!("super_{old_comm}");
+        index_to_node[new_idx] = name.clone();
+        node_to_index.insert(name, new_idx);
+    }
+
+    let agg_graph = LeidenGraph {
+        n: n_new,
+        neighbors,
+        degree,
+        total_weight,
+        node_to_index,
+        index_to_node,
+    };
+
+    Some((agg_graph, mapping))
+}
+
+#[allow(dead_code)]
+pub(crate) fn leiden(graph: &LeidenGraph, gamma: f64, seed: Option<u64>) -> (Partition, f64) {
+    use rand::SeedableRng;
+
+    if graph.n == 0 {
+        return (Partition::singleton(0), 0.0);
+    }
+    if graph.total_weight == 0.0 {
+        return (Partition::singleton(graph.n), 0.0);
+    }
+
+    let mut rng = match seed {
+        Some(s) => StdRng::seed_from_u64(s),
+        None => StdRng::from_os_rng(),
+    };
+
+    let mut current_graph = None::<LeidenGraph>;
+    // Track how original nodes map through aggregation levels
+    let mut global_mapping: Vec<usize> = (0..graph.n).collect();
+
+    let max_iterations = 20;
+    for _ in 0..max_iterations {
+        let g = current_graph.as_ref().unwrap_or(graph);
+        let mut partition = Partition::singleton_with_graph(g);
+
+        let moved = local_moving(g, &mut partition, gamma, &mut rng);
+        if !moved {
+            break;
+        }
+
+        let refined = refinement(g, &partition, gamma, &mut rng);
+
+        // Update global mapping with refined partition
+        for gm in global_mapping.iter_mut() {
+            *gm = refined.community[*gm];
+        }
+
+        match aggregate(g, &refined) {
+            Some((agg_graph, mapping)) => {
+                // Update global mapping through aggregation
+                for gm in global_mapping.iter_mut() {
+                    *gm = mapping[*gm];
+                }
+                current_graph = Some(agg_graph);
+            }
+            None => break,
+        }
+    }
+
+    // Build final partition from global mapping
+    let mut final_partition = Partition {
+        community: global_mapping,
+        community_weight: vec![0.0; graph.n],
+    };
+    // Renumber communities to be 0..k-1
+    let mut remap: HashMap<usize, usize> = HashMap::new();
+    let mut next_id = 0;
+    for c in final_partition.community.iter_mut() {
+        let new_id = *remap.entry(*c).or_insert_with(|| {
+            let id = next_id;
+            next_id += 1;
+            id
+        });
+        *c = new_id;
+    }
+    // Recompute community weights
+    final_partition.community_weight = vec![0.0; next_id];
+    for (i, &c) in final_partition.community.iter().enumerate() {
+        final_partition.community_weight[c] += graph.degree[i];
+    }
+
+    let q = compute_modularity(graph, &final_partition, gamma);
+    (final_partition, q)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::model::{Location, SymbolKind};
     use rand::rngs::StdRng;
     use rand::SeedableRng;
+    use std::collections::HashSet;
 
     fn make_symbol(name: &str, qn: &str, kind: SymbolKind) -> SymbolNode {
         SymbolNode {
@@ -604,5 +748,120 @@ mod tests {
         let mut rng = StdRng::seed_from_u64(42);
         let refined = refinement(&graph, &partition, 1.0, &mut rng);
         assert_ne!(refined.community[0], refined.community[1]);
+    }
+
+    // ---- T05: Aggregation + Leiden loop tests ----
+
+    /// 4 complete subgraphs K5 connected by single bridge edges
+    fn build_multiscale_graph() -> (Vec<SymbolNode>, Vec<Edge>) {
+        let mut symbols = Vec::new();
+        let mut edges = Vec::new();
+        for clique in 0..4 {
+            for i in 0..5 {
+                symbols.push(make_symbol(
+                    &format!("c{clique}_n{i}"),
+                    &format!("src/mod{clique}.rs::c{clique}_n{i}"),
+                    SymbolKind::Function,
+                ));
+            }
+            for i in 0..5 {
+                for j in (i + 1)..5 {
+                    edges.push(make_edge(
+                        EdgeKind::Calls,
+                        &format!("src/mod{clique}.rs::c{clique}_n{i}"),
+                        &format!("src/mod{clique}.rs::c{clique}_n{j}"),
+                    ));
+                }
+            }
+        }
+        for clique in 0..3 {
+            edges.push(make_edge(
+                EdgeKind::Calls,
+                &format!("src/mod{clique}.rs::c{clique}_n0"),
+                &format!("src/mod{}.rs::c{}_n0", clique + 1, clique + 1),
+            ));
+        }
+        (symbols, edges)
+    }
+
+    #[test]
+    fn leiden_two_cliques_finds_two_communities() {
+        let (symbols, edges) = build_two_cliques_bridge();
+        let graph = LeidenGraph::from_symbols_and_edges(&symbols, &edges);
+        let (partition, _) = leiden(&graph, 1.0, Some(42));
+        let distinct: HashSet<usize> = partition.community.iter().copied().collect();
+        assert_eq!(distinct.len(), 2);
+    }
+
+    #[test]
+    fn leiden_triangle_finds_one_community() {
+        let symbols = vec![
+            make_symbol("a", "m::a", SymbolKind::Function),
+            make_symbol("b", "m::b", SymbolKind::Function),
+            make_symbol("c", "m::c", SymbolKind::Function),
+        ];
+        let edges = vec![
+            make_edge(EdgeKind::Calls, "m::a", "m::b"),
+            make_edge(EdgeKind::Calls, "m::b", "m::c"),
+            make_edge(EdgeKind::Calls, "m::a", "m::c"),
+        ];
+        let graph = LeidenGraph::from_symbols_and_edges(&symbols, &edges);
+        let (partition, _) = leiden(&graph, 1.0, Some(42));
+        let distinct: HashSet<usize> = partition.community.iter().copied().collect();
+        assert_eq!(distinct.len(), 1);
+    }
+
+    #[test]
+    fn leiden_empty_graph() {
+        let graph = LeidenGraph::from_symbols_and_edges(&[], &[]);
+        let (partition, modularity) = leiden(&graph, 1.0, Some(42));
+        assert!(partition.community.is_empty());
+        assert!((modularity - 0.0).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn leiden_deterministic_with_seed() {
+        let (symbols, edges) = build_multiscale_graph();
+        let graph = LeidenGraph::from_symbols_and_edges(&symbols, &edges);
+        let (p1, q1) = leiden(&graph, 1.0, Some(42));
+        let (p2, q2) = leiden(&graph, 1.0, Some(42));
+        assert_eq!(p1.community, p2.community);
+        assert!((q1 - q2).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn leiden_higher_resolution_more_communities() {
+        let (symbols, edges) = build_multiscale_graph();
+        let graph = LeidenGraph::from_symbols_and_edges(&symbols, &edges);
+        let (p_low, _) = leiden(&graph, 0.1, Some(42));
+        let (p_high, _) = leiden(&graph, 5.0, Some(42));
+        let n_low: HashSet<usize> = p_low.community.iter().copied().collect();
+        let n_high: HashSet<usize> = p_high.community.iter().copied().collect();
+        assert!(
+            n_high.len() > n_low.len(),
+            "gamma=5.0 should produce more communities than gamma=0.1: {} vs {}",
+            n_high.len(),
+            n_low.len()
+        );
+    }
+
+    #[test]
+    fn leiden_all_communities_connected() {
+        let (symbols, edges) = build_multiscale_graph();
+        let graph = LeidenGraph::from_symbols_and_edges(&symbols, &edges);
+        let (partition, _) = leiden(&graph, 1.0, Some(42));
+        for c in partition.distinct_communities() {
+            let members: Vec<usize> = (0..graph.n)
+                .filter(|&i| partition.community[i] == c)
+                .collect();
+            if members.len() > 1 {
+                assert!(
+                    is_connected(&graph, &members),
+                    "Community {} with {} members is not connected",
+                    c,
+                    members.len()
+                );
+            }
+        }
     }
 }
