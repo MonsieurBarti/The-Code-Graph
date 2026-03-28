@@ -2,8 +2,8 @@ use std::io::Write;
 
 use domain::model::{
     AffectedNode, CloneAnalysis, CloneCluster, Community, CommunityAnalysis, CriticalityScore,
-    DiffImpactReport, EntryPointKind, FlowAnalysis, GraphStats, ImpactReport, IndexStats,
-    Reference, RiskAnalysis, RiskScore, RiskWeights, SearchResult, SymbolNode,
+    DiffImpactReport, EmbedStats, EntryPointKind, FlowAnalysis, GraphStats, ImpactReport,
+    IndexStats, Reference, RiskAnalysis, RiskScore, RiskWeights, SearchResult, SymbolNode,
 };
 
 /// Wraps a RiskScore with contextual info for single-target display (AC3).
@@ -207,6 +207,40 @@ impl Displayable for Vec<SearchResult> {
     fn fmt_json(&self, w: &mut dyn Write) -> std::io::Result<()> {
         let json = serde_json::to_string_pretty(self).map_err(std::io::Error::other)?;
         writeln!(w, "{json}")
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Displayable: EmbedStats
+// ---------------------------------------------------------------------------
+
+impl Displayable for EmbedStats {
+    fn fmt_compact(&self, w: &mut dyn Write) -> std::io::Result<()> {
+        writeln!(
+            w,
+            "Embedded {}/{} symbols ({} skipped, {} orphans removed)",
+            self.embedded, self.total_symbols, self.skipped, self.removed
+        )
+    }
+
+    fn fmt_table(&self, w: &mut dyn Write) -> std::io::Result<()> {
+        writeln!(w, "Metric           | Count")?;
+        writeln!(w, "-----------------+------")?;
+        writeln!(w, "Total symbols    | {}", self.total_symbols)?;
+        writeln!(w, "Embedded         | {}", self.embedded)?;
+        writeln!(w, "Skipped          | {}", self.skipped)?;
+        writeln!(w, "Orphans removed  | {}", self.removed)?;
+        Ok(())
+    }
+
+    fn fmt_json(&self, w: &mut dyn Write) -> std::io::Result<()> {
+        let json = serde_json::json!({
+            "total_symbols": self.total_symbols,
+            "embedded": self.embedded,
+            "skipped": self.skipped,
+            "removed": self.removed,
+        });
+        writeln!(w, "{}", serde_json::to_string_pretty(&json).unwrap())
     }
 }
 

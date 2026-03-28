@@ -19,6 +19,7 @@ ignore = "0.4"
 rayon = "1.10"
 sha2 = "0.10"
 which = "7"
+embeddings = { path = "../embeddings" }
 
 [dev-dependencies]
 tempfile = "3"

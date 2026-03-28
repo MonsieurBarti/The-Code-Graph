@@ -23,7 +23,7 @@ pub fn run_index(args: &IndexArgs, output_format: OutputFormat) -> Result<()> {
     };
 
     let data_dir = ensure_data_dir(&root)?;
-    let _config = load_config(&root)?;
+    let config = load_config(&root)?;
 
     let db_path = data_dir.join("graph.db");
     let store = SqliteStore::open(&db_path)
@@ -33,7 +33,7 @@ pub fn run_index(args: &IndexArgs, output_format: OutputFormat) -> Result<()> {
     let git = ShellGitProvider::new(root.clone());
     let parser = RayonParseProvider::new();
 
-    let use_case = IndexUseCase::new(store, parser, fs, git);
+    let use_case = IndexUseCase::new(store.clone(), parser, fs, git);
     let stats = if let Some(files) = &args.files {
         use_case.incremental_files(&root, files.clone())?
     } else if args.incremental {
@@ -43,6 +43,30 @@ pub fn run_index(args: &IndexArgs, output_format: OutputFormat) -> Result<()> {
     };
 
     print(&stats, output_format);
+
+    if args.embed {
+        let ep = embeddings::OnnxEmbeddingProvider::from_model_name(&args.embed_model, 384)
+            .map_err(|e| domain::error::CodeGraphError::Other(e.to_string()))?;
+
+        let embed_config = domain::model::EmbeddingConfig {
+            model: args.embed_model.clone(),
+            batch_size: config
+                .embeddings
+                .as_ref()
+                .and_then(|e| e.batch_size)
+                .unwrap_or(64),
+        };
+
+        let embed_uc =
+            domain::use_cases::embed::EmbedUseCase::new(store.clone(), ep, store.clone());
+        let embed_stats = embed_uc.embed_all(&embed_config)?;
+        let removed = embed_uc.cleanup_orphans()?;
+        let embed_stats = domain::model::EmbedStats {
+            removed,
+            ..embed_stats
+        };
+        print(&embed_stats, output_format);
+    }
 
     Ok(())
 }
@@ -93,6 +117,8 @@ mod tests {
             path: Some(root.to_path_buf()),
             incremental: false,
             files: None,
+            embed: false,
+            embed_model: "all-MiniLM-L6-v2".into(),
         };
         let result = run_index(&args, OutputFormat::Compact);
         assert!(result.is_ok(), "index failed: {:?}", result.err());
@@ -116,6 +142,8 @@ mod tests {
             path: Some(root.to_path_buf()),
             incremental: false,
             files: None,
+            embed: false,
+            embed_model: "all-MiniLM-L6-v2".into(),
         };
         run_index(&args, OutputFormat::Compact).unwrap();
 
@@ -143,6 +171,8 @@ mod tests {
             path: Some(root.to_path_buf()),
             incremental: true,
             files: None,
+            embed: false,
+            embed_model: "all-MiniLM-L6-v2".into(),
         };
         let result = run_index(&args, OutputFormat::Compact);
         assert!(
@@ -167,6 +197,8 @@ mod tests {
             path: Some(root.to_path_buf()),
             incremental: false,
             files: None,
+            embed: false,
+            embed_model: "all-MiniLM-L6-v2".into(),
         };
         run_index(&args, OutputFormat::Compact).unwrap();
 
@@ -187,6 +219,8 @@ mod tests {
             path: Some(root.to_path_buf()),
             incremental: true,
             files: None,
+            embed: false,
+            embed_model: "all-MiniLM-L6-v2".into(),
         };
         let result = run_index(&args, OutputFormat::Compact);
         assert!(
@@ -211,6 +245,8 @@ mod tests {
             path: Some(root.to_path_buf()),
             incremental: false,
             files: None,
+            embed: false,
+            embed_model: "all-MiniLM-L6-v2".into(),
         };
         run_index(&args, OutputFormat::Compact).unwrap();
 
@@ -226,6 +262,8 @@ mod tests {
             path: Some(root.to_path_buf()),
             incremental: false,
             files: Some(vec![std::path::PathBuf::from("src/main.ts")]),
+            embed: false,
+            embed_model: "all-MiniLM-L6-v2".into(),
         };
         let result = run_index(&args, OutputFormat::Compact);
         assert!(result.is_ok(), "index --files failed: {:?}", result.err());
