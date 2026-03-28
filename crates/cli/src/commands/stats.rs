@@ -22,7 +22,11 @@ pub fn run_stats(output_format: OutputFormat) -> Result<()> {
         let avg = if analysis.criticality.is_empty() {
             0.0
         } else {
-            analysis.criticality.iter().map(|c| c.betweenness).sum::<f64>()
+            analysis
+                .criticality
+                .iter()
+                .map(|c| c.betweenness)
+                .sum::<f64>()
                 / analysis.criticality.len() as f64
         };
         stats.avg_criticality = Some(avg);

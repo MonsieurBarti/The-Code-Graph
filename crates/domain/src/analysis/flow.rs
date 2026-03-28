@@ -26,8 +26,16 @@ const CALLABLE_KINDS: &[SymbolKind] = &[
 
 /// HTTP-handler decorator substrings (case-insensitive match).
 const HTTP_DECORATORS: &[&str] = &[
-    "get", "post", "put", "delete", "patch", "app.route", "router.get",
-    "router.post", "api_view", "route",
+    "get",
+    "post",
+    "put",
+    "delete",
+    "patch",
+    "app.route",
+    "router.get",
+    "router.post",
+    "api_view",
+    "route",
 ];
 
 /// CLI-command decorator substrings (case-insensitive match).
@@ -39,8 +47,16 @@ pub fn detect_entry_points(
     edges: &[Edge],
     config: &FlowConfig,
 ) -> Vec<EntryPoint> {
-    let excluded: HashSet<&str> = config.excluded_entry_points.iter().map(|s| s.as_str()).collect();
-    let extra: HashSet<&str> = config.extra_entry_points.iter().map(|s| s.as_str()).collect();
+    let excluded: HashSet<&str> = config
+        .excluded_entry_points
+        .iter()
+        .map(|s| s.as_str())
+        .collect();
+    let extra: HashSet<&str> = config
+        .extra_entry_points
+        .iter()
+        .map(|s| s.as_str())
+        .collect();
 
     // Build set of symbols that have incoming Calls edges (not PublicRoot candidates)
     let has_incoming_calls: HashSet<&str> = edges
@@ -83,8 +99,14 @@ pub fn detect_entry_points(
 
     // Cap PublicRoot at max_public_roots, sorted by outgoing edge count descending
     public_roots.sort_by(|a, b| {
-        let a_out = outgoing_count.get(a.qualified_name.as_str()).copied().unwrap_or(0);
-        let b_out = outgoing_count.get(b.qualified_name.as_str()).copied().unwrap_or(0);
+        let a_out = outgoing_count
+            .get(a.qualified_name.as_str())
+            .copied()
+            .unwrap_or(0);
+        let b_out = outgoing_count
+            .get(b.qualified_name.as_str())
+            .copied()
+            .unwrap_or(0);
         b_out.cmp(&a_out)
     });
     public_roots.truncate(config.max_public_roots);
@@ -202,8 +224,13 @@ pub fn brandes_betweenness(nodes: &HashSet<String>, edges: &[Edge]) -> HashMap<S
         adj.entry(node.as_str()).or_default();
     }
     for edge in edges {
-        if is_high_confidence(&edge.kind) && nodes.contains(&edge.source) && nodes.contains(&edge.target) {
-            adj.entry(edge.source.as_str()).or_default().push(edge.target.as_str());
+        if is_high_confidence(&edge.kind)
+            && nodes.contains(&edge.source)
+            && nodes.contains(&edge.target)
+        {
+            adj.entry(edge.source.as_str())
+                .or_default()
+                .push(edge.target.as_str());
         }
     }
 
@@ -288,7 +315,9 @@ pub fn enumerate_flows(
     let mut adj: HashMap<&str, Vec<&str>> = HashMap::new();
     for edge in edges {
         if is_high_confidence(&edge.kind) {
-            adj.entry(edge.source.as_str()).or_default().push(edge.target.as_str());
+            adj.entry(edge.source.as_str())
+                .or_default()
+                .push(edge.target.as_str());
         }
     }
 
@@ -478,7 +507,13 @@ mod tests {
             ..FlowConfig::default()
         };
         let syms: Vec<_> = (0..10)
-            .map(|i| make_symbol(&format!("fn{i}"), &format!("src/lib.rs::fn{i}"), SymbolKind::Function))
+            .map(|i| {
+                make_symbol(
+                    &format!("fn{i}"),
+                    &format!("src/lib.rs::fn{i}"),
+                    SymbolKind::Function,
+                )
+            })
             .collect();
         let entries = detect_entry_points(&syms, &[], &config);
         let public_roots: Vec<_> = entries
@@ -520,7 +555,11 @@ mod tests {
 
     #[test]
     fn detect_test_prefix_python() {
-        let mut sym = make_symbol("test_login", "test_auth.py::test_login", SymbolKind::Function);
+        let mut sym = make_symbol(
+            "test_login",
+            "test_auth.py::test_login",
+            SymbolKind::Function,
+        );
         sym.is_test = false;
         let entries = detect_entry_points(&[sym], &[], &FlowConfig::default());
         assert!(entries.iter().any(|e| e.kind == EntryPointKind::Test));
@@ -595,10 +634,7 @@ mod tests {
             make_edge(EdgeKind::Calls, "b", "d"),
             make_edge(EdgeKind::Calls, "c", "d"),
         ];
-        let nodes: HashSet<String> = ["a", "b", "c", "d"]
-            .iter()
-            .map(|s| s.to_string())
-            .collect();
+        let nodes: HashSet<String> = ["a", "b", "c", "d"].iter().map(|s| s.to_string()).collect();
         let scores = brandes_betweenness(&nodes, &edges);
         let b = scores.get("b").copied().unwrap_or(0.0);
         let c = scores.get("c").copied().unwrap_or(0.0);
@@ -630,10 +666,7 @@ mod tests {
             make_edge(EdgeKind::Calls, "a", "b"),
             make_edge(EdgeKind::ImportsFrom, "a", "c"),
         ];
-        let nodes: HashSet<String> = ["a", "b", "c"]
-            .iter()
-            .map(|s| s.to_string())
-            .collect();
+        let nodes: HashSet<String> = ["a", "b", "c"].iter().map(|s| s.to_string()).collect();
         let scores = brandes_betweenness(&nodes, &edges);
         assert_eq!(*scores.get("c").unwrap_or(&0.0), 0.0);
     }
@@ -757,9 +790,7 @@ mod tests {
             ..FlowConfig::default()
         };
         let flows = enumerate_flows(&entry_points, &edges, &config);
-        assert!(
-            flows.iter().any(|f| f.truncated) || flows.len() < 1000
-        );
+        assert!(flows.iter().any(|f| f.truncated) || flows.len() < 1000);
     }
 
     #[test]

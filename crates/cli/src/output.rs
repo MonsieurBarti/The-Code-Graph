@@ -281,7 +281,14 @@ impl Displayable for FlowAnalysis {
         for (i, flow) in self.flows.iter().enumerate() {
             let path_str = flow.path.join(" -> ");
             let truncated = if flow.truncated { " [truncated]" } else { "" };
-            writeln!(w, "[{}] {} (depth {}){}", i + 1, path_str, flow.depth, truncated)?;
+            writeln!(
+                w,
+                "[{}] {} (depth {}){}",
+                i + 1,
+                path_str,
+                flow.depth,
+                truncated
+            )?;
         }
         Ok(())
     }
