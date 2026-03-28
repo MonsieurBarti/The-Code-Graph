@@ -835,8 +835,7 @@ impl Displayable for RiskScoreDetail {
     }
 
     fn fmt_json(&self, w: &mut dyn Write) -> std::io::Result<()> {
-        let json =
-            serde_json::to_string_pretty(&self.score).map_err(std::io::Error::other)?;
+        let json = serde_json::to_string_pretty(&self.score).map_err(std::io::Error::other)?;
         writeln!(w, "{json}")
     }
 }
