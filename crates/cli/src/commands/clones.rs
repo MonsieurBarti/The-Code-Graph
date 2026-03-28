@@ -24,7 +24,10 @@ pub fn run_clones(args: &ClonesArgs, output_format: OutputFormat) -> Result<()> 
         if let Some(cluster) = analysis.clusters.iter().find(|c| c.id == cluster_id) {
             print(&vec![cluster.clone()], output_format);
         } else {
-            eprintln!("cluster {cluster_id} not found ({} clusters total)", analysis.clusters.len());
+            eprintln!(
+                "cluster {cluster_id} not found ({} clusters total)",
+                analysis.clusters.len()
+            );
         }
     } else {
         print(&analysis, output_format);

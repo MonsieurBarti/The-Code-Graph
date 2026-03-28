@@ -552,7 +552,11 @@ impl Displayable for CloneAnalysis {
             writeln!(
                 w,
                 "{} | {:?} | {} | {:.3} | {}",
-                c.id, c.clone_type, c.members.len(), c.avg_similarity, c.representative
+                c.id,
+                c.clone_type,
+                c.members.len(),
+                c.avg_similarity,
+                c.representative
             )?;
         }
         Ok(())
@@ -584,7 +588,11 @@ impl Displayable for Vec<CloneCluster> {
             if !cluster.intra_matches.is_empty() {
                 writeln!(w, "  pairs:")?;
                 for m in &cluster.intra_matches {
-                    writeln!(w, "    {} <-> {}  sim={:.3} ({:?})", m.source, m.target, m.similarity, m.clone_type)?;
+                    writeln!(
+                        w,
+                        "    {} <-> {}  sim={:.3} ({:?})",
+                        m.source, m.target, m.similarity, m.clone_type
+                    )?;
                 }
             }
         }
@@ -609,7 +617,11 @@ impl Displayable for Vec<CloneCluster> {
                 writeln!(w, "Source | Target | Similarity | Type")?;
                 writeln!(w, "-------+--------+------------+-----")?;
                 for m in &cluster.intra_matches {
-                    writeln!(w, "{} | {} | {:.3} | {:?}", m.source, m.target, m.similarity, m.clone_type)?;
+                    writeln!(
+                        w,
+                        "{} | {} | {:.3} | {:?}",
+                        m.source, m.target, m.similarity, m.clone_type
+                    )?;
                 }
             }
             writeln!(w)?;

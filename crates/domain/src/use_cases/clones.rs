@@ -68,8 +68,7 @@ impl<S: GraphStore, F: FileSystem> CloneUseCase<S, F> {
                     } else {
                         let body_a = self.read_body(&mut file_cache, fp_a);
                         let body_b = self.read_body(&mut file_cache, fp_b);
-                        if let Some(mut m) =
-                            compare_pair(&body_a, &body_b, false, config.threshold)
+                        if let Some(mut m) = compare_pair(&body_a, &body_b, false, config.threshold)
                         {
                             m.source = fp_a.qualified_name.clone();
                             m.target = fp_b.qualified_name.clone();

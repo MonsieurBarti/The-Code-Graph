@@ -53,8 +53,11 @@ pub fn compute_fingerprints(
     let mut fingerprints = Vec::with_capacity(symbols.len());
 
     for sym in symbols {
-        let body_line_count =
-            sym.location.line_end.saturating_sub(sym.location.line_start) + 1;
+        let body_line_count = sym
+            .location
+            .line_end
+            .saturating_sub(sym.location.line_start)
+            + 1;
 
         if body_line_count < config.min_lines {
             continue;
@@ -164,19 +167,95 @@ fn split_on_punctuation(word: &str, out: &mut Vec<String>) {
 pub fn normalize_identifiers(tokens: &[String]) -> Vec<String> {
     let keywords: HashSet<&str> = [
         // Rust
-        "fn", "let", "mut", "const", "struct", "enum", "impl", "trait", "pub", "use", "mod",
-        "if", "else", "match", "for", "while", "loop", "return", "break", "continue", "where",
-        "async", "await", "move", "ref", "type", "self", "super", "crate",
+        "fn",
+        "let",
+        "mut",
+        "const",
+        "struct",
+        "enum",
+        "impl",
+        "trait",
+        "pub",
+        "use",
+        "mod",
+        "if",
+        "else",
+        "match",
+        "for",
+        "while",
+        "loop",
+        "return",
+        "break",
+        "continue",
+        "where",
+        "async",
+        "await",
+        "move",
+        "ref",
+        "type",
+        "self",
+        "super",
+        "crate",
         // TypeScript/JS
-        "function", "var", "class", "interface", "export", "import", "from", "default", "extends",
-        "implements", "new", "this", "typeof", "instanceof", "void", "null", "undefined", "true",
-        "false", "try", "catch", "throw", "finally",
+        "function",
+        "var",
+        "class",
+        "interface",
+        "export",
+        "import",
+        "from",
+        "default",
+        "extends",
+        "implements",
+        "new",
+        "this",
+        "typeof",
+        "instanceof",
+        "void",
+        "null",
+        "undefined",
+        "true",
+        "false",
+        "try",
+        "catch",
+        "throw",
+        "finally",
         // Python
-        "def", "class", "import", "from", "return", "if", "elif", "else", "for", "while", "with",
-        "as", "try", "except", "raise", "pass", "None", "True", "False", "lambda",
+        "def",
+        "class",
+        "import",
+        "from",
+        "return",
+        "if",
+        "elif",
+        "else",
+        "for",
+        "while",
+        "with",
+        "as",
+        "try",
+        "except",
+        "raise",
+        "pass",
+        "None",
+        "True",
+        "False",
+        "lambda",
         // Go
-        "func", "package", "import", "type", "struct", "interface", "map", "chan", "go", "defer",
-        "select", "case", "range", "nil",
+        "func",
+        "package",
+        "import",
+        "type",
+        "struct",
+        "interface",
+        "map",
+        "chan",
+        "go",
+        "defer",
+        "select",
+        "case",
+        "range",
+        "nil",
     ]
     .iter()
     .copied()
@@ -199,7 +278,12 @@ pub fn normalize_identifiers(tokens: &[String]) -> Vec<String> {
         }
 
         // Keep numeric literals as-is
-        if token.chars().next().map(|c| c.is_ascii_digit()).unwrap_or(false) {
+        if token
+            .chars()
+            .next()
+            .map(|c| c.is_ascii_digit())
+            .unwrap_or(false)
+        {
             result.push(token.clone());
             continue;
         }
@@ -452,7 +536,9 @@ pub fn cluster_matches(matches: &[CloneMatch]) -> Vec<CloneCluster> {
             // Intra-cluster matches: both endpoints are in this component.
             let intra: Vec<&CloneMatch> = matches
                 .iter()
-                .filter(|m| member_set.contains(m.source.as_str()) && member_set.contains(m.target.as_str()))
+                .filter(|m| {
+                    member_set.contains(m.source.as_str()) && member_set.contains(m.target.as_str())
+                })
                 .collect();
 
             let avg_similarity = if intra.is_empty() {
@@ -831,8 +917,14 @@ mod tests {
 
         assert_eq!(fps.len(), 1);
         let fp = &fps[0];
-        assert_eq!(fp.child_count, 3, "should count 3 Contains edges as children");
-        assert_eq!(fp.callee_count, 0, "Contains has Structural confidence, not High");
+        assert_eq!(
+            fp.child_count, 3,
+            "should count 3 Contains edges as children"
+        );
+        assert_eq!(
+            fp.callee_count, 0,
+            "Contains has Structural confidence, not High"
+        );
     }
 
     #[test]
@@ -863,8 +955,16 @@ mod tests {
         let contains_bit = 1u32 << edge_kind_index(&EdgeKind::Contains);
 
         assert_ne!(fp.edge_kind_set & calls_bit, 0, "Calls bit should be set");
-        assert_ne!(fp.edge_kind_set & extends_bit, 0, "Extends bit should be set");
-        assert_ne!(fp.edge_kind_set & contains_bit, 0, "Contains bit should be set");
+        assert_ne!(
+            fp.edge_kind_set & extends_bit,
+            0,
+            "Extends bit should be set"
+        );
+        assert_ne!(
+            fp.edge_kind_set & contains_bit,
+            0,
+            "Contains bit should be set"
+        );
 
         // A variant not in the edges should NOT be set
         let imports_bit = 1u32 << edge_kind_index(&EdgeKind::ImportsFrom);
@@ -918,8 +1018,18 @@ mod tests {
     #[test]
     fn cluster_transitive() {
         let matches = vec![
-            CloneMatch { source: "a".into(), target: "b".into(), similarity: 0.8, clone_type: CloneType::Type2 },
-            CloneMatch { source: "b".into(), target: "c".into(), similarity: 0.75, clone_type: CloneType::Type2 },
+            CloneMatch {
+                source: "a".into(),
+                target: "b".into(),
+                similarity: 0.8,
+                clone_type: CloneType::Type2,
+            },
+            CloneMatch {
+                source: "b".into(),
+                target: "c".into(),
+                similarity: 0.75,
+                clone_type: CloneType::Type2,
+            },
         ];
         let clusters = cluster_matches(&matches);
         assert_eq!(clusters.len(), 1);
@@ -930,8 +1040,18 @@ mod tests {
     #[test]
     fn cluster_separate_components() {
         let matches = vec![
-            CloneMatch { source: "a".into(), target: "b".into(), similarity: 0.8, clone_type: CloneType::Type1 },
-            CloneMatch { source: "c".into(), target: "d".into(), similarity: 0.9, clone_type: CloneType::Type1 },
+            CloneMatch {
+                source: "a".into(),
+                target: "b".into(),
+                similarity: 0.8,
+                clone_type: CloneType::Type1,
+            },
+            CloneMatch {
+                source: "c".into(),
+                target: "d".into(),
+                similarity: 0.9,
+                clone_type: CloneType::Type1,
+            },
         ];
         let clusters = cluster_matches(&matches);
         assert_eq!(clusters.len(), 2);
@@ -945,9 +1065,24 @@ mod tests {
     #[test]
     fn cluster_ids_descending_by_size() {
         let matches = vec![
-            CloneMatch { source: "a".into(), target: "b".into(), similarity: 0.8, clone_type: CloneType::Type2 },
-            CloneMatch { source: "c".into(), target: "d".into(), similarity: 0.9, clone_type: CloneType::Type1 },
-            CloneMatch { source: "c".into(), target: "e".into(), similarity: 0.85, clone_type: CloneType::Type1 },
+            CloneMatch {
+                source: "a".into(),
+                target: "b".into(),
+                similarity: 0.8,
+                clone_type: CloneType::Type2,
+            },
+            CloneMatch {
+                source: "c".into(),
+                target: "d".into(),
+                similarity: 0.9,
+                clone_type: CloneType::Type1,
+            },
+            CloneMatch {
+                source: "c".into(),
+                target: "e".into(),
+                similarity: 0.85,
+                clone_type: CloneType::Type1,
+            },
         ];
         let clusters = cluster_matches(&matches);
         assert_eq!(clusters[0].members.len(), 3); // c,d,e
