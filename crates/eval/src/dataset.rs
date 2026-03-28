@@ -187,6 +187,10 @@ pub fn parse_impact_queries(path: &Path) -> Result<Vec<ImpactScenario>> {
 mod tests {
     use super::*;
     use std::io::Write;
+    use std::sync::Mutex;
+
+    /// Tests that mutate `XDG_CACHE_HOME` must hold this lock to avoid races.
+    static ENV_LOCK: Mutex<()> = Mutex::new(());
 
     fn test_repo() -> ManifestRepo {
         ManifestRepo {
@@ -315,11 +319,10 @@ mod tests {
 
     #[test]
     fn cache_dir_respects_xdg() {
+        let _guard = ENV_LOCK.lock().unwrap();
         let dir = tempfile::tempdir().unwrap();
         let xdg_path = dir.path().to_str().unwrap().to_string();
 
-        // Temporarily set XDG_CACHE_HOME — safe because this test only reads
-        // env, doesn't write to the filesystem.
         unsafe { std::env::set_var("XDG_CACHE_HOME", &xdg_path) };
         let result = eval_cache_dir().unwrap();
         unsafe { std::env::remove_var("XDG_CACHE_HOME") };
@@ -335,12 +338,10 @@ mod tests {
 
     #[test]
     fn validate_cache_missing_dir() {
-        // Point HOME at a tempdir so repo_cache_path resolves somewhere
-        // that doesn't exist.
+        let _guard = ENV_LOCK.lock().unwrap();
         let dir = tempfile::tempdir().unwrap();
         let fake_home = dir.path().to_str().unwrap().to_string();
 
-        // Use XDG to control where the cache dir resolves.
         unsafe { std::env::set_var("XDG_CACHE_HOME", &fake_home) };
         let repo = test_repo();
         let valid = validate_cache(&repo).unwrap();
@@ -351,11 +352,11 @@ mod tests {
 
     #[test]
     fn validate_cache_wrong_revision() {
+        let _guard = ENV_LOCK.lock().unwrap();
         let dir = tempfile::tempdir().unwrap();
         let cache_root = dir.path().to_str().unwrap().to_string();
         let repo = test_repo();
 
-        // Create the cache directory with a wrong revision marker.
         let cache_dir = dir
             .path()
             .join("code-graph-eval")
@@ -377,6 +378,7 @@ mod tests {
 
     #[test]
     fn validate_cache_valid() {
+        let _guard = ENV_LOCK.lock().unwrap();
         let dir = tempfile::tempdir().unwrap();
         let cache_root = dir.path().to_str().unwrap().to_string();
         let repo = test_repo();
@@ -403,6 +405,7 @@ mod tests {
 
     #[test]
     fn clear_cache_removes_dir() {
+        let _guard = ENV_LOCK.lock().unwrap();
         let dir = tempfile::tempdir().unwrap();
         let cache_root = dir.path().to_str().unwrap().to_string();
         let repo = test_repo();
