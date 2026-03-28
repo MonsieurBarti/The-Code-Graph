@@ -627,6 +627,8 @@ mod tests {
             files: 10,
             symbols: 50,
             edges: 100,
+            entry_point_count: None,
+            avg_criticality: None,
         }
     }
 

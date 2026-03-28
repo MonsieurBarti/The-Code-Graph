@@ -243,6 +243,10 @@ pub struct GraphStats {
     pub files: usize,
     pub symbols: usize,
     pub edges: usize,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub entry_point_count: Option<usize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub avg_criticality: Option<f64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -274,6 +278,81 @@ pub struct ImpactReport {
 pub struct DiffImpactReport {
     pub changed_symbols: Vec<SymbolNode>,
     pub impact: ImpactReport,
+}
+
+// ---------------------------------------------------------------------------
+// Flow analysis types
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EntryPoint {
+    pub qualified_name: String,
+    pub kind: EntryPointKind,
+    pub confidence: f64,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum EntryPointKind {
+    Main,
+    Test,
+    HttpHandler,
+    CliCommand,
+    PublicRoot,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ExecutionFlow {
+    pub entry: String,
+    pub path: Vec<String>,
+    pub depth: usize,
+    pub truncated: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CriticalityScore {
+    pub qualified_name: String,
+    pub betweenness: f64,
+    pub flow_count: usize,
+    pub is_entry_point: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FlowAnalysis {
+    pub entry_points: Vec<EntryPoint>,
+    pub flows: Vec<ExecutionFlow>,
+    pub criticality: Vec<CriticalityScore>,
+    pub stats: FlowStats,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FlowStats {
+    pub total_entry_points: usize,
+    pub total_flows: usize,
+    pub max_depth: usize,
+    pub avg_depth: f64,
+}
+
+#[derive(Debug, Clone)]
+pub struct FlowConfig {
+    pub max_depth: usize,
+    pub max_flows: usize,
+    pub visit_budget: usize,
+    pub max_public_roots: usize,
+    pub extra_entry_points: Vec<String>,
+    pub excluded_entry_points: Vec<String>,
+}
+
+impl Default for FlowConfig {
+    fn default() -> Self {
+        Self {
+            max_depth: 20,
+            max_flows: 1000,
+            visit_budget: 100_000,
+            max_public_roots: 50,
+            extra_entry_points: Vec::new(),
+            excluded_entry_points: Vec::new(),
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -597,7 +676,9 @@ mod tests {
             GraphStats {
                 files: 1,
                 symbols: 2,
-                edges: 3
+                edges: 3,
+                entry_point_count: None,
+                avg_criticality: None,
             },
             GraphStats
         );
@@ -641,5 +722,82 @@ mod tests {
             },
             DiffImpactReport
         );
+    }
+
+    #[test]
+    fn flow_types_serde_roundtrip() {
+        let entry = EntryPoint {
+            qualified_name: "src/main.rs::main".into(),
+            kind: EntryPointKind::Main,
+            confidence: 1.0,
+        };
+        let json = serde_json::to_string(&entry).unwrap();
+        let _: EntryPoint = serde_json::from_str(&json).unwrap();
+
+        let flow = ExecutionFlow {
+            entry: "src/main.rs::main".into(),
+            path: vec!["src/main.rs::main".into(), "src/db.rs::connect".into()],
+            depth: 2,
+            truncated: false,
+        };
+        let json = serde_json::to_string(&flow).unwrap();
+        let _: ExecutionFlow = serde_json::from_str(&json).unwrap();
+
+        let score = CriticalityScore {
+            qualified_name: "src/db.rs::connect".into(),
+            betweenness: 0.75,
+            flow_count: 42,
+            is_entry_point: false,
+        };
+        let json = serde_json::to_string(&score).unwrap();
+        let _: CriticalityScore = serde_json::from_str(&json).unwrap();
+
+        let config = FlowConfig::default();
+        assert_eq!(config.max_depth, 20);
+        assert_eq!(config.max_flows, 1000);
+        assert_eq!(config.visit_budget, 100_000);
+        assert_eq!(config.max_public_roots, 50);
+
+        let analysis = FlowAnalysis {
+            entry_points: vec![entry],
+            flows: vec![flow],
+            criticality: vec![score],
+            stats: FlowStats {
+                total_entry_points: 1,
+                total_flows: 1,
+                max_depth: 2,
+                avg_depth: 2.0,
+            },
+        };
+        let json = serde_json::to_string(&analysis).unwrap();
+        let _: FlowAnalysis = serde_json::from_str(&json).unwrap();
+    }
+
+    #[test]
+    fn graph_stats_optional_fields_default_none() {
+        let stats = GraphStats {
+            files: 10,
+            symbols: 50,
+            edges: 100,
+            entry_point_count: None,
+            avg_criticality: None,
+        };
+        let json = serde_json::to_string(&stats).unwrap();
+        assert!(!json.contains("entry_point_count"));
+        assert!(!json.contains("avg_criticality"));
+    }
+
+    #[test]
+    fn graph_stats_optional_fields_present() {
+        let stats = GraphStats {
+            files: 10,
+            symbols: 50,
+            edges: 100,
+            entry_point_count: Some(5),
+            avg_criticality: Some(0.034),
+        };
+        let json = serde_json::to_string(&stats).unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed["entry_point_count"], 5);
     }
 }
