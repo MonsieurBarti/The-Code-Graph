@@ -1,8 +1,8 @@
 use std::io::Write;
 
 use domain::model::{
-    AffectedNode, CriticalityScore, DiffImpactReport, EntryPointKind, FlowAnalysis, GraphStats,
-    ImpactReport, IndexStats, Reference, SearchResult, SymbolNode,
+    AffectedNode, CloneAnalysis, CloneCluster, CriticalityScore, DiffImpactReport, EntryPointKind,
+    FlowAnalysis, GraphStats, ImpactReport, IndexStats, Reference, SearchResult, SymbolNode,
 };
 
 #[derive(Debug, Clone, serde::Serialize)]
@@ -219,6 +219,15 @@ impl Displayable for GraphStats {
                 write!(w, " | Avg criticality: {ac:.3}")?;
             }
         }
+        if let Some(cc) = self.clone_clusters {
+            write!(w, "\nClone clusters: {cc}")?;
+            if let Some(dp) = self.duplication_pct {
+                write!(w, " | Duplication: {dp:.1}%")?;
+            }
+            if let Some(ref md) = self.most_duplicated {
+                write!(w, " | Most duplicated: {md}")?;
+            }
+        }
         writeln!(w)
     }
 
@@ -233,6 +242,15 @@ impl Displayable for GraphStats {
         }
         if let Some(ac) = self.avg_criticality {
             writeln!(w, "Avg crit  | {ac:.3}")?;
+        }
+        if let Some(cc) = self.clone_clusters {
+            writeln!(w, "Clones    | {cc} clusters")?;
+        }
+        if let Some(dp) = self.duplication_pct {
+            writeln!(w, "Dupl %    | {dp:.1}%")?;
+        }
+        if let Some(ref md) = self.most_duplicated {
+            writeln!(w, "Most dupl | {md}")?;
         }
         Ok(())
     }
@@ -480,6 +498,135 @@ impl Displayable for DiffImpactReport {
         writeln!(w)?;
         writeln!(w, "Impact:")?;
         fmt_affected_table(&self.impact.affected, w)
+    }
+
+    fn fmt_json(&self, w: &mut dyn Write) -> std::io::Result<()> {
+        let json = serde_json::to_string_pretty(self).map_err(std::io::Error::other)?;
+        writeln!(w, "{json}")
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Displayable: CloneAnalysis
+// ---------------------------------------------------------------------------
+
+impl Displayable for CloneAnalysis {
+    fn fmt_compact(&self, w: &mut dyn Write) -> std::io::Result<()> {
+        writeln!(
+            w,
+            "{} clone clusters, {:.1}% duplication ({}/{} symbols)",
+            self.clusters.len(),
+            self.duplication_pct,
+            self.symbols_in_clones,
+            self.total_symbols_analyzed
+        )?;
+        if let Some(ref most) = self.most_duplicated {
+            writeln!(w, "most duplicated: {most}")?;
+        }
+        writeln!(w)?;
+        for cluster in &self.clusters {
+            writeln!(
+                w,
+                "#{} {:?}  members={}  avg_sim={:.2}  [{}]",
+                cluster.id,
+                cluster.clone_type,
+                cluster.members.len(),
+                cluster.avg_similarity,
+                cluster.members.join(", ")
+            )?;
+        }
+        Ok(())
+    }
+
+    fn fmt_table(&self, w: &mut dyn Write) -> std::io::Result<()> {
+        writeln!(
+            w,
+            "Clone Analysis: {} clusters, {:.1}% duplication",
+            self.clusters.len(),
+            self.duplication_pct
+        )?;
+        writeln!(w)?;
+        writeln!(w, "# | Type | Members | Avg Similarity | Representative")?;
+        writeln!(w, "--+------+---------+----------------+---------------")?;
+        for c in &self.clusters {
+            writeln!(
+                w,
+                "{} | {:?} | {} | {:.3} | {}",
+                c.id,
+                c.clone_type,
+                c.members.len(),
+                c.avg_similarity,
+                c.representative
+            )?;
+        }
+        Ok(())
+    }
+
+    fn fmt_json(&self, w: &mut dyn Write) -> std::io::Result<()> {
+        let json = serde_json::to_string_pretty(self).map_err(std::io::Error::other)?;
+        writeln!(w, "{json}")
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Displayable: Vec<CloneCluster>
+// ---------------------------------------------------------------------------
+
+impl Displayable for Vec<CloneCluster> {
+    fn fmt_compact(&self, w: &mut dyn Write) -> std::io::Result<()> {
+        for cluster in self {
+            writeln!(
+                w,
+                "Cluster #{} ({:?}, avg_sim={:.2}):",
+                cluster.id, cluster.clone_type, cluster.avg_similarity
+            )?;
+            for member in &cluster.members {
+                // Extract file path from qualified name (e.g., "src/foo.rs::bar" -> "src/foo.rs")
+                let file = member.split("::").next().unwrap_or(member);
+                writeln!(w, "  {member}  ({file})")?;
+            }
+            if !cluster.intra_matches.is_empty() {
+                writeln!(w, "  pairs:")?;
+                for m in &cluster.intra_matches {
+                    writeln!(
+                        w,
+                        "    {} <-> {}  sim={:.3} ({:?})",
+                        m.source, m.target, m.similarity, m.clone_type
+                    )?;
+                }
+            }
+        }
+        Ok(())
+    }
+
+    fn fmt_table(&self, w: &mut dyn Write) -> std::io::Result<()> {
+        for cluster in self {
+            writeln!(
+                w,
+                "Cluster #{} — {:?} — avg similarity: {:.3}",
+                cluster.id, cluster.clone_type, cluster.avg_similarity
+            )?;
+            writeln!(w, "Member | File")?;
+            writeln!(w, "-------+-----")?;
+            for member in &cluster.members {
+                let file = member.split("::").next().unwrap_or(member);
+                writeln!(w, "{member} | {file}")?;
+            }
+            if !cluster.intra_matches.is_empty() {
+                writeln!(w)?;
+                writeln!(w, "Source | Target | Similarity | Type")?;
+                writeln!(w, "-------+--------+------------+-----")?;
+                for m in &cluster.intra_matches {
+                    writeln!(
+                        w,
+                        "{} | {} | {:.3} | {:?}",
+                        m.source, m.target, m.similarity, m.clone_type
+                    )?;
+                }
+            }
+            writeln!(w)?;
+        }
+        Ok(())
     }
 
     fn fmt_json(&self, w: &mut dyn Write) -> std::io::Result<()> {
@@ -761,6 +908,9 @@ mod tests {
             edges: 100,
             entry_point_count: None,
             avg_criticality: None,
+            clone_clusters: None,
+            duplication_pct: None,
+            most_duplicated: None,
         }
     }
 
@@ -1069,6 +1219,9 @@ mod tests {
             edges: 5431,
             entry_point_count: Some(12),
             avg_criticality: Some(0.034),
+            clone_clusters: None,
+            duplication_pct: None,
+            most_duplicated: None,
         };
         let mut buf = Vec::new();
         stats.fmt_compact(&mut buf).unwrap();
@@ -1085,6 +1238,9 @@ mod tests {
             edges: 100,
             entry_point_count: None,
             avg_criticality: None,
+            clone_clusters: None,
+            duplication_pct: None,
+            most_duplicated: None,
         };
         let mut buf = Vec::new();
         stats.fmt_compact(&mut buf).unwrap();
@@ -1101,6 +1257,9 @@ mod tests {
             edges: 0,
             entry_point_count: Some(0),
             avg_criticality: Some(0.0),
+            clone_clusters: None,
+            duplication_pct: None,
+            most_duplicated: None,
         };
         let mut buf = Vec::new();
         stats.fmt_compact(&mut buf).unwrap();
