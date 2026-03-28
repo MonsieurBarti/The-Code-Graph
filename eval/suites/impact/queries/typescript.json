@@ -1,0 +1,89 @@
+{
+  "scenarios": [
+    {
+      "repo": "trpc",
+      "description": "File-level impact of TRPCError module — error class and utility functions",
+      "target": "packages/server/src/unstable-core-do-not-import/error/TRPCError.ts",
+      "depth": 3,
+      "confidence": "high",
+      "expected_affected": [
+        "packages/server/src/unstable-core-do-not-import/error/TRPCError.ts::UnknownCauseError",
+        "packages/server/src/unstable-core-do-not-import/error/TRPCError.ts::getCauseFromUnknown",
+        "packages/server/src/unstable-core-do-not-import/error/TRPCError.ts::getTRPCErrorFromUnknown",
+        "packages/server/src/unstable-core-do-not-import/error/TRPCError.ts::TRPCError"
+      ]
+    },
+    {
+      "repo": "trpc",
+      "description": "File-level impact of createTRPCClient — client creation, proxy types, and resolvers",
+      "target": "packages/client/src/createTRPCClient.ts",
+      "depth": 3,
+      "confidence": "high",
+      "expected_affected": [
+        "packages/client/src/createTRPCClient.ts::createTRPCClient",
+        "packages/client/src/createTRPCClient.ts::createTRPCClientProxy",
+        "packages/client/src/createTRPCClient.ts::CreateTRPCClient",
+        "packages/client/src/createTRPCClient.ts::TRPCClient",
+        "packages/client/src/createTRPCClient.ts::DecorateProcedure",
+        "packages/client/src/createTRPCClient.ts::DecoratedProcedureRecord"
+      ]
+    },
+    {
+      "repo": "trpc",
+      "description": "File-level impact of initTRPC — server initialization builder and config types",
+      "target": "packages/server/src/unstable-core-do-not-import/initTRPC.ts",
+      "depth": 3,
+      "confidence": "high",
+      "expected_affected": [
+        "packages/server/src/unstable-core-do-not-import/initTRPC.ts::initTRPC",
+        "packages/server/src/unstable-core-do-not-import/initTRPC.ts::TRPCBuilder",
+        "packages/server/src/unstable-core-do-not-import/initTRPC.ts::RuntimeConfigOptions",
+        "packages/server/src/unstable-core-do-not-import/initTRPC.ts::ContextCallback",
+        "packages/server/src/unstable-core-do-not-import/initTRPC.ts::inferErrorFormatterShape"
+      ]
+    },
+    {
+      "repo": "trpc",
+      "description": "File-level impact of TRPCClientError — client error types and guards",
+      "target": "packages/client/src/TRPCClientError.ts",
+      "depth": 3,
+      "confidence": "high",
+      "expected_affected": [
+        "packages/client/src/TRPCClientError.ts::TRPCClientError",
+        "packages/client/src/TRPCClientError.ts::TRPCClientErrorBase",
+        "packages/client/src/TRPCClientError.ts::TRPCClientErrorLike",
+        "packages/client/src/TRPCClientError.ts::isTRPCClientError",
+        "packages/client/src/TRPCClientError.ts::isTRPCErrorResponse",
+        "packages/client/src/TRPCClientError.ts::getMessageFromUnknownError"
+      ]
+    },
+    {
+      "repo": "trpc",
+      "description": "File-level impact of RPC envelopes — request/response message protocol types",
+      "target": "packages/server/src/unstable-core-do-not-import/rpc/envelopes.ts",
+      "depth": 3,
+      "confidence": "high",
+      "expected_affected": [
+        "packages/server/src/unstable-core-do-not-import/rpc/envelopes.ts::TRPCErrorShape",
+        "packages/server/src/unstable-core-do-not-import/rpc/envelopes.ts::TRPCErrorResponse",
+        "packages/server/src/unstable-core-do-not-import/rpc/envelopes.ts::TRPCSuccessResponse",
+        "packages/server/src/unstable-core-do-not-import/rpc/envelopes.ts::TRPCResponse",
+        "packages/server/src/unstable-core-do-not-import/rpc/envelopes.ts::TRPCRequestMessage",
+        "packages/server/src/unstable-core-do-not-import/rpc/envelopes.ts::TRPCResponseMessage"
+      ]
+    },
+    {
+      "repo": "trpc",
+      "description": "File-level impact of httpSubscriptionLink — SSE subscription link types",
+      "target": "packages/client/src/links/httpSubscriptionLink.ts",
+      "depth": 3,
+      "confidence": "high",
+      "expected_affected": [
+        "packages/client/src/links/httpSubscriptionLink.ts::httpSubscriptionLink",
+        "packages/client/src/links/httpSubscriptionLink.ts::HTTPSubscriptionLinkOptions",
+        "packages/client/src/links/httpSubscriptionLink.ts::urlWithConnectionParams",
+        "packages/client/src/links/httpSubscriptionLink.ts::codes5xx"
+      ]
+    }
+  ]
+}

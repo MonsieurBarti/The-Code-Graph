@@ -1,0 +1,68 @@
+{
+  "scenarios": [
+    {
+      "repo": "fastapi",
+      "description": "File param inherits Form -> Body -> FieldInfo chain in params module",
+      "target": "fastapi/params.py::File",
+      "depth": 3,
+      "confidence": "high",
+      "expected_affected": [
+        "fastapi/params.py::Form",
+        "fastapi/params.py::Body"
+      ]
+    },
+    {
+      "repo": "fastapi",
+      "description": "Query param extends Param base class in params module",
+      "target": "fastapi/params.py::Query",
+      "depth": 3,
+      "confidence": "high",
+      "expected_affected": [
+        "fastapi/params.py::Param"
+      ]
+    },
+    {
+      "repo": "fastapi",
+      "description": "Security param extends Depends for dependency injection",
+      "target": "fastapi/params.py::Security",
+      "depth": 3,
+      "confidence": "high",
+      "expected_affected": [
+        "fastapi/params.py::Depends"
+      ]
+    },
+    {
+      "repo": "fastapi",
+      "description": "RequestValidationError extends ValidationException in exception hierarchy",
+      "target": "fastapi/exceptions.py::RequestValidationError",
+      "depth": 3,
+      "confidence": "high",
+      "expected_affected": [
+        "fastapi/exceptions.py::ValidationException"
+      ]
+    },
+    {
+      "repo": "fastapi",
+      "description": "HTTPBearer extends HTTPBase -> SecurityBase -> BaseModelWithConfig in OpenAPI models",
+      "target": "fastapi/openapi/models.py::HTTPBearer",
+      "depth": 3,
+      "confidence": "high",
+      "expected_affected": [
+        "fastapi/openapi/models.py::HTTPBase",
+        "fastapi/openapi/models.py::SecurityBase",
+        "fastapi/openapi/models.py::BaseModelWithConfig"
+      ]
+    },
+    {
+      "repo": "fastapi",
+      "description": "OpenAPI Parameter model extends ParameterBase -> BaseModelWithConfig",
+      "target": "fastapi/openapi/models.py::Parameter",
+      "depth": 3,
+      "confidence": "high",
+      "expected_affected": [
+        "fastapi/openapi/models.py::ParameterBase",
+        "fastapi/openapi/models.py::BaseModelWithConfig"
+      ]
+    }
+  ]
+}

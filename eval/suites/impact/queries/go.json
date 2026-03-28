@@ -1,0 +1,48 @@
+{
+  "scenarios": [
+    {
+      "repo": "go-stdlib",
+      "description": "HTTP/2 meta headers frame — embeds chain through HeadersFrame to FrameHeader",
+      "target": "src/net/http/h2_bundle.go::http2MetaHeadersFrame",
+      "depth": 3,
+      "confidence": "high",
+      "expected_affected": [
+        "src/net/http/h2_bundle.go::http2HeadersFrame",
+        "src/net/http/h2_bundle.go::http2FrameHeader"
+      ]
+    },
+    {
+      "repo": "go-stdlib",
+      "description": "HTTP/2 priority frame — embeds both FrameHeader and PriorityParam",
+      "target": "src/net/http/h2_bundle.go::http2PriorityFrame",
+      "depth": 3,
+      "confidence": "high",
+      "expected_affected": [
+        "src/net/http/h2_bundle.go::http2FrameHeader",
+        "src/net/http/h2_bundle.go::http2PriorityParam"
+      ]
+    },
+    {
+      "repo": "go-stdlib",
+      "description": "HTTP/2 no-dial round tripper — embeds chain through http2Transport to test hooks",
+      "target": "src/net/http/h2_bundle.go::http2noDialH2RoundTripper",
+      "depth": 3,
+      "confidence": "high",
+      "expected_affected": [
+        "src/net/http/h2_bundle.go::http2Transport",
+        "src/net/http/h2_bundle.go::http2transportTestHooks"
+      ]
+    },
+    {
+      "repo": "go-stdlib",
+      "description": "Test connection embedding — closeWriteTestConn embeds rwTestConn which embeds noopConn",
+      "target": "src/net/http/serve_test.go::closeWriteTestConn",
+      "depth": 3,
+      "confidence": "high",
+      "expected_affected": [
+        "src/net/http/serve_test.go::rwTestConn",
+        "src/net/http/serve_test.go::noopConn"
+      ]
+    }
+  ]
+}

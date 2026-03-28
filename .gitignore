@@ -1,4 +1,12 @@
+# Rust build artifacts
+target/
 
 # Dolt database files (added by bd init)
 .dolt/
 *.db
+
+# Code-graph generated data
+.code-graph/
+
+# TFF worktrees (generated, contain build artifacts)
+.tff/worktrees/
