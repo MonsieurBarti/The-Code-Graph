@@ -1,8 +1,8 @@
 use std::io::Write;
 
 use domain::model::{
-    AffectedNode, CriticalityScore, DiffImpactReport, EntryPointKind, FlowAnalysis, GraphStats,
-    ImpactReport, IndexStats, Reference, SearchResult, SymbolNode,
+    AffectedNode, CloneAnalysis, CloneCluster, CriticalityScore, DiffImpactReport, EntryPointKind,
+    FlowAnalysis, GraphStats, ImpactReport, IndexStats, Reference, SearchResult, SymbolNode,
 };
 
 #[derive(Debug, Clone, serde::Serialize)]
@@ -480,6 +480,106 @@ impl Displayable for DiffImpactReport {
         writeln!(w)?;
         writeln!(w, "Impact:")?;
         fmt_affected_table(&self.impact.affected, w)
+    }
+
+    fn fmt_json(&self, w: &mut dyn Write) -> std::io::Result<()> {
+        let json = serde_json::to_string_pretty(self).map_err(std::io::Error::other)?;
+        writeln!(w, "{json}")
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Displayable: CloneAnalysis
+// ---------------------------------------------------------------------------
+
+impl Displayable for CloneAnalysis {
+    fn fmt_compact(&self, w: &mut dyn Write) -> std::io::Result<()> {
+        writeln!(
+            w,
+            "{} clone clusters, {:.1}% duplication ({}/{} symbols)",
+            self.clusters.len(),
+            self.duplication_pct,
+            self.symbols_in_clones,
+            self.total_symbols_analyzed
+        )?;
+        if let Some(ref most) = self.most_duplicated {
+            writeln!(w, "most duplicated: {most}")?;
+        }
+        writeln!(w)?;
+        for cluster in &self.clusters {
+            writeln!(
+                w,
+                "#{} {:?}  members={}  avg_sim={:.2}  [{}]",
+                cluster.id,
+                cluster.clone_type,
+                cluster.members.len(),
+                cluster.avg_similarity,
+                cluster.members.join(", ")
+            )?;
+        }
+        Ok(())
+    }
+
+    fn fmt_table(&self, w: &mut dyn Write) -> std::io::Result<()> {
+        writeln!(
+            w,
+            "Clone Analysis: {} clusters, {:.1}% duplication",
+            self.clusters.len(),
+            self.duplication_pct
+        )?;
+        writeln!(w)?;
+        writeln!(w, "# | Type | Members | Avg Similarity | Representative")?;
+        writeln!(w, "--+------+---------+----------------+---------------")?;
+        for c in &self.clusters {
+            writeln!(
+                w,
+                "{} | {:?} | {} | {:.3} | {}",
+                c.id, c.clone_type, c.members.len(), c.avg_similarity, c.representative
+            )?;
+        }
+        Ok(())
+    }
+
+    fn fmt_json(&self, w: &mut dyn Write) -> std::io::Result<()> {
+        let json = serde_json::to_string_pretty(self).map_err(std::io::Error::other)?;
+        writeln!(w, "{json}")
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Displayable: Vec<CloneCluster>
+// ---------------------------------------------------------------------------
+
+impl Displayable for Vec<CloneCluster> {
+    fn fmt_compact(&self, w: &mut dyn Write) -> std::io::Result<()> {
+        for cluster in self {
+            writeln!(
+                w,
+                "Cluster #{} ({:?}, avg_sim={:.2}):",
+                cluster.id, cluster.clone_type, cluster.avg_similarity
+            )?;
+            for member in &cluster.members {
+                writeln!(w, "  {member}")?;
+            }
+        }
+        Ok(())
+    }
+
+    fn fmt_table(&self, w: &mut dyn Write) -> std::io::Result<()> {
+        for cluster in self {
+            writeln!(
+                w,
+                "Cluster #{} — {:?} — avg similarity: {:.3}",
+                cluster.id, cluster.clone_type, cluster.avg_similarity
+            )?;
+            writeln!(w, "Member")?;
+            writeln!(w, "------")?;
+            for member in &cluster.members {
+                writeln!(w, "{member}")?;
+            }
+            writeln!(w)?;
+        }
+        Ok(())
     }
 
     fn fmt_json(&self, w: &mut dyn Write) -> std::io::Result<()> {
