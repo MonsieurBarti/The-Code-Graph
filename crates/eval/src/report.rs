@@ -8,6 +8,13 @@ pub struct SuiteResult {
 }
 
 #[derive(Debug, Clone, Serialize)]
+pub struct CategoryMrr {
+    pub category: String,
+    pub queries: usize,
+    pub mrr: f64,
+}
+
+#[derive(Debug, Clone, Serialize)]
 pub struct SearchSuiteResult {
     pub repos: usize,
     pub queries: usize,
@@ -16,6 +23,7 @@ pub struct SearchSuiteResult {
     pub precision_at_10: f64,
     pub mrr_target: f64,
     pub mrr_passed: bool,
+    pub per_category: Vec<CategoryMrr>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -53,6 +61,16 @@ impl SuiteResult {
             )?;
             writeln!(w, "  Precision@5:  {:.2}", search.precision_at_5)?;
             writeln!(w, "  Precision@10: {:.2}", search.precision_at_10)?;
+            if !search.per_category.is_empty() {
+                writeln!(w, "  Per-category MRR:")?;
+                for cat in &search.per_category {
+                    writeln!(
+                        w,
+                        "    {:12} {} queries  MRR: {:.2}",
+                        cat.category, cat.queries, cat.mrr
+                    )?;
+                }
+            }
         }
         if let Some(impact) = &self.impact {
             let status = if impact.precision_passed {
@@ -100,6 +118,13 @@ impl SuiteResult {
                 "Search  | Precision@10 | {:.2}  |        |",
                 search.precision_at_10
             )?;
+            for cat in &search.per_category {
+                writeln!(
+                    w,
+                    "Search  | MRR/{:<8} | {:.2}  |        |",
+                    cat.category, cat.mrr
+                )?;
+            }
         }
         if let Some(impact) = &self.impact {
             let status = if impact.precision_passed {
@@ -142,6 +167,23 @@ mod tests {
             precision_at_10: 0.58,
             mrr_target: 0.30,
             mrr_passed: true,
+            per_category: vec![
+                CategoryMrr {
+                    category: "exact".into(),
+                    queries: 20,
+                    mrr: 0.80,
+                },
+                CategoryMrr {
+                    category: "semantic".into(),
+                    queries: 20,
+                    mrr: 0.50,
+                },
+                CategoryMrr {
+                    category: "partial".into(),
+                    queries: 12,
+                    mrr: 0.45,
+                },
+            ],
         }
     }
 
@@ -200,8 +242,18 @@ mod tests {
         let output = String::from_utf8(buf).unwrap();
         assert!(output.contains("Search Suite"));
         assert!(output.contains("Impact Suite"));
-        // Verify blank line separator between the two suites
-        assert!(output.contains("Precision@10: 0.58\n\nImpact Suite"));
+        // Verify both sections appear and a blank line separates them
+        let search_pos = output.find("Search Suite").unwrap();
+        let impact_pos = output.find("Impact Suite").unwrap();
+        assert!(
+            search_pos < impact_pos,
+            "Search Suite should appear before Impact Suite"
+        );
+        // The blank line separator must exist somewhere between the two sections
+        assert!(
+            output.contains("\n\nImpact Suite"),
+            "expected blank line before Impact Suite"
+        );
     }
 
     #[test]
