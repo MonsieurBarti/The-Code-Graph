@@ -229,6 +229,12 @@ impl Displayable for GraphStats {
                 write!(w, " | Most duplicated: {md}")?;
             }
         }
+        if let Some(ar) = self.avg_risk {
+            write!(w, "\nAvg risk: {ar:.2}")?;
+            if let Some(p90) = self.p90_risk {
+                write!(w, " | P90 risk: {p90:.2}")?;
+            }
+        }
         writeln!(w)
     }
 
@@ -252,6 +258,12 @@ impl Displayable for GraphStats {
         }
         if let Some(ref md) = self.most_duplicated {
             writeln!(w, "Most dupl | {md}")?;
+        }
+        if let Some(ar) = self.avg_risk {
+            writeln!(w, "Avg risk  | {ar:.2}")?;
+        }
+        if let Some(p90) = self.p90_risk {
+            writeln!(w, "P90 risk  | {p90:.2}")?;
         }
         Ok(())
     }
@@ -1440,6 +1452,48 @@ mod tests {
         stats.fmt_compact(&mut buf).unwrap();
         let s = String::from_utf8(buf).unwrap();
         assert!(s.contains("Entry points: 0"));
+    }
+
+    #[test]
+    fn graph_stats_compact_with_risk_fields() {
+        let stats = GraphStats {
+            files: 234,
+            symbols: 1892,
+            edges: 5431,
+            entry_point_count: Some(12),
+            avg_criticality: Some(0.034),
+            clone_clusters: None,
+            duplication_pct: None,
+            most_duplicated: None,
+            avg_risk: Some(0.23),
+            p90_risk: Some(0.61),
+        };
+        let mut buf = Vec::new();
+        stats.fmt_compact(&mut buf).unwrap();
+        let s = String::from_utf8(buf).unwrap();
+        assert!(s.contains("Avg risk: 0.23"));
+        assert!(s.contains("P90 risk: 0.61"));
+    }
+
+    #[test]
+    fn graph_stats_table_with_risk_fields() {
+        let stats = GraphStats {
+            files: 10,
+            symbols: 50,
+            edges: 100,
+            entry_point_count: None,
+            avg_criticality: None,
+            clone_clusters: None,
+            duplication_pct: None,
+            most_duplicated: None,
+            avg_risk: Some(0.30),
+            p90_risk: Some(0.55),
+        };
+        let mut buf = Vec::new();
+        stats.fmt_table(&mut buf).unwrap();
+        let s = String::from_utf8(buf).unwrap();
+        assert!(s.contains("Avg risk  | 0.30"));
+        assert!(s.contains("P90 risk  | 0.55"));
     }
 
     // -----------------------------------------------------------------------
