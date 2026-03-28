@@ -247,6 +247,12 @@ pub struct GraphStats {
     pub entry_point_count: Option<usize>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub avg_criticality: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub clone_clusters: Option<usize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub duplication_pct: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub most_duplicated: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -351,6 +357,82 @@ impl Default for FlowConfig {
             max_public_roots: 50,
             extra_entry_points: Vec::new(),
             excluded_entry_points: Vec::new(),
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Clone detection types
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum CloneType {
+    Type1,
+    Type2,
+    StructuralOnly,
+}
+
+#[derive(Debug, Clone)]
+pub struct StructuralFingerprint {
+    pub qualified_name: String,
+    pub symbol_kind: SymbolKind,
+    pub callee_count: usize,
+    pub caller_count: usize,
+    pub edge_kind_set: u32,
+    pub body_line_count: usize,
+    pub child_count: usize,
+    pub language: Language,
+    pub file: PathBuf,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct BucketKey {
+    pub kind: SymbolKind,
+    pub callee_bin: u8,
+    pub caller_bin: u8,
+    pub line_bin: u8,
+    pub child_bin: u8,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CloneMatch {
+    pub source: String,
+    pub target: String,
+    pub similarity: f64,
+    pub clone_type: CloneType,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CloneCluster {
+    pub id: usize,
+    pub members: Vec<String>,
+    pub avg_similarity: f64,
+    pub clone_type: CloneType,
+    pub representative: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CloneAnalysis {
+    pub clusters: Vec<CloneCluster>,
+    pub total_symbols_analyzed: usize,
+    pub symbols_in_clones: usize,
+    pub duplication_pct: f64,
+    pub most_duplicated: Option<String>,
+}
+
+#[derive(Debug, Clone)]
+pub struct CloneConfig {
+    pub threshold: f64,
+    pub min_lines: usize,
+    pub max_candidates_per_bucket: usize,
+}
+
+impl Default for CloneConfig {
+    fn default() -> Self {
+        Self {
+            threshold: 0.7,
+            min_lines: 5,
+            max_candidates_per_bucket: 500,
         }
     }
 }
@@ -679,6 +761,9 @@ mod tests {
                 edges: 3,
                 entry_point_count: None,
                 avg_criticality: None,
+                clone_clusters: None,
+                duplication_pct: None,
+                most_duplicated: None,
             },
             GraphStats
         );
@@ -781,6 +866,9 @@ mod tests {
             edges: 100,
             entry_point_count: None,
             avg_criticality: None,
+            clone_clusters: None,
+            duplication_pct: None,
+            most_duplicated: None,
         };
         let json = serde_json::to_string(&stats).unwrap();
         assert!(!json.contains("entry_point_count"));
@@ -795,6 +883,9 @@ mod tests {
             edges: 100,
             entry_point_count: Some(5),
             avg_criticality: Some(0.034),
+            clone_clusters: None,
+            duplication_pct: None,
+            most_duplicated: None,
         };
         let json = serde_json::to_string(&stats).unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();

@@ -474,6 +474,9 @@ impl GraphStore for SqliteStore {
             edges,
             entry_point_count: None,
             avg_criticality: None,
+            clone_clusters: None,
+            duplication_pct: None,
+            most_duplicated: None,
         })
     }
 

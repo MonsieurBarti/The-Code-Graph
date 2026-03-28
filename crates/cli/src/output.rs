@@ -761,6 +761,9 @@ mod tests {
             edges: 100,
             entry_point_count: None,
             avg_criticality: None,
+            clone_clusters: None,
+            duplication_pct: None,
+            most_duplicated: None,
         }
     }
 
@@ -1069,6 +1072,9 @@ mod tests {
             edges: 5431,
             entry_point_count: Some(12),
             avg_criticality: Some(0.034),
+            clone_clusters: None,
+            duplication_pct: None,
+            most_duplicated: None,
         };
         let mut buf = Vec::new();
         stats.fmt_compact(&mut buf).unwrap();
@@ -1085,6 +1091,9 @@ mod tests {
             edges: 100,
             entry_point_count: None,
             avg_criticality: None,
+            clone_clusters: None,
+            duplication_pct: None,
+            most_duplicated: None,
         };
         let mut buf = Vec::new();
         stats.fmt_compact(&mut buf).unwrap();
@@ -1101,6 +1110,9 @@ mod tests {
             edges: 0,
             entry_point_count: Some(0),
             avg_criticality: Some(0.0),
+            clone_clusters: None,
+            duplication_pct: None,
+            most_duplicated: None,
         };
         let mut buf = Vec::new();
         stats.fmt_compact(&mut buf).unwrap();
