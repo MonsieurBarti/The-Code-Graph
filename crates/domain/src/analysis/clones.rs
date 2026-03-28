@@ -100,6 +100,8 @@ pub fn compute_fingerprints(
             child_count,
             language,
             file: sym.location.file.clone(),
+            line_start: sym.location.line_start,
+            line_end: sym.location.line_end,
         });
     }
 
@@ -181,7 +183,6 @@ pub fn normalize_identifiers(tokens: &[String]) -> Vec<String> {
     .collect();
 
     let mut identifier_map: HashMap<String, usize> = HashMap::new();
-    let mut counter = 0usize;
     let mut result = Vec::with_capacity(tokens.len());
 
     for token in tokens {
@@ -206,11 +207,6 @@ pub fn normalize_identifiers(tokens: &[String]) -> Vec<String> {
         // It's an identifier — replace with positional placeholder
         let next_id = identifier_map.len() + 1;
         let idx = identifier_map.entry(token.clone()).or_insert(next_id);
-        if *idx == next_id {
-            counter += 1;
-            // idx was just inserted as next_id; keep it (counter tracks inserts)
-            let _ = counter; // suppress unused warning
-        }
         result.push(format!("_{}", idx));
     }
 
@@ -476,12 +472,15 @@ pub fn cluster_matches(matches: &[CloneMatch]) -> Vec<CloneCluster> {
 
             let representative = members[0].clone(); // first alphabetically
 
+            let intra_matches: Vec<CloneMatch> = intra.into_iter().cloned().collect();
+
             CloneCluster {
                 id: 0, // assigned after sorting
                 members,
                 avg_similarity,
                 clone_type: dominant_type,
                 representative,
+                intra_matches,
             }
         })
         .collect();
@@ -629,6 +628,8 @@ mod tests {
             child_count: 0,
             language: Language::Rust,
             file: PathBuf::from("a.rs"),
+            line_start: 1,
+            line_end: 10,
         };
         let fp2 = StructuralFingerprint {
             qualified_name: "b::bar".into(),
@@ -640,6 +641,8 @@ mod tests {
             child_count: 0,
             language: Language::Rust,
             file: PathBuf::from("b.rs"),
+            line_start: 1,
+            line_end: 10,
         };
         assert_eq!(bucket_key(&fp1), bucket_key(&fp2)); // both callee in bin 1 (1-2)
     }
@@ -656,6 +659,8 @@ mod tests {
             child_count: 0,
             language: Language::Rust,
             file: PathBuf::from("a.rs"),
+            line_start: 1,
+            line_end: 10,
         };
         let fp2 = StructuralFingerprint {
             qualified_name: "a::bar".into(),
@@ -667,6 +672,8 @@ mod tests {
             child_count: 0,
             language: Language::Rust,
             file: PathBuf::from("a.rs"),
+            line_start: 1,
+            line_end: 10,
         };
         assert_ne!(bucket_key(&fp1), bucket_key(&fp2));
     }
@@ -684,6 +691,8 @@ mod tests {
                 child_count: 0,
                 language: Language::Rust,
                 file: PathBuf::from("a.rs"),
+                line_start: 1,
+                line_end: 10,
             },
             StructuralFingerprint {
                 qualified_name: "b::f2".into(),
@@ -695,6 +704,8 @@ mod tests {
                 child_count: 0,
                 language: Language::Rust,
                 file: PathBuf::from("b.rs"),
+                line_start: 1,
+                line_end: 12,
             },
             StructuralFingerprint {
                 qualified_name: "c::f3".into(),
@@ -706,6 +717,8 @@ mod tests {
                 child_count: 0,
                 language: Language::Rust,
                 file: PathBuf::from("c.rs"),
+                line_start: 1,
+                line_end: 10,
             },
         ];
         let buckets = group_into_buckets(&fps);

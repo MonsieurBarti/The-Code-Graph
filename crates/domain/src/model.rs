@@ -398,6 +398,8 @@ pub struct StructuralFingerprint {
     pub child_count: usize,
     pub language: Language,
     pub file: PathBuf,
+    pub line_start: usize,
+    pub line_end: usize,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -424,6 +426,8 @@ pub struct CloneCluster {
     pub avg_similarity: f64,
     pub clone_type: CloneType,
     pub representative: String,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub intra_matches: Vec<CloneMatch>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -66,10 +66,10 @@ impl<S: GraphStore, F: FileSystem> CloneUseCase<S, F> {
                         m.target = fp_b.qualified_name.clone();
                         all_matches.push(m);
                     } else {
-                        let src_a = self.read_cached(&mut file_cache, &fp_a.file);
-                        let src_b = self.read_cached(&mut file_cache, &fp_b.file);
+                        let body_a = self.read_body(&mut file_cache, fp_a);
+                        let body_b = self.read_body(&mut file_cache, fp_b);
                         if let Some(mut m) =
-                            compare_pair(&src_a, &src_b, false, config.threshold)
+                            compare_pair(&body_a, &body_b, false, config.threshold)
                         {
                             m.source = fp_a.qualified_name.clone();
                             m.target = fp_b.qualified_name.clone();
@@ -108,14 +108,27 @@ impl<S: GraphStore, F: FileSystem> CloneUseCase<S, F> {
         })
     }
 
-    fn read_cached(&self, cache: &mut HashMap<PathBuf, String>, file: &PathBuf) -> String {
-        if let Some(content) = cache.get(file) {
-            return content.clone();
+    fn read_body(
+        &self,
+        cache: &mut HashMap<PathBuf, String>,
+        fp: &StructuralFingerprint,
+    ) -> String {
+        let file_content = cache
+            .entry(fp.file.clone())
+            .or_insert_with(|| {
+                let abs_path = self.root.join(&fp.file);
+                self.fs.read_file(&abs_path).unwrap_or_default()
+            })
+            .clone();
+
+        // Extract only the symbol body lines (1-indexed line_start..=line_end)
+        let lines: Vec<&str> = file_content.lines().collect();
+        let start = fp.line_start.saturating_sub(1); // convert to 0-indexed
+        let end = fp.line_end.min(lines.len());
+        if start >= lines.len() || start >= end {
+            return String::new();
         }
-        let abs_path = self.root.join(file);
-        let content = self.fs.read_file(&abs_path).unwrap_or_default();
-        cache.insert(file.clone(), content.clone());
-        content
+        lines[start..end].join("\n")
     }
 }
 

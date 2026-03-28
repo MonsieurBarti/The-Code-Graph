@@ -219,6 +219,15 @@ impl Displayable for GraphStats {
                 write!(w, " | Avg criticality: {ac:.3}")?;
             }
         }
+        if let Some(cc) = self.clone_clusters {
+            write!(w, "\nClone clusters: {cc}")?;
+            if let Some(dp) = self.duplication_pct {
+                write!(w, " | Duplication: {dp:.1}%")?;
+            }
+            if let Some(ref md) = self.most_duplicated {
+                write!(w, " | Most duplicated: {md}")?;
+            }
+        }
         writeln!(w)
     }
 
@@ -233,6 +242,15 @@ impl Displayable for GraphStats {
         }
         if let Some(ac) = self.avg_criticality {
             writeln!(w, "Avg crit  | {ac:.3}")?;
+        }
+        if let Some(cc) = self.clone_clusters {
+            writeln!(w, "Clones    | {cc} clusters")?;
+        }
+        if let Some(dp) = self.duplication_pct {
+            writeln!(w, "Dupl %    | {dp:.1}%")?;
+        }
+        if let Some(ref md) = self.most_duplicated {
+            writeln!(w, "Most dupl | {md}")?;
         }
         Ok(())
     }
@@ -559,7 +577,15 @@ impl Displayable for Vec<CloneCluster> {
                 cluster.id, cluster.clone_type, cluster.avg_similarity
             )?;
             for member in &cluster.members {
-                writeln!(w, "  {member}")?;
+                // Extract file path from qualified name (e.g., "src/foo.rs::bar" -> "src/foo.rs")
+                let file = member.split("::").next().unwrap_or(member);
+                writeln!(w, "  {member}  ({file})")?;
+            }
+            if !cluster.intra_matches.is_empty() {
+                writeln!(w, "  pairs:")?;
+                for m in &cluster.intra_matches {
+                    writeln!(w, "    {} <-> {}  sim={:.3} ({:?})", m.source, m.target, m.similarity, m.clone_type)?;
+                }
             }
         }
         Ok(())
@@ -572,10 +598,19 @@ impl Displayable for Vec<CloneCluster> {
                 "Cluster #{} — {:?} — avg similarity: {:.3}",
                 cluster.id, cluster.clone_type, cluster.avg_similarity
             )?;
-            writeln!(w, "Member")?;
-            writeln!(w, "------")?;
+            writeln!(w, "Member | File")?;
+            writeln!(w, "-------+-----")?;
             for member in &cluster.members {
-                writeln!(w, "{member}")?;
+                let file = member.split("::").next().unwrap_or(member);
+                writeln!(w, "{member} | {file}")?;
+            }
+            if !cluster.intra_matches.is_empty() {
+                writeln!(w)?;
+                writeln!(w, "Source | Target | Similarity | Type")?;
+                writeln!(w, "-------+--------+------------+-----")?;
+                for m in &cluster.intra_matches {
+                    writeln!(w, "{} | {} | {:.3} | {:?}", m.source, m.target, m.similarity, m.clone_type)?;
+                }
             }
             writeln!(w)?;
         }
