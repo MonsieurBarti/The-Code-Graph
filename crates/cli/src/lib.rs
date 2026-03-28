@@ -21,6 +21,7 @@ pub fn run(cli: Cli) -> Result<()> {
         Commands::Callers(args) => commands::callers::run_callers(args, output_format),
         Commands::Callees(args) => commands::callees::run_callees(args, output_format),
         Commands::Search(args) => commands::search::run_search(args, output_format),
+        Commands::Flows(args) => commands::flows::run_flows(args, output_format),
         Commands::Stats => commands::stats::run_stats(output_format),
         Commands::Watch(args) => commands::watch::run_watch(args),
         Commands::Setup(args) => commands::setup::run_setup(args),
