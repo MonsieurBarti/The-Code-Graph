@@ -16,6 +16,21 @@ pub enum Language {
     Go,
 }
 
+impl Language {
+    /// Derive the language from a file path based on extension.
+    /// Falls back to `Rust` for unknown extensions.
+    pub fn from_path(path: &std::path::Path) -> Language {
+        match path.extension().and_then(|e| e.to_str()) {
+            Some("ts") | Some("tsx") => Language::TypeScript,
+            Some("js") | Some("jsx") | Some("mjs") | Some("cjs") => Language::JavaScript,
+            Some("rs") => Language::Rust,
+            Some("py") => Language::Python,
+            Some("go") => Language::Go,
+            _ => Language::Rust,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum NodeKind {
     File,

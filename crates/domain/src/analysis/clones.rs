@@ -1,7 +1,109 @@
-// Clone detection analysis — implemented in T03-T06
-
-use crate::model::{BucketKey, StructuralFingerprint};
+use crate::model::{
+    BucketKey, CloneConfig, Confidence, Edge, EdgeKind, Language, StructuralFingerprint, SymbolNode,
+};
 use std::collections::{HashMap, HashSet};
+
+// ---------------------------------------------------------------------------
+// T03 — Structural fingerprinting
+// ---------------------------------------------------------------------------
+
+/// Maps each `EdgeKind` variant to a unique bit index (0..15).
+fn edge_kind_index(kind: &EdgeKind) -> u32 {
+    match kind {
+        EdgeKind::Contains => 0,
+        EdgeKind::ChildOf => 1,
+        EdgeKind::Calls => 2,
+        EdgeKind::ImportsFrom => 3,
+        EdgeKind::Extends => 4,
+        EdgeKind::Implements => 5,
+        EdgeKind::TestedBy => 6,
+        EdgeKind::DependsOn => 7,
+        EdgeKind::BarrelReExportAll => 8,
+        EdgeKind::ConditionalImport => 9,
+        EdgeKind::SideEffectImport => 10,
+        EdgeKind::DotImport => 11,
+        EdgeKind::HasDecorator => 12,
+        EdgeKind::Embeds => 13,
+        EdgeKind::TypeReference => 14,
+        EdgeKind::ReExport => 15,
+    }
+}
+
+/// Compute structural fingerprints for all symbols that pass the `min_lines`
+/// filter in `config`.
+///
+/// Complexity: O(S + E) — one pass to build adjacency maps, one pass over
+/// symbols.
+pub fn compute_fingerprints(
+    symbols: &[SymbolNode],
+    edges: &[Edge],
+    config: &CloneConfig,
+) -> Vec<StructuralFingerprint> {
+    // Build outgoing adjacency map: source -> Vec<&Edge>
+    let mut outgoing: HashMap<&str, Vec<&Edge>> = HashMap::new();
+    // Build incoming adjacency map: target -> Vec<&Edge>
+    let mut incoming: HashMap<&str, Vec<&Edge>> = HashMap::new();
+
+    for edge in edges {
+        outgoing.entry(edge.source.as_str()).or_default().push(edge);
+        incoming.entry(edge.target.as_str()).or_default().push(edge);
+    }
+
+    let mut fingerprints = Vec::with_capacity(symbols.len());
+
+    for sym in symbols {
+        let body_line_count =
+            sym.location.line_end.saturating_sub(sym.location.line_start) + 1;
+
+        if body_line_count < config.min_lines {
+            continue;
+        }
+
+        let empty = Vec::new();
+        let out_edges = outgoing.get(sym.qualified_name.as_str()).unwrap_or(&empty);
+        let in_edges = incoming.get(sym.qualified_name.as_str()).unwrap_or(&empty);
+
+        // Callee count: outgoing edges with confidence >= High
+        let callee_count = out_edges
+            .iter()
+            .filter(|e| e.kind.confidence() >= Confidence::High)
+            .count();
+
+        // Caller count: incoming edges with confidence >= High
+        let caller_count = in_edges
+            .iter()
+            .filter(|e| e.kind.confidence() >= Confidence::High)
+            .count();
+
+        // Child count: outgoing Contains edges
+        let child_count = out_edges
+            .iter()
+            .filter(|e| e.kind == EdgeKind::Contains)
+            .count();
+
+        // Edge kind bitset: one bit per EdgeKind present in outgoing edges
+        let mut edge_kind_set: u32 = 0;
+        for e in out_edges.iter() {
+            edge_kind_set |= 1u32 << edge_kind_index(&e.kind);
+        }
+
+        let language = Language::from_path(&sym.location.file);
+
+        fingerprints.push(StructuralFingerprint {
+            qualified_name: sym.qualified_name.clone(),
+            symbol_kind: sym.kind,
+            callee_count,
+            caller_count,
+            edge_kind_set,
+            body_line_count,
+            child_count,
+            language,
+            file: sym.location.file.clone(),
+        });
+    }
+
+    fingerprints
+}
 
 /// Split source code into tokens.
 /// - Strips line comments (`//` and `#`)
@@ -435,5 +537,142 @@ mod tests {
         assert_eq!(count_bin(5), 2);
         assert_eq!(count_bin(6), 3);
         assert_eq!(count_bin(100), 3);
+    }
+
+    // -----------------------------------------------------------------------
+    // T03 fingerprinting tests
+    // -----------------------------------------------------------------------
+
+    use crate::model::{Location, Visibility};
+
+    fn make_symbol(
+        name: &str,
+        kind: SymbolKind,
+        line_start: usize,
+        line_end: usize,
+    ) -> crate::model::SymbolNode {
+        crate::model::SymbolNode {
+            name: name.to_string(),
+            qualified_name: format!("test.rs::{name}"),
+            kind,
+            location: Location {
+                file: PathBuf::from("test.rs"),
+                line_start,
+                line_end,
+                col_start: 0,
+                col_end: 0,
+            },
+            visibility: Visibility::Public,
+            is_exported: false,
+            is_async: false,
+            is_test: false,
+            decorators: vec![],
+            signature: None,
+        }
+    }
+
+    fn make_edge(source: &str, target: &str, kind: EdgeKind) -> Edge {
+        Edge {
+            kind,
+            source: format!("test.rs::{source}"),
+            target: format!("test.rs::{target}"),
+            metadata: None,
+        }
+    }
+
+    #[test]
+    fn fingerprint_captures_symbol_structure() {
+        let symbols = vec![make_symbol("foo", SymbolKind::Function, 1, 20)];
+        let edges = vec![
+            make_edge("foo", "bar", EdgeKind::Calls),
+            make_edge("foo", "baz", EdgeKind::Calls),
+            make_edge("qux", "foo", EdgeKind::Calls),
+        ];
+        let config = CloneConfig {
+            min_lines: 1,
+            ..CloneConfig::default()
+        };
+
+        let fps = compute_fingerprints(&symbols, &edges, &config);
+
+        assert_eq!(fps.len(), 1);
+        let fp = &fps[0];
+        assert_eq!(fp.callee_count, 2, "should count 2 outgoing Calls edges");
+        assert_eq!(fp.caller_count, 1, "should count 1 incoming Calls edge");
+        assert_eq!(fp.body_line_count, 20, "line_end - line_start + 1 = 20");
+        assert_eq!(fp.child_count, 0, "no Contains edges");
+    }
+
+    #[test]
+    fn fingerprint_filters_by_min_lines() {
+        // Symbol with only 3 lines — below default min_lines of 5
+        let symbols = vec![make_symbol("tiny", SymbolKind::Function, 1, 3)];
+        let edges = vec![];
+        let config = CloneConfig::default(); // min_lines = 5
+
+        let fps = compute_fingerprints(&symbols, &edges, &config);
+
+        assert_eq!(fps.len(), 0, "symbol with 3 lines should be filtered out");
+    }
+
+    #[test]
+    fn fingerprint_counts_contains_edges_as_children() {
+        let symbols = vec![make_symbol("MyClass", SymbolKind::Class, 1, 50)];
+        let edges = vec![
+            make_edge("MyClass", "method_a", EdgeKind::Contains),
+            make_edge("MyClass", "method_b", EdgeKind::Contains),
+            make_edge("MyClass", "field_c", EdgeKind::Contains),
+        ];
+        let config = CloneConfig {
+            min_lines: 1,
+            ..CloneConfig::default()
+        };
+
+        let fps = compute_fingerprints(&symbols, &edges, &config);
+
+        assert_eq!(fps.len(), 1);
+        let fp = &fps[0];
+        assert_eq!(fp.child_count, 3, "should count 3 Contains edges as children");
+        assert_eq!(fp.callee_count, 0, "Contains has Structural confidence, not High");
+    }
+
+    #[test]
+    fn fingerprint_empty_input() {
+        let fps = compute_fingerprints(&[], &[], &CloneConfig::default());
+        assert_eq!(fps.len(), 0);
+    }
+
+    #[test]
+    fn fingerprint_edge_kind_bitset() {
+        let symbols = vec![make_symbol("node", SymbolKind::Function, 1, 10)];
+        let edges = vec![
+            make_edge("node", "a", EdgeKind::Calls),
+            make_edge("node", "b", EdgeKind::Extends),
+            make_edge("node", "c", EdgeKind::Contains),
+        ];
+        let config = CloneConfig {
+            min_lines: 1,
+            ..CloneConfig::default()
+        };
+
+        let fps = compute_fingerprints(&symbols, &edges, &config);
+        assert_eq!(fps.len(), 1);
+
+        let fp = &fps[0];
+        let calls_bit = 1u32 << edge_kind_index(&EdgeKind::Calls);
+        let extends_bit = 1u32 << edge_kind_index(&EdgeKind::Extends);
+        let contains_bit = 1u32 << edge_kind_index(&EdgeKind::Contains);
+
+        assert_ne!(fp.edge_kind_set & calls_bit, 0, "Calls bit should be set");
+        assert_ne!(fp.edge_kind_set & extends_bit, 0, "Extends bit should be set");
+        assert_ne!(fp.edge_kind_set & contains_bit, 0, "Contains bit should be set");
+
+        // A variant not in the edges should NOT be set
+        let imports_bit = 1u32 << edge_kind_index(&EdgeKind::ImportsFrom);
+        assert_eq!(
+            fp.edge_kind_set & imports_bit,
+            0,
+            "ImportsFrom bit should NOT be set"
+        );
     }
 }
