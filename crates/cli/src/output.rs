@@ -1185,6 +1185,7 @@ mod tests {
             kind: SymbolKind::Function,
             file_path: "src/lib.rs".into(),
             score: 0.95,
+            score_source: None,
         }]
     }
 

@@ -87,6 +87,20 @@ pub trait ParseProvider: Send + Sync {
     ) -> Result<Vec<FileData>>;
 }
 
+pub trait EmbeddingProvider: Send + Sync {
+    fn embed_batch(&self, texts: &[String]) -> Result<Vec<Vec<f32>>>;
+    fn embed_query(&self, text: &str) -> Result<Vec<f32>>;
+    fn dimension(&self) -> usize;
+}
+
+pub trait VectorStore: Send + Sync {
+    fn store_embeddings(&self, entries: &[EmbeddingEntry]) -> Result<()>;
+    fn search_nearest(&self, query_vec: &[f32], limit: usize) -> Result<Vec<(String, f64)>>;
+    fn has_embeddings(&self) -> bool;
+    fn count(&self) -> Result<usize>;
+    fn remove_embeddings(&self, qualified_names: &[&str]) -> Result<()>;
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
