@@ -397,6 +397,14 @@ impl VectorStore for InMemoryVectorStore {
         store.retain(|e| !qualified_names.contains(&e.qualified_name.as_str()));
         Ok(())
     }
+
+    fn get_stored_hashes(&self) -> Result<Vec<(String, String)>> {
+        let store = self.entries.lock().unwrap();
+        Ok(store
+            .iter()
+            .map(|e| (e.qualified_name.clone(), e.text_hash.clone()))
+            .collect())
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -405,6 +413,7 @@ impl VectorStore for InMemoryVectorStore {
 
 /// Deterministic mock EmbeddingProvider for testing.
 /// Returns a fixed-dimension vector derived from the text hash.
+#[derive(Clone)]
 pub struct InMemoryEmbeddingProvider {
     pub dimension: usize,
 }

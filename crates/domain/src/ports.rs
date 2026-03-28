@@ -1,6 +1,7 @@
 use crate::error::Result;
 use crate::model::*;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 /// Primary storage for the code graph — files, symbols, edges.
 pub trait GraphStore: Send + Sync {
@@ -99,6 +100,36 @@ pub trait VectorStore: Send + Sync {
     fn has_embeddings(&self) -> bool;
     fn count(&self) -> Result<usize>;
     fn remove_embeddings(&self, qualified_names: &[&str]) -> Result<()>;
+    /// Returns (qualified_name, text_hash) pairs for all stored embeddings.
+    /// Default impl returns an empty list (no incremental support).
+    fn get_stored_hashes(&self) -> Result<Vec<(String, String)>> {
+        Ok(vec![])
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Blanket Arc impls — allow Arc<T> to be used wherever T is required
+// ---------------------------------------------------------------------------
+
+impl<V: VectorStore> VectorStore for Arc<V> {
+    fn store_embeddings(&self, entries: &[EmbeddingEntry]) -> Result<()> {
+        (**self).store_embeddings(entries)
+    }
+    fn search_nearest(&self, query_vec: &[f32], limit: usize) -> Result<Vec<(String, f64)>> {
+        (**self).search_nearest(query_vec, limit)
+    }
+    fn has_embeddings(&self) -> bool {
+        (**self).has_embeddings()
+    }
+    fn count(&self) -> Result<usize> {
+        (**self).count()
+    }
+    fn remove_embeddings(&self, qualified_names: &[&str]) -> Result<()> {
+        (**self).remove_embeddings(qualified_names)
+    }
+    fn get_stored_hashes(&self) -> Result<Vec<(String, String)>> {
+        (**self).get_stored_hashes()
+    }
 }
 
 #[cfg(test)]

@@ -183,6 +183,23 @@ impl VectorStore for SqliteStore {
             .map_err(map_rusqlite_error)?;
         Ok(())
     }
+
+    fn get_stored_hashes(&self) -> Result<Vec<(String, String)>> {
+        let conn = self.conn()?;
+        let mut stmt = conn
+            .prepare_cached("SELECT qualified_name, text_hash FROM embeddings")
+            .map_err(map_rusqlite_error)?;
+        let rows = stmt
+            .query_map([], |row| {
+                Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+            })
+            .map_err(map_rusqlite_error)?;
+        let mut result = Vec::new();
+        for row in rows {
+            result.push(row.map_err(map_rusqlite_error)?);
+        }
+        Ok(result)
+    }
 }
 
 #[cfg(test)]
