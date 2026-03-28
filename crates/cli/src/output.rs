@@ -3,8 +3,15 @@ use std::io::Write;
 use domain::model::{
     AffectedNode, CloneAnalysis, CloneCluster, CriticalityScore, DiffImpactReport, EntryPointKind,
     FlowAnalysis, GraphStats, ImpactReport, IndexStats, Reference, RiskAnalysis, RiskScore,
-    SearchResult, SymbolNode,
+    RiskWeights, SearchResult, SymbolNode,
 };
+
+/// Wraps a RiskScore with contextual info for single-target display (AC3).
+pub struct RiskScoreDetail {
+    pub score: RiskScore,
+    pub matched_patterns: Vec<String>,
+    pub weights: RiskWeights,
+}
 
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct FindResult {
@@ -748,23 +755,24 @@ impl Displayable for Vec<RiskScore> {
 }
 
 // ---------------------------------------------------------------------------
-// Displayable: RiskScore (single target detail)
+// Displayable: RiskScoreDetail (single target with context — AC3)
 // ---------------------------------------------------------------------------
 
-impl Displayable for RiskScore {
+impl Displayable for RiskScoreDetail {
     fn fmt_compact(&self, w: &mut dyn Write) -> std::io::Result<()> {
-        writeln!(w, "{}  risk = {:.2}", self.qualified_name, self.composite)?;
+        let s = &self.score;
+        writeln!(w, "{}  risk = {:.2}", s.qualified_name, s.composite)?;
         writeln!(
             w,
             "  criticality:  {:.2}  (betweenness centrality)",
-            self.factors.criticality
+            s.factors.criticality
         )?;
         writeln!(
             w,
             "  coupling:     {:.2}  (degree centrality)",
-            self.factors.coupling
+            s.factors.coupling
         )?;
-        let test_label = if self.factors.test_gap > 0.5 {
+        let test_label = if s.factors.test_gap > 0.5 {
             "no TestedBy edges"
         } else {
             "has TestedBy edges"
@@ -772,44 +780,63 @@ impl Displayable for RiskScore {
         writeln!(
             w,
             "  test_gap:     {:.2}  ({})",
-            self.factors.test_gap, test_label
+            s.factors.test_gap, test_label
         )?;
-        let sec_label = if self.factors.sensitivity > 0.5 {
-            "matches security pattern"
+        let sec_label = if self.matched_patterns.is_empty() {
+            "no match".to_string()
         } else {
-            "no match"
+            format!("matches: {}", self.matched_patterns.join(", "))
         };
         writeln!(
             w,
             "  sensitivity:  {:.2}  ({})",
-            self.factors.sensitivity, sec_label
+            s.factors.sensitivity, sec_label
+        )?;
+        let wt = &self.weights;
+        writeln!(
+            w,
+            "  weights: crit={:.2} coup={:.2} test={:.2} sec={:.2}",
+            wt.criticality, wt.coupling, wt.test_gap, wt.sensitivity
         )
     }
 
     fn fmt_table(&self, w: &mut dyn Write) -> std::io::Result<()> {
+        let s = &self.score;
         writeln!(w, "Factor | Value | Description")?;
         writeln!(w, "-------+-------+------------")?;
         writeln!(
             w,
             "criticality | {:.2} | betweenness centrality",
-            self.factors.criticality
+            s.factors.criticality
         )?;
         writeln!(
             w,
             "coupling | {:.2} | degree centrality",
-            self.factors.coupling
+            s.factors.coupling
         )?;
-        writeln!(w, "test_gap | {:.2} | test coverage", self.factors.test_gap)?;
+        writeln!(w, "test_gap | {:.2} | test coverage", s.factors.test_gap)?;
+        let sec_label = if self.matched_patterns.is_empty() {
+            "no match".to_string()
+        } else {
+            format!("matches: {}", self.matched_patterns.join(", "))
+        };
         writeln!(
             w,
-            "sensitivity | {:.2} | security pattern",
-            self.factors.sensitivity
+            "sensitivity | {:.2} | {}",
+            s.factors.sensitivity, sec_label
         )?;
-        writeln!(w, "COMPOSITE | {:.2} |", self.composite)
+        writeln!(w, "COMPOSITE | {:.2} |", s.composite)?;
+        let wt = &self.weights;
+        writeln!(
+            w,
+            "weights | crit={:.2} coup={:.2} test={:.2} sec={:.2}",
+            wt.criticality, wt.coupling, wt.test_gap, wt.sensitivity
+        )
     }
 
     fn fmt_json(&self, w: &mut dyn Write) -> std::io::Result<()> {
-        let json = serde_json::to_string_pretty(self).map_err(std::io::Error::other)?;
+        let json =
+            serde_json::to_string_pretty(&self.score).map_err(std::io::Error::other)?;
         writeln!(w, "{json}")
     }
 }
@@ -1572,24 +1599,30 @@ mod tests {
     }
 
     #[test]
-    fn risk_score_single_compact_format() {
-        let score = domain::model::RiskScore {
-            qualified_name: "src/auth.rs::validate".into(),
-            composite: 0.82,
-            factors: domain::model::RiskFactors {
-                criticality: 0.72,
-                coupling: 0.81,
-                test_gap: 1.0,
-                sensitivity: 1.0,
+    fn risk_score_detail_compact_format() {
+        let detail = RiskScoreDetail {
+            score: domain::model::RiskScore {
+                qualified_name: "src/auth.rs::validate".into(),
+                composite: 0.82,
+                factors: domain::model::RiskFactors {
+                    criticality: 0.72,
+                    coupling: 0.81,
+                    test_gap: 1.0,
+                    sensitivity: 1.0,
+                },
             },
+            matched_patterns: vec!["auth".into()],
+            weights: domain::model::RiskWeights::default(),
         };
         let mut buf = Vec::new();
-        score.fmt_compact(&mut buf).unwrap();
+        detail.fmt_compact(&mut buf).unwrap();
         let s = String::from_utf8(buf).unwrap();
         assert!(s.contains("risk = 0.82"));
         assert!(s.contains("criticality:  0.72"));
         assert!(s.contains("coupling:     0.81"));
         assert!(s.contains("test_gap:     1.00"));
         assert!(s.contains("sensitivity:  1.00"));
+        assert!(s.contains("matches: auth"));
+        assert!(s.contains("weights: crit=0.30 coup=0.25 test=0.25 sec=0.20"));
     }
 }

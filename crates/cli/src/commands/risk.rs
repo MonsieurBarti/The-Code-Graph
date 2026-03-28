@@ -1,3 +1,4 @@
+use domain::analysis::risk::split_into_segments;
 use domain::error::Result;
 use domain::model::RiskConfig;
 use domain::use_cases::risk::RiskUseCase;
@@ -5,7 +6,7 @@ use domain::use_cases::risk::RiskUseCase;
 use crate::commands::helpers::open_graph;
 use crate::commands::RiskArgs;
 use crate::config::load_config;
-use crate::output::{print, OutputFormat};
+use crate::output::{print, OutputFormat, RiskScoreDetail};
 
 pub fn run_risk(args: &RiskArgs, output_format: OutputFormat) -> Result<()> {
     let (store, root) = open_graph()?;
@@ -48,7 +49,24 @@ pub fn run_risk(args: &RiskArgs, output_format: OutputFormat) -> Result<()> {
     if let Some(ref target) = args.target {
         // Single target mode
         let score = uc.score_symbol(target, &risk_config)?;
-        print(&score, output_format);
+        // Find which security patterns matched this symbol
+        let segments = split_into_segments(&score.qualified_name);
+        let lower_patterns: Vec<String> = risk_config
+            .security_patterns
+            .iter()
+            .map(|p| p.to_lowercase())
+            .collect();
+        let matched_patterns: Vec<String> = lower_patterns
+            .iter()
+            .filter(|pat| segments.iter().any(|seg| seg.starts_with(pat.as_str())))
+            .cloned()
+            .collect();
+        let detail = RiskScoreDetail {
+            score,
+            matched_patterns,
+            weights: risk_config.weights.clone(),
+        };
+        print(&detail, output_format);
     } else if args.symbols {
         // Symbol list mode
         let analysis = uc.analyze(&risk_config)?;
