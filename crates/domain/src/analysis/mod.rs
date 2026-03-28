@@ -5,3 +5,4 @@ pub mod community;
 pub mod flow;
 pub mod impact;
 pub mod risk;
+pub mod search;

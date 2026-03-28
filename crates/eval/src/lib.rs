@@ -73,7 +73,7 @@ mod tests {
         let members = doc["workspace"]["members"]
             .as_array()
             .expect("workspace.members should be an array");
-        assert_eq!(members.len(), 8, "workspace should have 8 members");
+        assert_eq!(members.len(), 9, "workspace should have 9 members");
         let has_eval = members.iter().any(|m| m.as_str() == Some("crates/eval"));
         assert!(has_eval, "workspace members should include crates/eval");
     }
