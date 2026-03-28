@@ -1,11 +1,12 @@
 // Leiden community detection algorithm
 
-use crate::model::{Edge, EdgeKind, SymbolNode};
+use crate::model::{
+    Community, CommunityAnalysis, CommunityConfig, CommunityStats, Edge, EdgeKind, SymbolNode,
+};
 use rand::rngs::StdRng;
 use rand::seq::SliceRandom;
 use std::collections::HashMap;
 
-#[allow(dead_code)]
 fn is_high_confidence(kind: &EdgeKind) -> bool {
     matches!(
         kind,
@@ -23,7 +24,6 @@ pub(crate) struct LeidenGraph {
     pub index_to_node: Vec<String>,
 }
 
-#[allow(dead_code)]
 impl LeidenGraph {
     pub fn from_symbols_and_edges(symbols: &[SymbolNode], edges: &[Edge]) -> Self {
         let mut node_to_index = HashMap::new();
@@ -75,13 +75,11 @@ impl LeidenGraph {
     }
 }
 
-#[allow(dead_code)]
 pub(crate) struct Partition {
     pub community: Vec<usize>,
     pub community_weight: Vec<f64>,
 }
 
-#[allow(dead_code)]
 impl Partition {
     pub fn singleton(n: usize) -> Self {
         Self {
@@ -112,7 +110,6 @@ impl Partition {
     }
 }
 
-#[allow(dead_code)]
 fn compute_modularity(graph: &LeidenGraph, partition: &Partition, gamma: f64) -> f64 {
     if graph.total_weight == 0.0 {
         return 0.0;
@@ -143,7 +140,6 @@ fn compute_modularity(graph: &LeidenGraph, partition: &Partition, gamma: f64) ->
     q
 }
 
-#[allow(dead_code)]
 fn local_moving(
     graph: &LeidenGraph,
     partition: &mut Partition,
@@ -217,7 +213,6 @@ fn local_moving(
     any_moved
 }
 
-#[allow(dead_code)]
 fn refinement(
     graph: &LeidenGraph,
     partition: &Partition,
@@ -305,7 +300,6 @@ fn refinement(
 
 /// Collapse communities into super-nodes, producing an aggregated graph.
 /// Returns None if every node is already its own community (no aggregation possible).
-#[allow(dead_code)]
 fn aggregate(graph: &LeidenGraph, partition: &Partition) -> Option<(LeidenGraph, Vec<usize>)> {
     let communities = partition.distinct_communities();
     if communities.len() == graph.n {
@@ -371,7 +365,6 @@ fn aggregate(graph: &LeidenGraph, partition: &Partition) -> Option<(LeidenGraph,
     Some((agg_graph, mapping))
 }
 
-#[allow(dead_code)]
 pub(crate) fn leiden(graph: &LeidenGraph, gamma: f64, seed: Option<u64>) -> (Partition, f64) {
     use rand::SeedableRng;
 
@@ -444,6 +437,141 @@ pub(crate) fn leiden(graph: &LeidenGraph, gamma: f64, seed: Option<u64>) -> (Par
 
     let q = compute_modularity(graph, &final_partition, gamma);
     (final_partition, q)
+}
+
+fn derive_community_name(members: &[String], community_id: usize) -> String {
+    let generic = ["mod", "lib", "index", "main", "utils", "helpers"];
+
+    let mut file_counts: HashMap<&str, usize> = HashMap::new();
+    for m in members {
+        if let Some(file_part) = m.split("::").next() {
+            let stem = std::path::Path::new(file_part)
+                .file_stem()
+                .and_then(|s| s.to_str())
+                .unwrap_or("");
+            if !stem.is_empty() {
+                *file_counts.entry(stem).or_default() += 1;
+            }
+        }
+    }
+
+    let mut best: Vec<(&str, usize)> = file_counts.into_iter().collect();
+    best.sort_by(|a, b| b.1.cmp(&a.1).then(a.0.cmp(b.0)));
+
+    if let Some((name, _)) = best.first() {
+        if !generic.contains(name) {
+            return name.to_string();
+        }
+    }
+    format!("community_{community_id}")
+}
+
+pub fn detect_communities(
+    symbols: &[SymbolNode],
+    edges: &[Edge],
+    config: &CommunityConfig,
+) -> CommunityAnalysis {
+    let graph = LeidenGraph::from_symbols_and_edges(symbols, edges);
+    if graph.n == 0 {
+        return CommunityAnalysis {
+            communities: vec![],
+            modularity: 0.0,
+            stats: CommunityStats {
+                count: 0,
+                avg_size: 0.0,
+                largest_size: 0,
+                isolated_nodes: 0,
+            },
+        };
+    }
+
+    let (partition, modularity) = leiden(&graph, config.resolution, config.seed);
+
+    // Count isolated nodes (degree-0)
+    let isolated_nodes = graph.degree.iter().filter(|&&d| d == 0.0).count();
+
+    // Group nodes by community
+    let mut community_members: HashMap<usize, Vec<usize>> = HashMap::new();
+    for (i, &c) in partition.community.iter().enumerate() {
+        community_members.entry(c).or_default().push(i);
+    }
+
+    let mut communities: Vec<Community> = Vec::new();
+    for (&comm_id, members) in &community_members {
+        if members.len() < config.min_community_size {
+            continue;
+        }
+
+        let member_names: Vec<String> = members
+            .iter()
+            .map(|&i| graph.index_to_node[i].clone())
+            .collect();
+
+        // Compute internal and boundary edges
+        let member_set: std::collections::HashSet<usize> = members.iter().copied().collect();
+        let mut internal_edges = 0usize;
+        let mut boundary_edges = 0usize;
+        for &node in members {
+            for &(neighbor, _) in &graph.neighbors[node] {
+                if member_set.contains(&neighbor) {
+                    if node < neighbor {
+                        internal_edges += 1;
+                    }
+                } else {
+                    boundary_edges += 1;
+                }
+            }
+        }
+
+        // Modularity contribution for this community
+        let m = graph.total_weight;
+        let m2 = 2.0 * m;
+        let kc: f64 = members.iter().map(|&i| graph.degree[i]).sum();
+        let modularity_contribution = if m > 0.0 {
+            (internal_edges as f64) / m - config.resolution * (kc / m2).powi(2)
+        } else {
+            0.0
+        };
+
+        let name = derive_community_name(&member_names, comm_id);
+
+        communities.push(Community {
+            id: comm_id,
+            name,
+            members: member_names,
+            modularity_contribution,
+            internal_edges,
+            boundary_edges,
+        });
+    }
+
+    // Sort by size descending
+    communities.sort_by(|a, b| b.members.len().cmp(&a.members.len()));
+
+    // Re-number IDs after sorting
+    for (i, c) in communities.iter_mut().enumerate() {
+        c.id = i;
+    }
+
+    let count = communities.len();
+    let total_members: usize = communities.iter().map(|c| c.members.len()).sum();
+    let avg_size = if count > 0 {
+        total_members as f64 / count as f64
+    } else {
+        0.0
+    };
+    let largest_size = communities.first().map(|c| c.members.len()).unwrap_or(0);
+
+    CommunityAnalysis {
+        communities,
+        modularity,
+        stats: CommunityStats {
+            count,
+            avg_size,
+            largest_size,
+            isolated_nodes,
+        },
+    }
 }
 
 #[cfg(test)]
@@ -863,5 +991,70 @@ mod tests {
                 );
             }
         }
+    }
+
+    // ---- T06: Community analysis assembly + naming tests ----
+
+    #[test]
+    fn detect_communities_returns_sorted_by_size() {
+        let (symbols, edges) = build_two_cliques_bridge();
+        let config = CommunityConfig::default();
+        let analysis = detect_communities(&symbols, &edges, &config);
+        for i in 1..analysis.communities.len() {
+            assert!(
+                analysis.communities[i - 1].members.len() >= analysis.communities[i].members.len()
+            );
+        }
+    }
+
+    #[test]
+    fn detect_communities_min_size_filters() {
+        let (symbols, edges) = build_two_cliques_bridge();
+        let mut config = CommunityConfig::default();
+        config.min_community_size = 100;
+        let analysis = detect_communities(&symbols, &edges, &config);
+        assert!(analysis.communities.is_empty());
+    }
+
+    #[test]
+    fn detect_communities_counts_isolated_nodes() {
+        let symbols = vec![
+            make_symbol("a", "m::a", SymbolKind::Function),
+            make_symbol("b", "m::b", SymbolKind::Function),
+            make_symbol("c", "m::c", SymbolKind::Function),
+        ];
+        let edges = vec![make_edge(EdgeKind::Calls, "m::a", "m::b")];
+        let config = CommunityConfig {
+            min_community_size: 1,
+            ..CommunityConfig::default()
+        };
+        let analysis = detect_communities(&symbols, &edges, &config);
+        assert_eq!(analysis.stats.isolated_nodes, 1);
+    }
+
+    #[test]
+    fn derive_name_uses_most_common_file_stem() {
+        let members = vec![
+            "src/auth.rs::login".to_string(),
+            "src/auth.rs::logout".to_string(),
+            "src/auth.rs::verify".to_string(),
+            "src/session.rs::create".to_string(),
+        ];
+        assert_eq!(derive_community_name(&members, 0), "auth");
+    }
+
+    #[test]
+    fn derive_name_falls_back_for_generic_stems() {
+        let members = vec!["src/mod.rs::foo".to_string(), "src/mod.rs::bar".to_string()];
+        assert_eq!(derive_community_name(&members, 7), "community_7");
+    }
+
+    #[test]
+    fn detect_communities_modularity_positive_for_multi_community() {
+        let (symbols, edges) = build_two_cliques_bridge();
+        let config = CommunityConfig::default();
+        let analysis = detect_communities(&symbols, &edges, &config);
+        assert!(analysis.communities.len() >= 2);
+        assert!(analysis.modularity > 0.0);
     }
 }
