@@ -135,7 +135,6 @@ impl<S: GraphStore, F: FileSystem> CloneUseCase<S, F> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::model::*;
     use crate::test_support::{InMemoryGraphStore, MockFileSystem};
     use std::path::PathBuf;
 
