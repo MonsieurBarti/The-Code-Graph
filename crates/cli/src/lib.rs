@@ -16,6 +16,7 @@ pub fn run(cli: Cli) -> Result<()> {
         Commands::Index(args) => commands::index::run_index(args, output_format),
         Commands::Find(args) => commands::find::run_find(args, output_format),
         Commands::Refs(args) => commands::refs::run_refs(args, output_format),
+        Commands::Risk(args) => commands::risk::run_risk(args, output_format),
         Commands::Impact(args) => commands::impact::run_impact(args, output_format),
         Commands::Diff(args) => commands::diff::run_diff(args, output_format),
         Commands::Callers(args) => commands::callers::run_callers(args, output_format),

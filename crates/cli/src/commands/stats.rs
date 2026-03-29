@@ -1,8 +1,9 @@
 use domain::error::Result;
-use domain::model::{CloneConfig, FlowConfig};
+use domain::model::{CloneConfig, FlowConfig, RiskConfig};
 use domain::use_cases::clones::CloneUseCase;
 use domain::use_cases::flow::FlowUseCase;
 use domain::use_cases::query::QueryUseCase;
+use domain::use_cases::risk::RiskUseCase;
 
 use crate::adapters::fs::RealFileSystem;
 use crate::commands::helpers::open_graph;
@@ -14,6 +15,7 @@ pub fn run_stats(output_format: OutputFormat) -> Result<()> {
     let mut stats = uc.stats()?;
 
     // On-demand flow analysis integration
+    let risk_store = store.clone();
     let clone_store = store.clone();
     let flow_uc = FlowUseCase::new(store);
     let flow_config = FlowConfig::default();
@@ -44,6 +46,16 @@ pub fn run_stats(output_format: OutputFormat) -> Result<()> {
             stats.clone_clusters = Some(clone_analysis.clusters.len());
             stats.duplication_pct = Some(clone_analysis.duplication_pct);
             stats.most_duplicated = clone_analysis.most_duplicated;
+        }
+    }
+
+    // On-demand risk analysis integration
+    if stats.symbols <= 5000 {
+        let risk_uc = RiskUseCase::new(risk_store);
+        let risk_config = RiskConfig::default();
+        if let Ok(risk_analysis) = risk_uc.analyze(&risk_config) {
+            stats.avg_risk = Some(risk_analysis.stats.avg_risk);
+            stats.p90_risk = Some(risk_analysis.stats.p90_risk);
         }
     }
 
