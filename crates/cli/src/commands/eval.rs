@@ -10,9 +10,15 @@ fn suite_from_str(s: &str) -> Result<Suite> {
     match s {
         "search" => Ok(Suite::Search),
         "impact" => Ok(Suite::Impact),
+        "core" => Ok(Suite::Core),
+        "flows" => Ok(Suite::Flows),
+        "risk" => Ok(Suite::Risk),
+        "analysis" => Ok(Suite::Analysis),
+        "invariants" => Ok(Suite::Invariants),
+        "bench" => Ok(Suite::Bench),
         "all" => Ok(Suite::All),
         _ => Err(CodeGraphError::Other(format!(
-            "Unknown suite '{}'. Valid: search, impact, all",
+            "Unknown suite '{}'. Valid: search, impact, core, flows, risk, analysis, invariants, bench, all",
             s
         ))),
     }
@@ -39,6 +45,7 @@ pub fn run_eval(args: &EvalArgs, output_format: OutputFormat) -> Result<()> {
         no_cache: args.no_cache,
         suites_dir,
         search_limit: 20,
+        compare_baseline: args.compare.clone(),
     };
 
     let result = eval::run_suite(&config)?;
@@ -100,6 +107,42 @@ mod tests {
         assert!(suite.is_err());
         let msg = format!("{}", suite.unwrap_err());
         assert!(msg.contains("Unknown suite 'unknown'"));
+    }
+
+    #[test]
+    fn suite_from_string_core() {
+        assert!(matches!(suite_from_str("core").unwrap(), Suite::Core));
+    }
+
+    #[test]
+    fn suite_from_string_flows() {
+        assert!(matches!(suite_from_str("flows").unwrap(), Suite::Flows));
+    }
+
+    #[test]
+    fn suite_from_string_risk() {
+        assert!(matches!(suite_from_str("risk").unwrap(), Suite::Risk));
+    }
+
+    #[test]
+    fn suite_from_string_analysis() {
+        assert!(matches!(
+            suite_from_str("analysis").unwrap(),
+            Suite::Analysis
+        ));
+    }
+
+    #[test]
+    fn suite_from_string_invariants() {
+        assert!(matches!(
+            suite_from_str("invariants").unwrap(),
+            Suite::Invariants
+        ));
+    }
+
+    #[test]
+    fn suite_from_string_bench() {
+        assert!(matches!(suite_from_str("bench").unwrap(), Suite::Bench));
     }
 
     fn sample_suite_result() -> SuiteResult {

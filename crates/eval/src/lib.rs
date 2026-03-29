@@ -13,6 +13,12 @@ use report::SuiteResult;
 pub enum Suite {
     Search,
     Impact,
+    Core,
+    Flows,
+    Risk,
+    Analysis,
+    Invariants,
+    Bench,
     All,
 }
 
@@ -23,6 +29,7 @@ pub struct SuiteConfig {
     pub no_cache: bool,
     pub suites_dir: std::path::PathBuf,
     pub search_limit: usize,
+    pub compare_baseline: Option<std::path::PathBuf>,
 }
 
 /// Run the evaluation suite. Entry point called by CLI.
@@ -35,15 +42,39 @@ pub fn run_suite(config: &SuiteConfig) -> Result<SuiteResult> {
         Suite::Impact | Suite::All => Some(runner::run_impact_suite(config)?),
         _ => None,
     };
+    let core_result = match config.suite {
+        Suite::Core | Suite::All => todo!("Core suite not yet implemented"),
+        _ => None,
+    };
+    let flows_result = match config.suite {
+        Suite::Flows | Suite::All => todo!("Flows suite not yet implemented"),
+        _ => None,
+    };
+    let risk_result = match config.suite {
+        Suite::Risk | Suite::All => todo!("Risk suite not yet implemented"),
+        _ => None,
+    };
+    let analysis_result = match config.suite {
+        Suite::Analysis | Suite::All => todo!("Analysis suite not yet implemented"),
+        _ => None,
+    };
+    let invariants_result = match config.suite {
+        Suite::Invariants | Suite::All => todo!("Invariants suite not yet implemented"),
+        _ => None,
+    };
+    let bench_result = match config.suite {
+        Suite::Bench | Suite::All => todo!("Bench suite not yet implemented"),
+        _ => None,
+    };
     Ok(SuiteResult {
         search: search_result,
         impact: impact_result,
-        core: None,
-        flows: None,
-        risk: None,
-        analysis: None,
-        invariants: None,
-        bench: None,
+        core: core_result,
+        flows: flows_result,
+        risk: risk_result,
+        analysis: analysis_result,
+        invariants: invariants_result,
+        bench: bench_result,
     })
 }
 
@@ -92,6 +123,7 @@ mod tests {
             no_cache: false,
             suites_dir: PathBuf::from("/tmp/suites"),
             search_limit: 10,
+            compare_baseline: None,
         };
         assert!(matches!(config.suite, Suite::Search));
         assert!(!config.no_cache);
@@ -106,6 +138,7 @@ mod tests {
             no_cache: true,
             suites_dir: PathBuf::from("/tmp/suites"),
             search_limit: 5,
+            compare_baseline: None,
         };
         assert!(matches!(config.suite, Suite::Impact));
         assert!(config.no_cache);
