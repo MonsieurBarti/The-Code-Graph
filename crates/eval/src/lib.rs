@@ -3,6 +3,7 @@ pub mod dataset;
 pub mod metrics;
 pub mod report;
 pub mod runner;
+pub mod suites;
 
 use domain::error::Result;
 use report::SuiteResult;
