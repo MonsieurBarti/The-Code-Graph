@@ -23,7 +23,7 @@ use clap::{ArgAction, Parser, Subcommand};
 
 #[derive(Parser)]
 #[command(
-    name = "code-graph",
+    name = "tcg",
     version,
     about = "Index codebases into a queryable dependency graph"
 )]

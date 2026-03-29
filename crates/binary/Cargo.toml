@@ -1,13 +1,19 @@
 [package]
-name = "binary"
-version = "0.1.0"
-edition = "2021"
+name = "the-code-graph"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Index codebases into a queryable dependency graph"
+readme = "../../README.md"
+keywords = ["code-analysis", "dependency-graph", "static-analysis", "code-graph"]
+categories = ["development-tools", "command-line-utilities"]
 
 [[bin]]
-name = "code-graph"
+name = "tcg"
 path = "src/main.rs"
 
 [dependencies]
-cli = { path = "../cli" }
-domain = { path = "../domain" }
+cli = { path = "../cli", package = "the-code-graph-cli", version = "0.1.0" }
+domain = { path = "../domain", package = "the-code-graph-domain", version = "0.1.0" }
 clap = { version = "4", features = ["derive"] }
