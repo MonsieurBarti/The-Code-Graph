@@ -1,0 +1,9 @@
+[workspace]
+# All publishable workspace crates are released together.
+# Crates with `publish = false` (benches) are automatically skipped.
+# Publish order is resolved from the dependency graph.
+dependencies_update = true
+
+# Use a single version tag so release.yml (triggers on v*) fires correctly.
+# Default would be {name}-v{version} which does NOT match the v* glob.
+git_tag_name = "v{version}"

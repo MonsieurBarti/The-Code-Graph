@@ -6,7 +6,7 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
-  BINARY_NAME: code-graph
+  BINARY_NAME: tcg
 
 permissions:
   contents: write
@@ -33,7 +33,7 @@ jobs:
           path: ~/.cache/code-graph-eval
           key: eval-repos-${{ hashFiles('eval/suites/*/manifest.json') }}
       - name: Run eval suite
-        run: ./target/release/code-graph eval --suite all
+        run: ./target/release/tcg eval --suite all
 
   build:
     name: Build (${{ matrix.target }})
@@ -96,17 +96,10 @@ jobs:
           path: artifacts/
           pattern: binary-*
           merge-multiple: true
+      - name: Verify crates.io metadata
+        run: cargo publish --dry-run -p the-code-graph
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           files: artifacts/*
           generate_release_notes: true
-      - name: Publish to crates.io
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-        run: |
-          for crate in domain parser storage watch eval cli binary; do
-            echo "Publishing $crate..."
-            cargo publish -p $crate --allow-dirty || true
-            sleep 30
-          done

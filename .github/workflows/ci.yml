@@ -70,8 +70,8 @@ jobs:
             ~/.cargo/git
             target
           key: ${{ runner.os }}-cargo-embeddings-${{ hashFiles('**/Cargo.lock') }}
-      - run: cargo test -p embeddings
-      - run: cargo test -p cli --features embeddings
+      - run: cargo test -p the-code-graph-embeddings
+      - run: cargo test -p the-code-graph-cli --features embeddings
 
   coverage:
     name: Coverage
