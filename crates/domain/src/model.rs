@@ -268,6 +268,10 @@ pub struct GraphStats {
     pub duplication_pct: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub most_duplicated: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub avg_risk: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub p90_risk: Option<f64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -454,6 +458,112 @@ impl Default for CloneConfig {
             max_candidates_per_bucket: 500,
         }
     }
+}
+
+// ---------------------------------------------------------------------------
+// Risk scoring types
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Clone)]
+pub struct RiskWeights {
+    pub criticality: f64,
+    pub coupling: f64,
+    pub test_gap: f64,
+    pub sensitivity: f64,
+}
+
+impl Default for RiskWeights {
+    fn default() -> Self {
+        Self {
+            criticality: 0.30,
+            coupling: 0.25,
+            test_gap: 0.25,
+            sensitivity: 0.20,
+        }
+    }
+}
+
+impl RiskWeights {
+    /// Normalize weights so they sum to 1.0, preserving relative proportions.
+    pub fn normalized(&self) -> Self {
+        let sum = self.criticality + self.coupling + self.test_gap + self.sensitivity;
+        if sum == 0.0 {
+            return Self::default();
+        }
+        Self {
+            criticality: self.criticality / sum,
+            coupling: self.coupling / sum,
+            test_gap: self.test_gap / sum,
+            sensitivity: self.sensitivity / sum,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct RiskConfig {
+    pub weights: RiskWeights,
+    pub security_patterns: Vec<String>,
+    pub min_score: f64,
+}
+
+impl Default for RiskConfig {
+    fn default() -> Self {
+        Self {
+            weights: RiskWeights::default(),
+            security_patterns: vec![
+                "auth".into(),
+                "password".into(),
+                "secret".into(),
+                "token".into(),
+                "crypto".into(),
+                "credential".into(),
+                "sql".into(),
+                "exec".into(),
+                "eval".into(),
+                "unsafe".into(),
+            ],
+            min_score: 0.0,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RiskFactors {
+    pub criticality: f64,
+    pub coupling: f64,
+    pub test_gap: f64,
+    pub sensitivity: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RiskScore {
+    pub qualified_name: String,
+    pub composite: f64,
+    pub factors: RiskFactors,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FileRiskScore {
+    pub path: PathBuf,
+    pub composite: f64,
+    pub symbol_count: usize,
+    pub highest_symbol: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RiskStats {
+    pub symbols_scored: usize,
+    pub files_scored: usize,
+    pub avg_risk: f64,
+    pub median_risk: f64,
+    pub p90_risk: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RiskAnalysis {
+    pub symbol_scores: Vec<RiskScore>,
+    pub file_scores: Vec<FileRiskScore>,
+    pub stats: RiskStats,
 }
 
 // ---------------------------------------------------------------------------
@@ -783,6 +893,8 @@ mod tests {
                 clone_clusters: None,
                 duplication_pct: None,
                 most_duplicated: None,
+                avg_risk: None,
+                p90_risk: None,
             },
             GraphStats
         );
@@ -888,10 +1000,65 @@ mod tests {
             clone_clusters: None,
             duplication_pct: None,
             most_duplicated: None,
+            avg_risk: None,
+            p90_risk: None,
         };
         let json = serde_json::to_string(&stats).unwrap();
         assert!(!json.contains("entry_point_count"));
         assert!(!json.contains("avg_criticality"));
+    }
+
+    #[test]
+    fn risk_weights_default_sum_to_one() {
+        let w = RiskWeights::default();
+        let sum = w.criticality + w.coupling + w.test_gap + w.sensitivity;
+        assert!(
+            (sum - 1.0).abs() < 1e-10,
+            "default weights must sum to 1.0, got {sum}"
+        );
+    }
+
+    #[test]
+    fn risk_score_serde_roundtrip() {
+        let score = RiskScore {
+            qualified_name: "src/auth.rs::verify_token".into(),
+            composite: 0.87,
+            factors: RiskFactors {
+                criticality: 0.90,
+                coupling: 0.80,
+                test_gap: 0.85,
+                sensitivity: 0.95,
+            },
+        };
+        let json = serde_json::to_string(&score).unwrap();
+        let decoded: RiskScore = serde_json::from_str(&json).unwrap();
+        assert_eq!(decoded.qualified_name, score.qualified_name);
+        assert!((decoded.composite - score.composite).abs() < 1e-10);
+        assert!((decoded.factors.criticality - score.factors.criticality).abs() < 1e-10);
+        assert!((decoded.factors.coupling - score.factors.coupling).abs() < 1e-10);
+        assert!((decoded.factors.test_gap - score.factors.test_gap).abs() < 1e-10);
+        assert!((decoded.factors.sensitivity - score.factors.sensitivity).abs() < 1e-10);
+    }
+
+    #[test]
+    fn risk_weights_normalized_preserves_proportions() {
+        let w = RiskWeights {
+            criticality: 3.0,
+            coupling: 2.5,
+            test_gap: 2.5,
+            sensitivity: 2.0,
+        };
+        let n = w.normalized();
+        let sum = n.criticality + n.coupling + n.test_gap + n.sensitivity;
+        assert!(
+            (sum - 1.0).abs() < 1e-10,
+            "normalized weights must sum to 1.0, got {sum}"
+        );
+        // Proportions should match: original sums to 10.0
+        assert!((n.criticality - 0.30).abs() < 1e-10);
+        assert!((n.coupling - 0.25).abs() < 1e-10);
+        assert!((n.test_gap - 0.25).abs() < 1e-10);
+        assert!((n.sensitivity - 0.20).abs() < 1e-10);
     }
 
     #[test]
@@ -905,6 +1072,8 @@ mod tests {
             clone_clusters: None,
             duplication_pct: None,
             most_duplicated: None,
+            avg_risk: None,
+            p90_risk: None,
         };
         let json = serde_json::to_string(&stats).unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();

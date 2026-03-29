@@ -9,6 +9,7 @@ pub mod helpers;
 pub mod impact;
 pub mod index;
 pub mod refs;
+pub mod risk;
 pub mod search;
 pub mod setup;
 pub mod setup_helpers;
@@ -53,6 +54,8 @@ pub enum Commands {
     Find(FindArgs),
     /// Show references to a symbol
     Refs(RefsArgs),
+    /// Analyze risk scores across the codebase
+    Risk(RiskArgs),
     /// Analyze blast radius of changes
     Impact(ImpactArgs),
     /// Show symbols affected by git diff
@@ -102,6 +105,21 @@ pub struct FindArgs {
 pub struct RefsArgs {
     /// Qualified name of the symbol
     pub qualified_name: String,
+}
+
+#[derive(clap::Args)]
+pub struct RiskArgs {
+    /// Specific symbol or file to analyze
+    pub target: Option<String>,
+    /// Show symbol-level risk instead of file-level
+    #[arg(long)]
+    pub symbols: bool,
+    /// Maximum number of results to display
+    #[arg(long, default_value = "20")]
+    pub limit: usize,
+    /// Minimum risk score to display
+    #[arg(long, default_value = "0.0")]
+    pub min_score: f64,
 }
 
 #[derive(clap::Args)]
@@ -308,6 +326,11 @@ mod tests {
                 "--cluster",
                 "2",
             ],
+            vec!["code-graph", "risk"],
+            vec!["code-graph", "risk", "--symbols"],
+            vec!["code-graph", "risk", "--symbols", "--limit", "50"],
+            vec!["code-graph", "risk", "AuthService"],
+            vec!["code-graph", "risk", "--min-score", "0.5"],
             vec!["code-graph", "stats"],
             vec!["code-graph", "watch"],
             vec!["code-graph", "watch", "--daemon"],
@@ -324,6 +347,43 @@ mod tests {
         ];
         for args in &commands {
             Cli::parse_from(args.iter());
+        }
+    }
+
+    #[test]
+    fn parse_risk_command() {
+        let cli = Cli::parse_from(["code-graph", "risk"]);
+        assert!(matches!(cli.command, Commands::Risk(_)));
+    }
+
+    #[test]
+    fn parse_risk_symbols() {
+        let cli = Cli::parse_from(["code-graph", "risk", "--symbols", "--limit", "50"]);
+        if let Commands::Risk(args) = cli.command {
+            assert!(args.symbols);
+            assert_eq!(args.limit, 50);
+        } else {
+            panic!("expected Risk command");
+        }
+    }
+
+    #[test]
+    fn parse_risk_target() {
+        let cli = Cli::parse_from(["code-graph", "risk", "AuthService"]);
+        if let Commands::Risk(args) = cli.command {
+            assert_eq!(args.target.unwrap(), "AuthService");
+        } else {
+            panic!("expected Risk command");
+        }
+    }
+
+    #[test]
+    fn parse_risk_min_score() {
+        let cli = Cli::parse_from(["code-graph", "risk", "--min-score", "0.5"]);
+        if let Commands::Risk(args) = cli.command {
+            assert!((args.min_score - 0.5).abs() < f64::EPSILON);
+        } else {
+            panic!("expected Risk command");
         }
     }
 
