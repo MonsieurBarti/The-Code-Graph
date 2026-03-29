@@ -42,29 +42,28 @@ pub fn run_suite(config: &SuiteConfig) -> Result<SuiteResult> {
         Suite::Impact | Suite::All => Some(runner::run_impact_suite(config)?),
         _ => None,
     };
-    // New suites — individual dispatch only (All excludes them until T16 ground truth integration)
     let core_result = match config.suite {
-        Suite::Core => todo!("Core suite runner — wire in T16"),
+        Suite::Core | Suite::All => Some(runner::run_core_suite(config)?),
         _ => None,
     };
     let flows_result = match config.suite {
-        Suite::Flows => todo!("Flows suite runner — wire in T16"),
+        Suite::Flows | Suite::All => Some(runner::run_flows_suite(config)?),
         _ => None,
     };
     let risk_result = match config.suite {
-        Suite::Risk => todo!("Risk suite runner — wire in T16"),
+        Suite::Risk | Suite::All => Some(runner::run_risk_suite(config)?),
         _ => None,
     };
     let analysis_result = match config.suite {
-        Suite::Analysis => todo!("Analysis suite runner — wire in T16"),
+        Suite::Analysis | Suite::All => Some(runner::run_analysis_suite(config)?),
         _ => None,
     };
     let invariants_result = match config.suite {
-        Suite::Invariants => todo!("Invariants suite runner — wire in T16"),
+        Suite::Invariants | Suite::All => Some(runner::run_invariants_suite(config)?),
         _ => None,
     };
     let bench_result = match config.suite {
-        Suite::Bench => todo!("Bench suite runner — wire in T16"),
+        Suite::Bench | Suite::All => Some(runner::run_bench_suite(config)?),
         _ => None,
     };
     Ok(SuiteResult {
