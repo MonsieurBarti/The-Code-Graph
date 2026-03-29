@@ -1,9 +1,9 @@
 use std::io::Write;
 
 use domain::model::{
-    AffectedNode, CloneAnalysis, CloneCluster, CriticalityScore, DiffImpactReport, EntryPointKind,
-    FlowAnalysis, GraphStats, ImpactReport, IndexStats, Reference, RiskAnalysis, RiskScore,
-    RiskWeights, SearchResult, SymbolNode,
+    AffectedNode, CloneAnalysis, CloneCluster, Community, CommunityAnalysis, CriticalityScore,
+    DiffImpactReport, EntryPointKind, FlowAnalysis, GraphStats, ImpactReport, IndexStats,
+    Reference, RiskAnalysis, RiskScore, RiskWeights, SearchResult, SymbolNode,
 };
 
 /// Wraps a RiskScore with contextual info for single-target display (AC3).
@@ -840,6 +840,123 @@ impl Displayable for RiskScoreDetail {
     }
 }
 
+// ---------------------------------------------------------------------------
+// Displayable: CommunityAnalysis
+// ---------------------------------------------------------------------------
+
+impl Displayable for CommunityAnalysis {
+    fn fmt_compact(&self, w: &mut dyn Write) -> std::io::Result<()> {
+        writeln!(
+            w,
+            "Communities: {} (modularity: {:.2})",
+            self.stats.count, self.modularity
+        )?;
+        writeln!(w)?;
+        for c in &self.communities {
+            writeln!(
+                w,
+                " #{}  {} ({} symbols, {} internal / {} boundary edges)",
+                c.id,
+                c.name,
+                c.members.len(),
+                c.internal_edges,
+                c.boundary_edges
+            )?;
+            let preview: Vec<&str> = c.members.iter().take(3).map(|s| s.as_str()).collect();
+            writeln!(
+                w,
+                "     {}{}",
+                preview.join(", "),
+                if c.members.len() > 3 { ", ..." } else { "" }
+            )?;
+        }
+        Ok(())
+    }
+
+    fn fmt_table(&self, w: &mut dyn Write) -> std::io::Result<()> {
+        writeln!(
+            w,
+            " ID  Name            Size  Internal  Boundary  Modularity"
+        )?;
+        for c in &self.communities {
+            writeln!(
+                w,
+                "{:>3}  {:<15} {:>4}  {:>8}  {:>8}  {:>10.2}",
+                c.id,
+                c.name,
+                c.members.len(),
+                c.internal_edges,
+                c.boundary_edges,
+                c.modularity_contribution
+            )?;
+        }
+        Ok(())
+    }
+
+    fn fmt_json(&self, w: &mut dyn Write) -> std::io::Result<()> {
+        let json = serde_json::to_string_pretty(self).map_err(std::io::Error::other)?;
+        writeln!(w, "{json}")
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Displayable: Vec<Community> (detail view)
+// ---------------------------------------------------------------------------
+
+impl Displayable for Vec<Community> {
+    fn fmt_compact(&self, w: &mut dyn Write) -> std::io::Result<()> {
+        for c in self {
+            writeln!(
+                w,
+                "Community #{}: {} ({} symbols)",
+                c.id,
+                c.name,
+                c.members.len()
+            )?;
+            writeln!(
+                w,
+                "Modularity contribution: {:.2}",
+                c.modularity_contribution
+            )?;
+            writeln!(
+                w,
+                "Internal edges: {} | Boundary edges: {}",
+                c.internal_edges, c.boundary_edges
+            )?;
+            writeln!(w)?;
+            writeln!(w, "Members:")?;
+            for m in &c.members {
+                writeln!(w, "  {m}")?;
+            }
+        }
+        Ok(())
+    }
+
+    fn fmt_table(&self, w: &mut dyn Write) -> std::io::Result<()> {
+        for c in self {
+            writeln!(
+                w,
+                "Community #{}: {} ({} symbols)",
+                c.id,
+                c.name,
+                c.members.len()
+            )?;
+            writeln!(w)?;
+            writeln!(w, "Member")?;
+            writeln!(w, "------")?;
+            for m in &c.members {
+                writeln!(w, "{m}")?;
+            }
+        }
+        Ok(())
+    }
+
+    fn fmt_json(&self, w: &mut dyn Write) -> std::io::Result<()> {
+        let json = serde_json::to_string_pretty(self).map_err(std::io::Error::other)?;
+        writeln!(w, "{json}")
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1118,6 +1235,8 @@ mod tests {
             most_duplicated: None,
             avg_risk: None,
             p90_risk: None,
+            community_count: None,
+            modularity: None,
         }
     }
 
@@ -1431,6 +1550,8 @@ mod tests {
             most_duplicated: None,
             avg_risk: None,
             p90_risk: None,
+            community_count: None,
+            modularity: None,
         };
         let mut buf = Vec::new();
         stats.fmt_compact(&mut buf).unwrap();
@@ -1452,6 +1573,8 @@ mod tests {
             most_duplicated: None,
             avg_risk: None,
             p90_risk: None,
+            community_count: None,
+            modularity: None,
         };
         let mut buf = Vec::new();
         stats.fmt_compact(&mut buf).unwrap();
@@ -1473,6 +1596,8 @@ mod tests {
             most_duplicated: None,
             avg_risk: None,
             p90_risk: None,
+            community_count: None,
+            modularity: None,
         };
         let mut buf = Vec::new();
         stats.fmt_compact(&mut buf).unwrap();
@@ -1493,6 +1618,8 @@ mod tests {
             most_duplicated: None,
             avg_risk: Some(0.23),
             p90_risk: Some(0.61),
+            community_count: None,
+            modularity: None,
         };
         let mut buf = Vec::new();
         stats.fmt_compact(&mut buf).unwrap();
@@ -1514,6 +1641,8 @@ mod tests {
             most_duplicated: None,
             avg_risk: Some(0.30),
             p90_risk: Some(0.55),
+            community_count: None,
+            modularity: None,
         };
         let mut buf = Vec::new();
         stats.fmt_table(&mut buf).unwrap();

@@ -479,6 +479,8 @@ impl GraphStore for SqliteStore {
             most_duplicated: None,
             avg_risk: None,
             p90_risk: None,
+            community_count: None,
+            modularity: None,
         })
     }
 
