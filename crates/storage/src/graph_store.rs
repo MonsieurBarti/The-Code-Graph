@@ -588,6 +588,8 @@ impl GraphStore for SqliteStore {
         const CHUNK_SIZE: usize = 500;
         let mut symbols = Vec::new();
         for chunk in paths.chunks(CHUNK_SIZE) {
+            // SAFETY: placeholders are numeric indices (?1, ?2, ...) derived from the chunk
+            // length — no user data is interpolated into SQL. Values are bound via params_from_iter.
             let placeholders: String = (1..=chunk.len())
                 .map(|i| format!("?{i}"))
                 .collect::<Vec<_>>()
