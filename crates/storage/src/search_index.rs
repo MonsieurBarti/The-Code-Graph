@@ -11,10 +11,15 @@ impl SearchIndex for SqliteStore {
             return Ok(vec![]);
         }
 
-        // Cap query length to prevent DoS via excessive FTS5 tokenization
+        // Cap query length to prevent DoS via excessive FTS5 tokenization.
+        // Truncate at a valid UTF-8 char boundary to avoid panics on multi-byte input.
         const MAX_QUERY_LEN: usize = 500;
         let query = if query.len() > MAX_QUERY_LEN {
-            &query[..MAX_QUERY_LEN]
+            let mut end = MAX_QUERY_LEN;
+            while end > 0 && !query.is_char_boundary(end) {
+                end -= 1;
+            }
+            &query[..end]
         } else {
             query
         };

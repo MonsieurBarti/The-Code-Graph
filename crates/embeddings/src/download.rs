@@ -1,6 +1,10 @@
 use crate::{EmbeddingError, Result};
+use std::io::Read;
 use std::path::{Path, PathBuf};
 use tracing::info;
+
+/// Maximum download size (500 MB) to prevent disk exhaustion from malicious or oversized files.
+const MAX_DOWNLOAD_BYTES: u64 = 500 * 1024 * 1024;
 
 /// Paths to downloaded model files
 pub struct ModelFiles {
@@ -21,8 +25,28 @@ pub fn model_cache_dir(model_name: &str) -> PathBuf {
     base.join("code-graph").join("models").join(model_name)
 }
 
+/// Validate that a model name contains only safe characters (alphanumeric, dots, hyphens, underscores).
+/// Prevents path traversal in the HuggingFace URL template.
+fn validate_model_name(name: &str) -> Result<()> {
+    if name.is_empty() {
+        return Err(EmbeddingError::Download(
+            "model name cannot be empty".into(),
+        ));
+    }
+    if !name
+        .chars()
+        .all(|c| c.is_ascii_alphanumeric() || c == '.' || c == '-' || c == '_')
+    {
+        return Err(EmbeddingError::Download(format!(
+            "invalid model name '{name}': only alphanumeric, '.', '-', '_' allowed"
+        )));
+    }
+    Ok(())
+}
+
 /// Ensure model files are available, downloading if needed.
 pub fn ensure_model(model_name: &str) -> Result<ModelFiles> {
+    validate_model_name(model_name)?;
     let dir = model_cache_dir(model_name);
     let model_path = dir.join("model.onnx");
     let tokenizer_path = dir.join("tokenizer.json");
@@ -57,6 +81,7 @@ pub fn ensure_model(model_name: &str) -> Result<ModelFiles> {
 }
 
 /// Download a file atomically (write to .tmp, then rename).
+/// Enforces a size limit of [`MAX_DOWNLOAD_BYTES`] to prevent disk exhaustion.
 fn download_file(url: &str, dest: &Path) -> Result<()> {
     let tmp_path = dest.with_extension("tmp");
 
@@ -69,9 +94,17 @@ fn download_file(url: &str, dest: &Path) -> Result<()> {
         .call()
         .map_err(|e| EmbeddingError::Download(format!("{url}: {e}")))?;
 
-    let mut reader = resp.into_body().into_reader();
+    // Limit download size to prevent disk exhaustion from oversized files
+    let mut reader = resp.into_body().into_reader().take(MAX_DOWNLOAD_BYTES);
     let mut file = std::fs::File::create(&tmp_path)?;
-    std::io::copy(&mut reader, &mut file)?;
+    let bytes_written = std::io::copy(&mut reader, &mut file)?;
+
+    if bytes_written >= MAX_DOWNLOAD_BYTES {
+        let _ = std::fs::remove_file(&tmp_path);
+        return Err(EmbeddingError::Download(format!(
+            "{url}: file exceeds maximum size of {MAX_DOWNLOAD_BYTES} bytes"
+        )));
+    }
 
     // Atomic rename
     std::fs::rename(&tmp_path, dest)?;
@@ -116,6 +149,19 @@ mod tests {
                 None => remove_env("XDG_CACHE_HOME"),
             }
         }
+    }
+
+    #[test]
+    fn validate_model_name_accepts_valid() {
+        assert!(validate_model_name("all-MiniLM-L6-v2").is_ok());
+        assert!(validate_model_name("model_name.v1").is_ok());
+    }
+
+    #[test]
+    fn validate_model_name_rejects_path_traversal() {
+        assert!(validate_model_name("../../../evil").is_err());
+        assert!(validate_model_name("model/subpath").is_err());
+        assert!(validate_model_name("").is_err());
     }
 
     #[test]

@@ -173,6 +173,8 @@ impl VectorStore for SqliteStore {
             return Ok(());
         }
         let conn = self.conn()?;
+        // SAFETY: placeholders are numeric indices (?1, ?2, ...) derived from the slice
+        // length — no user data is interpolated into SQL. Values are bound via params_from_iter.
         let placeholders: String = (1..=qualified_names.len())
             .map(|i| format!("?{i}"))
             .collect::<Vec<_>>()
