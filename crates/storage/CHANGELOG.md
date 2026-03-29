@@ -6,3 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [0.1.2](https://github.com/MonsieurBarti/The-Code-Graph/compare/the-code-graph-storage-v0.1.1...the-code-graph-storage-v0.1.2) - 2026-03-29
+
+### Other
+
+- release v0.1.1 ([#26](https://github.com/MonsieurBarti/The-Code-Graph/pull/26))
