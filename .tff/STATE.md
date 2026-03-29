@@ -1,16 +1,16 @@
-# State — M02
+# State — Milestone M03
 
 ## Progress
-- Slices: 7/7 completed
-- Requirements: 7/7 validated
+- Slices: 1/7 completed
+- Tasks: 0/0 completed
 
 ## Slices
-| Slice | Status | Covers |
-|---|---|---|
-| M02-S01 Execution Flows | closed | R1 |
-| M02-S02 Risk Scoring | closed | R2 |
-| M02-S03 Community Detection | closed | R3 |
-| M02-S04 Embeddings + Hybrid Search | closed | R4 |
-| M02-S05 Dead Code Detection | closed | R5 |
-| M02-S06 Clone Detection | closed | R6 |
-| M02-S07 crates.io Release | closed | R7 |
+| Slice | Status | Tasks | Progress |
+|---|---|---|---|
+| Real-World Validation | closed | 17/17 | 100% |
+| Web UI Visualization | open | 0/0 | 0% |
+| Multi-Repo Registry | open | 0/0 | 0% |
+| MCP Adapter | open | 0/0 | 0% |
+| Refactoring Tools | open | 0/0 | 0% |
+| Wiki Generation | open | 0/0 | 0% |
+| Language Extensibility | open | 0/0 | 0% |
