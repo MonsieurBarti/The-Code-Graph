@@ -57,6 +57,85 @@ pub struct ImpactScenario {
 }
 
 // ---------------------------------------------------------------------------
+// Ground truth types for new evaluation suites
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Deserialize)]
+pub struct FlowsGroundTruth {
+    pub repo: String,
+    pub suite: String,
+    pub ground_truth: Vec<EntryPointTruth>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct EntryPointTruth {
+    #[serde(rename = "type")]
+    pub type_: String,
+    pub symbol: String,
+    pub category: String,
+    pub file: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct RiskGroundTruth {
+    pub repo: String,
+    pub suite: String,
+    pub ground_truth: Vec<RiskTruth>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct RiskTruth {
+    pub symbol: String,
+    pub risk: String,
+    pub reason: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct CoreGroundTruth {
+    pub repo: String,
+    pub suite: String,
+    pub ground_truth: Vec<ImportTruth>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct ImportTruth {
+    pub source_file: String,
+    pub source_symbol: String,
+    pub target_file: String,
+    pub target_symbol: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct DeadCodeGroundTruth {
+    pub repo: String,
+    pub suite: String,
+    #[serde(rename = "type")]
+    pub type_: String,
+    pub ground_truth: Vec<DeadCodeTruth>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct DeadCodeTruth {
+    pub symbol: String,
+    pub expected_dead: bool,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct CloneGroundTruth {
+    pub repo: String,
+    pub suite: String,
+    #[serde(rename = "type")]
+    pub type_: String,
+    pub ground_truth: Vec<CloneTruth>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct CloneTruth {
+    pub source: String,
+    pub target: String,
+}
+
+// ---------------------------------------------------------------------------
 // Cache management
 // ---------------------------------------------------------------------------
 
@@ -179,6 +258,42 @@ pub fn parse_impact_queries(path: &Path) -> Result<Vec<ImpactScenario>> {
     let file: ImpactQueryFile = serde_json::from_str(&content)
         .map_err(|e| CodeGraphError::Other(format!("Invalid scenario JSON: {e}")))?;
     Ok(file.scenarios)
+}
+
+pub fn parse_flows_ground_truth(path: &Path) -> Result<FlowsGroundTruth> {
+    let content = std::fs::read_to_string(path)
+        .map_err(|e| CodeGraphError::Other(format!("Failed to read flows ground truth: {e}")))?;
+    serde_json::from_str(&content)
+        .map_err(|e| CodeGraphError::Other(format!("Invalid flows ground truth JSON: {e}")))
+}
+
+pub fn parse_risk_ground_truth(path: &Path) -> Result<RiskGroundTruth> {
+    let content = std::fs::read_to_string(path)
+        .map_err(|e| CodeGraphError::Other(format!("Failed to read risk ground truth: {e}")))?;
+    serde_json::from_str(&content)
+        .map_err(|e| CodeGraphError::Other(format!("Invalid risk ground truth JSON: {e}")))
+}
+
+pub fn parse_core_ground_truth(path: &Path) -> Result<CoreGroundTruth> {
+    let content = std::fs::read_to_string(path)
+        .map_err(|e| CodeGraphError::Other(format!("Failed to read core ground truth: {e}")))?;
+    serde_json::from_str(&content)
+        .map_err(|e| CodeGraphError::Other(format!("Invalid core ground truth JSON: {e}")))
+}
+
+pub fn parse_dead_code_ground_truth(path: &Path) -> Result<DeadCodeGroundTruth> {
+    let content = std::fs::read_to_string(path).map_err(|e| {
+        CodeGraphError::Other(format!("Failed to read dead code ground truth: {e}"))
+    })?;
+    serde_json::from_str(&content)
+        .map_err(|e| CodeGraphError::Other(format!("Invalid dead code ground truth JSON: {e}")))
+}
+
+pub fn parse_clone_ground_truth(path: &Path) -> Result<CloneGroundTruth> {
+    let content = std::fs::read_to_string(path)
+        .map_err(|e| CodeGraphError::Other(format!("Failed to read clone ground truth: {e}")))?;
+    serde_json::from_str(&content)
+        .map_err(|e| CodeGraphError::Other(format!("Invalid clone ground truth JSON: {e}")))
 }
 
 // ---------------------------------------------------------------------------
@@ -446,5 +561,73 @@ mod tests {
             !cache_dir.exists(),
             "cache dir should be removed after clear"
         );
+    }
+
+    // -- Ground truth parsing for new suites ----------------------------------
+
+    #[test]
+    fn parse_entry_point_ground_truth() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("flows.json");
+        let json = r#"{"repo":"express","suite":"flows","ground_truth":[
+            {"type":"entry_point","symbol":"app.listen","category":"HttpHandler","file":"lib/application.js"}
+        ]}"#;
+        std::fs::write(&path, json).unwrap();
+        let gt = super::parse_flows_ground_truth(&path).unwrap();
+        assert_eq!(gt.ground_truth.len(), 1);
+        assert_eq!(gt.ground_truth[0].symbol, "app.listen");
+        assert_eq!(gt.ground_truth[0].category, "HttpHandler");
+    }
+
+    #[test]
+    fn parse_risk_ground_truth() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("risk.json");
+        let json = r#"{"repo":"express","suite":"risk","ground_truth":[
+            {"symbol":"lib/router/index.js::handle","risk":"high","reason":"central dispatch"}
+        ]}"#;
+        std::fs::write(&path, json).unwrap();
+        let gt = super::parse_risk_ground_truth(&path).unwrap();
+        assert_eq!(gt.ground_truth.len(), 1);
+        assert_eq!(gt.ground_truth[0].risk, "high");
+    }
+
+    #[test]
+    fn parse_import_ground_truth() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("core.json");
+        let json = r#"{"repo":"express","suite":"core","ground_truth":[
+            {"source_file":"lib/express.js","source_symbol":"createApplication","target_file":"lib/application.js","target_symbol":"app"}
+        ]}"#;
+        std::fs::write(&path, json).unwrap();
+        let gt = super::parse_core_ground_truth(&path).unwrap();
+        assert_eq!(gt.ground_truth.len(), 1);
+        assert_eq!(gt.ground_truth[0].source_symbol, "createApplication");
+    }
+
+    #[test]
+    fn parse_dead_code_ground_truth() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("dead_code.json");
+        let json = r#"{"repo":"express","suite":"analysis","type":"dead_code","ground_truth":[
+            {"symbol":"lib/utils.js::deprecate","expected_dead":true}
+        ]}"#;
+        std::fs::write(&path, json).unwrap();
+        let gt = super::parse_dead_code_ground_truth(&path).unwrap();
+        assert_eq!(gt.ground_truth.len(), 1);
+        assert!(gt.ground_truth[0].expected_dead);
+    }
+
+    #[test]
+    fn parse_clone_ground_truth() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("clones.json");
+        let json = r#"{"repo":"express","suite":"analysis","type":"clones","ground_truth":[
+            {"source":"lib/router/route.js::dispatch","target":"lib/router/layer.js::handle_request"}
+        ]}"#;
+        std::fs::write(&path, json).unwrap();
+        let gt = super::parse_clone_ground_truth(&path).unwrap();
+        assert_eq!(gt.ground_truth.len(), 1);
+        assert_eq!(gt.ground_truth[0].source, "lib/router/route.js::dispatch");
     }
 }
