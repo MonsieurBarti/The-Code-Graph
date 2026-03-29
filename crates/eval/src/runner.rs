@@ -290,6 +290,8 @@ pub fn run_impact_suite(config: &SuiteConfig) -> Result<ImpactSuiteResult> {
         f1,
         precision_target: BLAST_PRECISION_TARGET,
         precision_passed: precision >= BLAST_PRECISION_TARGET,
+        recall_target: 0.30,
+        recall_passed: recall >= 0.30,
     })
 }
 

@@ -38,6 +38,12 @@ pub fn run_suite(config: &SuiteConfig) -> Result<SuiteResult> {
     Ok(SuiteResult {
         search: search_result,
         impact: impact_result,
+        core: None,
+        flows: None,
+        risk: None,
+        analysis: None,
+        invariants: None,
+        bench: None,
     })
 }
 

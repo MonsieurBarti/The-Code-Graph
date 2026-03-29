@@ -122,7 +122,15 @@ mod tests {
                 f1: 0.50,
                 precision_target: 0.40,
                 precision_passed: true,
+                recall_target: 0.30,
+                recall_passed: true,
             }),
+            core: None,
+            flows: None,
+            risk: None,
+            analysis: None,
+            invariants: None,
+            bench: None,
         }
     }
 
