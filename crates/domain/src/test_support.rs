@@ -115,6 +115,8 @@ impl GraphStore for InMemoryGraphStore {
             files: self.files.len(),
             symbols: self.symbols.len(),
             edges: self.edges.len(),
+            entry_point_count: None,
+            avg_criticality: None,
         })
     }
     fn find_by_name(&self, pattern: &str) -> Result<Vec<SymbolNode>> {
