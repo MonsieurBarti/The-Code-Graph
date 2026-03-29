@@ -81,6 +81,126 @@
       "repo": "go-stdlib",
       "query": "DetectContentType",
       "expected": ["src/net/http/sniff.go::DetectContentType"]
+    },
+    {
+      "repo": "go-stdlib",
+      "query": "Fprintf",
+      "expected": ["src/fmt/print.go::Fprintf"],
+      "category": "existence"
+    },
+    {
+      "repo": "go-stdlib",
+      "query": "Println",
+      "expected": ["src/fmt/print.go::Println"],
+      "category": "existence"
+    },
+    {
+      "repo": "go-stdlib",
+      "query": "Sprintf",
+      "expected": ["src/fmt/print.go::Sprintf"],
+      "category": "existence"
+    },
+    {
+      "repo": "go-stdlib",
+      "query": "Errorf",
+      "expected": ["src/fmt/errors.go::Errorf"],
+      "category": "existence"
+    },
+    {
+      "repo": "go-stdlib",
+      "query": "Mutex",
+      "expected": ["src/sync/mutex.go::Mutex"],
+      "category": "existence"
+    },
+    {
+      "repo": "go-stdlib",
+      "query": "WaitGroup",
+      "expected": ["src/sync/waitgroup.go::WaitGroup"],
+      "category": "existence"
+    },
+    {
+      "repo": "go-stdlib",
+      "query": "RWMutex",
+      "expected": ["src/sync/rwmutex.go::RWMutex"],
+      "category": "existence"
+    },
+    {
+      "repo": "go-stdlib",
+      "query": "Once",
+      "expected": ["src/sync/once.go::Once"],
+      "category": "existence"
+    },
+    {
+      "repo": "go-stdlib",
+      "query": "Handler",
+      "expected": ["src/net/http/server.go::Handler"],
+      "category": "existence"
+    },
+    {
+      "repo": "go-stdlib",
+      "query": "ResponseWriter",
+      "expected": ["src/net/http/server.go::ResponseWriter"],
+      "category": "existence"
+    },
+    {
+      "repo": "go-stdlib",
+      "query": "Request",
+      "expected": ["src/net/http/request.go::Request"],
+      "category": "existence"
+    },
+    {
+      "repo": "go-stdlib",
+      "query": "Client",
+      "expected": ["src/net/http/client.go::Client"],
+      "category": "existence"
+    },
+    {
+      "repo": "go-stdlib",
+      "query": "NewRequest",
+      "expected": ["src/net/http/request.go::NewRequest"],
+      "category": "existence"
+    },
+    {
+      "repo": "go-stdlib",
+      "query": "Get",
+      "expected": ["src/net/http/client.go::Get"],
+      "category": "existence"
+    },
+    {
+      "repo": "go-stdlib",
+      "query": "Post",
+      "expected": ["src/net/http/client.go::Post"],
+      "category": "existence"
+    },
+    {
+      "repo": "go-stdlib",
+      "query": "NewServeMux",
+      "expected": ["src/net/http/server.go::NewServeMux"],
+      "category": "existence"
+    },
+    {
+      "repo": "go-stdlib",
+      "query": "Error",
+      "expected": ["src/net/http/server.go::Error"],
+      "category": "existence"
+    },
+    {
+      "repo": "go-stdlib",
+      "query": "NotFound",
+      "expected": ["src/net/http/server.go::NotFound"],
+      "category": "existence"
+    },
+    {
+      "repo": "go-stdlib",
+      "query": "SetCookie",
+      "expected": ["src/net/http/cookie.go::SetCookie"],
+      "category": "existence"
+    },
+    {
+      "repo": "go-stdlib",
+      "query": "ParseCookie",
+      "expected": ["src/net/http/cookie.go::ParseCookie"],
+      "category": "existence"
     }
   ]
 }

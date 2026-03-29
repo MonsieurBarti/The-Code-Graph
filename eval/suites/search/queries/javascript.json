@@ -73,6 +73,144 @@
       "repo": "express",
       "query": "etag",
       "expected": ["lib/utils.js::etag"]
+    },
+    {
+      "repo": "express",
+      "query": "listen",
+      "expected": ["lib/application.js::listen"],
+      "category": "existence"
+    },
+    {
+      "repo": "express",
+      "query": "render",
+      "expected": ["lib/application.js::render"],
+      "category": "existence"
+    },
+    {
+      "repo": "express",
+      "query": "use",
+      "expected": ["lib/application.js::use", "lib/router/index.js::use"],
+      "category": "existence"
+    },
+    {
+      "repo": "express",
+      "query": "route",
+      "expected": ["lib/application.js::route", "lib/router/index.js::route"],
+      "category": "existence"
+    },
+    {
+      "repo": "express",
+      "query": "param",
+      "expected": ["lib/application.js::param", "lib/router/index.js::param"],
+      "category": "existence"
+    },
+    {
+      "repo": "express",
+      "query": "set",
+      "expected": ["lib/application.js::set"],
+      "category": "existence"
+    },
+    {
+      "repo": "express",
+      "query": "get",
+      "expected": ["lib/application.js::get", "lib/router/index.js::get"],
+      "category": "existence"
+    },
+    {
+      "repo": "express",
+      "query": "handle",
+      "expected": ["lib/router/index.js::handle"],
+      "category": "existence"
+    },
+    {
+      "repo": "express",
+      "query": "process_params",
+      "expected": ["lib/router/index.js::process_params"],
+      "category": "existence"
+    },
+    {
+      "repo": "express",
+      "query": "json",
+      "expected": ["lib/response.js::json"],
+      "category": "existence"
+    },
+    {
+      "repo": "express",
+      "query": "redirect",
+      "expected": ["lib/response.js::redirect"],
+      "category": "existence"
+    },
+    {
+      "repo": "express",
+      "query": "status",
+      "expected": ["lib/response.js::status"],
+      "category": "existence"
+    },
+    {
+      "repo": "express",
+      "query": "sendFile",
+      "expected": ["lib/response.js::sendFile"],
+      "category": "existence"
+    },
+    {
+      "repo": "express",
+      "query": "download",
+      "expected": ["lib/response.js::download"],
+      "category": "existence"
+    },
+    {
+      "repo": "express",
+      "query": "cookie",
+      "expected": ["lib/response.js::cookie"],
+      "category": "existence"
+    },
+    {
+      "repo": "express",
+      "query": "clearCookie",
+      "expected": ["lib/response.js::clearCookie"],
+      "category": "existence"
+    },
+    {
+      "repo": "express",
+      "query": "header",
+      "expected": ["lib/request.js::header"],
+      "category": "existence"
+    },
+    {
+      "repo": "express",
+      "query": "accepts",
+      "expected": ["lib/request.js::accepts"],
+      "category": "existence"
+    },
+    {
+      "repo": "express",
+      "query": "is",
+      "expected": ["lib/request.js::is"],
+      "category": "existence"
+    },
+    {
+      "repo": "express",
+      "query": "range",
+      "expected": ["lib/request.js::range"],
+      "category": "existence"
+    },
+    {
+      "repo": "express",
+      "query": "init",
+      "expected": ["lib/middleware/init.js::init"],
+      "category": "existence"
+    },
+    {
+      "repo": "express",
+      "query": "query",
+      "expected": ["lib/middleware/query.js::query"],
+      "category": "existence"
+    },
+    {
+      "repo": "express",
+      "query": "all",
+      "expected": ["lib/router/index.js::all"],
+      "category": "existence"
     }
   ]
 }

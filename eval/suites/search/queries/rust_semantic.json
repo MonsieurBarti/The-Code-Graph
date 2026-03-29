@@ -186,6 +186,144 @@
       "query": "SearchWork",
       "expected": ["crates/core/search.rs::SearchWorkerBuilder"],
       "category": "partial"
+    },
+    {
+      "repo": "ripgrep",
+      "query": "main",
+      "expected": ["crates/core/main.rs::main"],
+      "category": "existence"
+    },
+    {
+      "repo": "ripgrep",
+      "query": "Searcher",
+      "expected": ["crates/searcher/src/searcher/mod.rs::Searcher"],
+      "category": "existence"
+    },
+    {
+      "repo": "ripgrep",
+      "query": "Glob",
+      "expected": ["crates/globset/src/lib.rs::Glob"],
+      "category": "existence"
+    },
+    {
+      "repo": "ripgrep",
+      "query": "GlobBuilder",
+      "expected": ["crates/globset/src/lib.rs::GlobBuilder"],
+      "category": "existence"
+    },
+    {
+      "repo": "ripgrep",
+      "query": "StandardBuilder",
+      "expected": ["crates/printer/src/standard.rs::StandardBuilder"],
+      "category": "existence"
+    },
+    {
+      "repo": "ripgrep",
+      "query": "Gitignore",
+      "expected": ["crates/ignore/src/gitignore.rs::Gitignore"],
+      "category": "existence"
+    },
+    {
+      "repo": "ripgrep",
+      "query": "GitignoreBuilder",
+      "expected": ["crates/ignore/src/gitignore.rs::GitignoreBuilder"],
+      "category": "existence"
+    },
+    {
+      "repo": "ripgrep",
+      "query": "Walk",
+      "expected": ["crates/ignore/src/walk.rs::Walk"],
+      "category": "existence"
+    },
+    {
+      "repo": "ripgrep",
+      "query": "WalkParallel",
+      "expected": ["crates/ignore/src/walk.rs::WalkParallel"],
+      "category": "existence"
+    },
+    {
+      "repo": "ripgrep",
+      "query": "BinaryDetection",
+      "expected": ["crates/searcher/src/searcher/mod.rs::BinaryDetection"],
+      "category": "existence"
+    },
+    {
+      "repo": "ripgrep",
+      "query": "Sink",
+      "expected": ["crates/searcher/src/sink.rs::Sink"],
+      "category": "existence"
+    },
+    {
+      "repo": "ripgrep",
+      "query": "SinkFinish",
+      "expected": ["crates/searcher/src/sink.rs::SinkFinish"],
+      "category": "existence"
+    },
+    {
+      "repo": "ripgrep",
+      "query": "Override",
+      "expected": ["crates/ignore/src/overrides.rs::Override"],
+      "category": "existence"
+    },
+    {
+      "repo": "ripgrep",
+      "query": "RegexMatcher",
+      "expected": ["crates/regex/src/lib.rs::RegexMatcher"],
+      "category": "existence"
+    },
+    {
+      "repo": "ripgrep",
+      "query": "RegexMatcherBuilder",
+      "expected": ["crates/regex/src/lib.rs::RegexMatcherBuilder"],
+      "category": "existence"
+    },
+    {
+      "repo": "ripgrep",
+      "query": "Config",
+      "expected": ["crates/regex/src/config.rs::Config"],
+      "category": "existence"
+    },
+    {
+      "repo": "ripgrep",
+      "query": "LineBuffer",
+      "expected": ["crates/searcher/src/line_buffer.rs::LineBuffer"],
+      "category": "existence"
+    },
+    {
+      "repo": "ripgrep",
+      "query": "DirEntry",
+      "expected": ["crates/ignore/src/walk.rs::DirEntry"],
+      "category": "existence"
+    },
+    {
+      "repo": "ripgrep",
+      "query": "JsonBuilder",
+      "expected": ["crates/printer/src/json.rs::JsonBuilder"],
+      "category": "existence"
+    },
+    {
+      "repo": "ripgrep",
+      "query": "SummaryBuilder",
+      "expected": ["crates/printer/src/summary.rs::SummaryBuilder"],
+      "category": "existence"
+    },
+    {
+      "repo": "ripgrep",
+      "query": "SearchWorker",
+      "expected": ["crates/core/search.rs::SearchWorker"],
+      "category": "existence"
+    },
+    {
+      "repo": "ripgrep",
+      "query": "Args",
+      "expected": ["crates/core/flags/lowargs.rs::Args"],
+      "category": "existence"
+    },
+    {
+      "repo": "ripgrep",
+      "query": "GlobSet",
+      "expected": ["crates/globset/src/lib.rs::GlobSet"],
+      "category": "existence"
     }
   ]
 }

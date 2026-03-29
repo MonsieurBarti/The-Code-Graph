@@ -75,6 +75,120 @@
       "repo": "fastapi",
       "query": "create_model_field",
       "expected": ["fastapi/utils.py::create_model_field"]
+    },
+    {
+      "repo": "fastapi",
+      "query": "Depends",
+      "expected": ["fastapi/params.py::Depends"],
+      "category": "existence"
+    },
+    {
+      "repo": "fastapi",
+      "query": "Query",
+      "expected": ["fastapi/params.py::Query"],
+      "category": "existence"
+    },
+    {
+      "repo": "fastapi",
+      "query": "Body",
+      "expected": ["fastapi/params.py::Body"],
+      "category": "existence"
+    },
+    {
+      "repo": "fastapi",
+      "query": "Header",
+      "expected": ["fastapi/params.py::Header"],
+      "category": "existence"
+    },
+    {
+      "repo": "fastapi",
+      "query": "Path",
+      "expected": ["fastapi/params.py::Path"],
+      "category": "existence"
+    },
+    {
+      "repo": "fastapi",
+      "query": "Cookie",
+      "expected": ["fastapi/params.py::Cookie"],
+      "category": "existence"
+    },
+    {
+      "repo": "fastapi",
+      "query": "Form",
+      "expected": ["fastapi/params.py::Form"],
+      "category": "existence"
+    },
+    {
+      "repo": "fastapi",
+      "query": "File",
+      "expected": ["fastapi/params.py::File"],
+      "category": "existence"
+    },
+    {
+      "repo": "fastapi",
+      "query": "UploadFile",
+      "expected": ["fastapi/datastructures.py::UploadFile"],
+      "category": "existence"
+    },
+    {
+      "repo": "fastapi",
+      "query": "APIRoute",
+      "expected": ["fastapi/routing.py::APIRoute"],
+      "category": "existence"
+    },
+    {
+      "repo": "fastapi",
+      "query": "APIWebSocketRoute",
+      "expected": ["fastapi/routing.py::APIWebSocketRoute"],
+      "category": "existence"
+    },
+    {
+      "repo": "fastapi",
+      "query": "generate_unique_id",
+      "expected": ["fastapi/utils.py::generate_unique_id"],
+      "category": "existence"
+    },
+    {
+      "repo": "fastapi",
+      "query": "get_flat_models_from_routes",
+      "expected": ["fastapi/utils.py::get_flat_models_from_routes"],
+      "category": "existence"
+    },
+    {
+      "repo": "fastapi",
+      "query": "OAuth2",
+      "expected": ["fastapi/security/oauth2.py::OAuth2"],
+      "category": "existence"
+    },
+    {
+      "repo": "fastapi",
+      "query": "HTTPBearer",
+      "expected": ["fastapi/security/http.py::HTTPBearer"],
+      "category": "existence"
+    },
+    {
+      "repo": "fastapi",
+      "query": "HTTPBasic",
+      "expected": ["fastapi/security/http.py::HTTPBasic"],
+      "category": "existence"
+    },
+    {
+      "repo": "fastapi",
+      "query": "APIKeyHeader",
+      "expected": ["fastapi/security/api_key.py::APIKeyHeader"],
+      "category": "existence"
+    },
+    {
+      "repo": "fastapi",
+      "query": "APIKeyQuery",
+      "expected": ["fastapi/security/api_key.py::APIKeyQuery"],
+      "category": "existence"
+    },
+    {
+      "repo": "fastapi",
+      "query": "APIKeyCookie",
+      "expected": ["fastapi/security/api_key.py::APIKeyCookie"],
+      "category": "existence"
     }
   ]
 }
