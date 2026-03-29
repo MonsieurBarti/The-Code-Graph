@@ -7,11 +7,11 @@ repository.workspace = true
 description = "Command-line interface for The Code Graph"
 
 [dependencies]
-domain = { path = "../domain", package = "the-code-graph-domain", version = "0.1.0" }
-parser = { path = "../parser", package = "the-code-graph-parser", version = "0.1.0" }
-storage = { path = "../storage", package = "the-code-graph-storage", version = "0.1.0" }
-watch = { path = "../watch", package = "the-code-graph-watch", version = "0.1.0" }
-eval = { path = "../eval", package = "the-code-graph-eval", version = "0.1.0" }
+domain = { path = "../domain", package = "the-code-graph-domain", version = "0.1.1" }
+parser = { path = "../parser", package = "the-code-graph-parser", version = "0.1.1" }
+storage = { path = "../storage", package = "the-code-graph-storage", version = "0.1.1" }
+watch = { path = "../watch", package = "the-code-graph-watch", version = "0.1.1" }
+eval = { path = "../eval", package = "the-code-graph-eval", version = "0.1.1" }
 clap = { version = "4", features = ["derive"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
@@ -22,7 +22,7 @@ ignore = "0.4"
 rayon = "1.10"
 sha2 = "0.10"
 which = "7"
-embeddings = { path = "../embeddings", package = "the-code-graph-embeddings", version = "0.1.0", optional = true }
+embeddings = { path = "../embeddings", package = "the-code-graph-embeddings", version = "0.1.1", optional = true }
 indicatif = { version = "0.18.4", optional = true }
 
 [features]
