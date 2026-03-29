@@ -28,6 +28,18 @@ $ cargo fmt --check → clean
 $ cargo test -p the-code-graph-eval → 98 passed, 0 failed
 ```
 
+### Ship Review Results (2026-03-29)
+
+| Stage | Verdict | Details |
+|---|---|---|
+| Spec Review (1st pass) | FAIL | 3 blocking: existence_recall unwired, zero-edge invariant missing, bench comparison unimplemented |
+| Fixer Cycle | PASS | All 4 issues fixed (commit d435bcc) |
+| Spec Review (2nd pass) | PASS | All 10 ACs verified |
+| Code Review | APPROVE | No blocking issues. Advisory: dead run_metrics, tautological bench_ok, redundant betweenness invariant |
+| Security Audit | PASS | No critical/high. 2 medium advisories (path traversal via repo.name, unbounded reads — mitigated by committed files) |
+
+PR: https://github.com/MonsieurBarti/The-Code-Graph/pull/29
+
 ### Runtime Note
 
 AC1-AC8 metric thresholds (MRR >= 0.30, precision >= 0.80, etc.) require `tcg eval all` against the 5 target repositories with network access. The implementation and test infrastructure is verified complete. Ground truth may need refinement after first live validation run (qualified names are based on expected indexing output).
@@ -109,3 +121,5 @@ AC1-AC8 metric thresholds (MRR >= 0.30, precision >= 0.80, etc.) require `tcg ev
 | 3539b8a | docs(S07/T17) | VERIFICATION.md with validation results |
 | df7b6ba | fix(S07/T16) | Exclude fixtures from dead code |
 | 19d37e3 | fix(S07/T16) | Database lock + fixtures dead code fix |
+| d1f19ef | docs(S07) | Update VERIFICATION.md with detailed evidence |
+| d435bcc | fix(S07) | Wire existence recall, zero-edge risk invariant, bench comparison, acyclic flow invariant |
