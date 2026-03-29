@@ -18,6 +18,7 @@ pub fn run(cli: Cli) -> Result<()> {
         Commands::Refs(args) => commands::refs::run_refs(args, output_format),
         Commands::Risk(args) => commands::risk::run_risk(args, output_format),
         Commands::Impact(args) => commands::impact::run_impact(args, output_format),
+        Commands::DeadCode(args) => commands::dead_code::run_dead_code(args, output_format),
         Commands::Diff(args) => commands::diff::run_diff(args, output_format),
         Commands::Callers(args) => commands::callers::run_callers(args, output_format),
         Commands::Callees(args) => commands::callees::run_callees(args, output_format),

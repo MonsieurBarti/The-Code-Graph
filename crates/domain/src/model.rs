@@ -1,5 +1,6 @@
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::borrow::Borrow;
+use std::collections::HashMap;
 use std::fmt;
 use std::path::PathBuf;
 
@@ -676,6 +677,70 @@ pub struct CommunityStats {
     pub avg_size: f64,
     pub largest_size: usize,
     pub isolated_nodes: usize,
+}
+
+// ---------------------------------------------------------------------------
+// Dead code detection types
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Clone)]
+pub struct DeadCodeConfig {
+    pub exclude_patterns: Vec<String>,
+    pub entry_point_patterns: Vec<String>,
+    pub include_tests: bool,
+    pub migration_patterns: Vec<String>,
+    pub kind_filter: Option<Vec<SymbolKind>>,
+}
+
+impl Default for DeadCodeConfig {
+    fn default() -> Self {
+        Self {
+            exclude_patterns: Vec::new(),
+            entry_point_patterns: Vec::new(),
+            include_tests: false,
+            migration_patterns: vec![
+                "**/migrations/**".into(),
+                "**/migrate/**".into(),
+                "**/alembic/**".into(),
+                "**/diesel/migrations/**".into(),
+            ],
+            kind_filter: None,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DeadCodeAnalysis {
+    pub dead_symbols: Vec<DeadSymbol>,
+    pub summary: DeadCodeSummary,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DeadSymbol {
+    pub qualified_name: String,
+    pub kind: SymbolKind,
+    pub file_path: String,
+    pub line: usize,
+    pub visibility: Visibility,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DeadCodeSummary {
+    pub total_symbols: usize,
+    pub dead_count: usize,
+    pub dead_percentage: f64,
+    pub excluded_count: usize,
+    pub dead_by_kind: HashMap<SymbolKind, usize>,
+    pub dead_by_file: Vec<(String, usize)>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum ExclusionReason {
+    EntryPoint,
+    Exported,
+    TestFunction,
+    MigrationFile,
+    UserPattern(String),
 }
 
 // ---------------------------------------------------------------------------
