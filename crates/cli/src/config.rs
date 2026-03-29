@@ -11,6 +11,8 @@ pub struct CodeGraphConfig {
     pub risk: Option<RiskCliConfig>,
     pub communities: Option<CommunitiesConfig>,
     pub embeddings: Option<EmbeddingsCliConfig>,
+    #[serde(rename = "dead-code")]
+    pub dead_code: Option<DeadCodeCliConfig>,
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]
@@ -58,6 +60,13 @@ pub struct CommunitiesConfig {
     pub resolution: Option<f64>,
     pub min_community_size: Option<usize>,
     pub seed: Option<u64>,
+}
+
+#[derive(Debug, Clone, Default, Deserialize)]
+pub struct DeadCodeCliConfig {
+    pub exclude_patterns: Option<Vec<String>>,
+    pub entry_point_patterns: Option<Vec<String>>,
+    pub migration_patterns: Option<Vec<String>>,
 }
 
 pub fn load_config(project_root: &Path) -> Result<CodeGraphConfig> {
@@ -183,6 +192,34 @@ kind_boost = true
         let search = config.search.unwrap();
         assert_eq!(search.rrf_k.unwrap(), 60);
         assert_eq!(search.kind_boost.unwrap(), true);
+    }
+
+    #[test]
+    fn dead_code_config_parses() {
+        let tmp = tempfile::tempdir().unwrap();
+        let dir = tmp.path().join(".code-graph");
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(
+            dir.join("config.toml"),
+            r#"
+[dead-code]
+exclude_patterns = ["**/generated/**", "**/proto/**"]
+migration_patterns = ["**/migrations/**"]
+entry_point_patterns = ["*_handler", "*_endpoint"]
+"#,
+        )
+        .unwrap();
+        let config = load_config(tmp.path()).unwrap();
+        let dc = config.dead_code.unwrap();
+        assert_eq!(
+            dc.exclude_patterns.unwrap(),
+            vec!["**/generated/**", "**/proto/**"]
+        );
+        assert_eq!(dc.migration_patterns.unwrap(), vec!["**/migrations/**"]);
+        assert_eq!(
+            dc.entry_point_patterns.unwrap(),
+            vec!["*_handler", "*_endpoint"]
+        );
     }
 
     #[test]
