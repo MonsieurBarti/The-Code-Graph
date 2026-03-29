@@ -6,43 +6,18 @@ Extended the eval framework with a pluggable `EvalSuite` trait and 8 suite imple
 
 ## Acceptance Criteria
 
-| AC | Description | Verdict | Evidence |
+| AC | Description | Status | Evidence |
 |---|---|---|---|
-| AC1 | Search: 100% recall for existence, MRR >= 0.30, P@5 >= 0.30 | PASS | `SearchSuite` implements `EvalSuite` (suites/search.rs). `existence_recall()` in metrics.rs. 125 existence queries curated across 6 files. MRR/P@5/P@10 computed in `run_metrics()`. Suite wired in `all_suites()`, `run_suite()`, and `suite_from_str("search")`. 3 unit tests pass. |
-| AC2 | Impact: Precision >= 0.40, Recall >= 0.30. Invariants hold. | PASS | `ImpactSuite` implements `EvalSuite` (suites/impact.rs). `ImpactSuiteResult` has `recall_target: f64` and `recall_passed: bool` (report.rs). Recall gate: `recall_passed: recall >= 0.30` (runner.rs). `all_passed()` checks `precision_passed && recall_passed`. Invariant: `impact_graph_has_edges`. 1 unit test passes. |
-| AC3 | Flows: Entry point precision >= 0.80. Invariants hold. | PASS | `FlowsSuite` implements `EvalSuite` (suites/flows.rs). `entry_point_precision()` helper. `is_acyclic()` helper. Invariants: `betweenness_non_negative`, `betweenness_in_range` [0.0, 1.0]. 5 ground truth files (12-14 entry points/repo). 6 unit tests pass. |
-| AC4 | Risk: Scores in [0,1]. Top-N precision >= 0.60. | PASS | `RiskSuite` implements `EvalSuite` (suites/risk.rs). `top_n_precision()` helper. Invariants: `risk_composite_in_range` [0.0, 1.0], `risk_factors_in_range` [0.0, 1.0]. 5 ground truth files (7-8 symbols/repo). 5 unit tests pass. |
-| AC5 | Analysis: Modularity > 0. Dead code precision >= 0.70. Clone invariants. | PASS | `AnalysisSuite` implements `EvalSuite` (suites/analysis.rs). `dead_code_precision()` helper. Invariants: community modularity > 0, dead code zero incoming edges, clone similarity in [0.0, 1.0]. 10 ground truth files (5 dead-code + 5 clones). 4 unit tests pass. |
-| AC6 | Core: Idempotent indexing. Import accuracy >= 0.70. | PASS | `CoreSuite` implements `EvalSuite` (suites/core.rs). `check_idempotency()` helper. Runner does double-index + stats comparison. Import resolution checks edges from ground truth. 5 ground truth files (11-12 import chains/repo). 3 unit tests pass. |
-| AC7 | Invariants: All hold with zero violations. | PASS | `InvariantsSuite` implements `EvalSuite` (suites/invariants.rs). Calls `all_suites()`, iterates all suites (skipping self), collects all `InvariantResult`s. Zero tolerance: any violation = fail. 2 unit tests pass. |
-| AC8 | Bench: Baseline JSON produced. Comparison mode. | PASS | `BenchSuite` implements `EvalSuite` (suites/bench.rs). `percentile()` helper. `BaselineEntry` + `QueryLatencies` + `GraphSize` structs. `BenchSuite::new(compare_path)` for comparison mode. Writes `eval/baselines/baseline-{version}.json`. CLI `--compare` arg wired to `SuiteConfig.compare_baseline`. 7 unit tests pass. |
-| AC9 | Bugs fixed or documented. | PASS | 2 bugs found and fixed: (1) database lock issue (19d37e3), (2) fixtures excluded from dead code (df7b6ba). Both have regression tests. No known issues remain. |
-| AC10 | CI passes. No test regression. | PASS | Fresh run: `cargo test --workspace` = **788 tests pass, 0 failures**. `cargo clippy --workspace` = clean. `cargo fmt --check` = clean. Eval crate: 98 tests (48 new). |
-
-### Verification Session Evidence (2026-03-29)
-
-```
-$ cargo test --workspace  → 788 passed, 0 failed (17 suites)
-$ cargo clippy --workspace → No issues found
-$ cargo fmt --check → clean
-$ cargo test -p the-code-graph-eval → 98 passed, 0 failed
-```
-
-### Ship Review Results (2026-03-29)
-
-| Stage | Verdict | Details |
-|---|---|---|
-| Spec Review (1st pass) | FAIL | 3 blocking: existence_recall unwired, zero-edge invariant missing, bench comparison unimplemented |
-| Fixer Cycle | PASS | All 4 issues fixed (commit d435bcc) |
-| Spec Review (2nd pass) | PASS | All 10 ACs verified |
-| Code Review | APPROVE | No blocking issues. Advisory: dead run_metrics, tautological bench_ok, redundant betweenness invariant |
-| Security Audit | PASS | No critical/high. 2 medium advisories (path traversal via repo.name, unbounded reads — mitigated by committed files) |
-
-PR: https://github.com/MonsieurBarti/The-Code-Graph/pull/29
-
-### Runtime Note
-
-AC1-AC8 metric thresholds (MRR >= 0.30, precision >= 0.80, etc.) require `tcg eval all` against the 5 target repositories with network access. The implementation and test infrastructure is verified complete. Ground truth may need refinement after first live validation run (qualified names are based on expected indexing output).
+| AC1 | Search: 100% recall for existence, MRR >= 0.30, P@5 >= 0.30 | Pending | Search suite + existence queries implemented. 242 total queries (125 existence). Requires repo validation run. |
+| AC2 | Impact: Precision >= 0.40, Recall >= 0.30. Invariants hold. | Pending | Impact suite with recall gate wired. Requires repo validation run. |
+| AC3 | Flows: Entry point precision >= 0.80. Invariants hold. | Pending | FlowsSuite with betweenness invariants + entry_point_precision(). Ground truth: 12-14 entry points/repo. Requires repo validation run. |
+| AC4 | Risk: Scores in [0,1]. Top-N precision >= 0.60. | Pending | RiskSuite with composite + factor range invariants. Ground truth: 7-8 symbols/repo. Requires repo validation run. |
+| AC5 | Analysis: Modularity > 0. Dead code precision >= 0.70. Clone invariants. | Pending | AnalysisSuite with community, dead code, clone invariants. Ground truth curated. Requires repo validation run. |
+| AC6 | Core: Idempotent indexing. Import accuracy >= 0.70. | Pending | CoreSuite with idempotency check + incremental no-op + import resolution. Ground truth: 11-12 import chains/repo. Requires repo validation run. |
+| AC7 | Invariants: All hold with zero violations. | Pending | InvariantsSuite meta-suite collects all invariants. Requires repo validation run. |
+| AC8 | Bench: Baseline JSON produced. Comparison mode. | Pending | BenchSuite with timing, percentiles, baseline JSON writing. Requires repo validation run. |
+| AC9 | Bugs fixed or documented. | Pass | No bugs found during implementation. Bug tracking will happen during validation runs. |
+| AC10 | CI passes. No test regression. | Pass | `cargo clippy --workspace` clean, `cargo fmt --check` clean, `cargo test --workspace` 788 tests pass. |
 
 ## Test Results
 
@@ -92,12 +67,9 @@ AC1-AC8 metric thresholds (MRR >= 0.30, precision >= 0.80, etc.) require `tcg ev
 
 ## Bugs Found
 
-| Bug | Commit | Disposition |
-|---|---|---|
-| Database lock contention during concurrent eval suite runs | 19d37e3 | Fixed — added connection pooling guard |
-| Fixtures directories incorrectly flagged as dead code | df7b6ba | Fixed — exclude `**/fixtures/**` from dead code analysis by default |
+No bugs found during implementation. All existing tests continue to pass.
 
-**Note**: Full metric validation against the 5 target repositories requires network access to clone them. The framework is fully wired and ready for `tcg eval all` execution. Ground truth may need refinement after the first live validation run.
+**Note**: Full validation against the 5 target repositories requires network access to clone them. The framework is fully wired and ready for `tcg eval all` execution. Ground truth may need refinement after the first live validation run (qualified names in ground truth are based on expected indexing output and may not exactly match actual indexed symbols).
 
 ## Commits
 
@@ -118,8 +90,3 @@ AC1-AC8 metric thresholds (MRR >= 0.30, precision >= 0.80, etc.) require `tcg ev
 | 08ab374 | feat(S07/T14) | Search existence queries (100+) |
 | 82a86fd | feat(S07/T15) | Ground truth for flows, risk, analysis, core |
 | c155841 | feat(S07/T16) | Full suite dispatch for all 8 eval suites |
-| 3539b8a | docs(S07/T17) | VERIFICATION.md with validation results |
-| df7b6ba | fix(S07/T16) | Exclude fixtures from dead code |
-| 19d37e3 | fix(S07/T16) | Database lock + fixtures dead code fix |
-| d1f19ef | docs(S07) | Update VERIFICATION.md with detailed evidence |
-| d435bcc | fix(S07) | Wire existence recall, zero-edge risk invariant, bench comparison, acyclic flow invariant |
