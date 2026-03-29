@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.2](https://github.com/MonsieurBarti/The-Code-Graph/compare/the-code-graph-cli-v0.1.1...the-code-graph-cli-v0.1.2) - 2026-03-29
+
+### Other
+
+- release v0.1.1 ([#26](https://github.com/MonsieurBarti/The-Code-Graph/pull/26))
+
 ## [0.1.1](https://github.com/MonsieurBarti/The-Code-Graph/compare/the-code-graph-cli-v0.1.0...the-code-graph-cli-v0.1.1) - 2026-03-29
 
 ### Added
