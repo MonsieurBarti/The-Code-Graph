@@ -5,5 +5,6 @@
 dependencies_update = true
 
 # Use a single version tag so release.yml (triggers on v*) fires correctly.
-# Default would be {name}-v{version} which does NOT match the v* glob.
-git_tag_name = "v{version}"
+# Default would be {{ package }}-v{{ version }} which does NOT match the v* glob.
+# Tera template syntax: double braces required.
+git_tag_name = "v{{ version }}"
