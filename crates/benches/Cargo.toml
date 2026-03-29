@@ -1,14 +1,14 @@
 [package]
 name = "code-graph-benches"
-version = "0.1.0"
-edition = "2021"
+version.workspace = true
+edition.workspace = true
 publish = false
 
 [dev-dependencies]
 criterion = { version = "0.5", features = ["html_reports"] }
-parser = { path = "../parser" }
-storage = { path = "../storage" }
-domain = { path = "../domain" }
+parser = { path = "../parser", package = "the-code-graph-parser", version = "0.1.0" }
+storage = { path = "../storage", package = "the-code-graph-storage", version = "0.1.0" }
+domain = { path = "../domain", package = "the-code-graph-domain", version = "0.1.0" }
 tempfile = "3"
 
 [[bench]]

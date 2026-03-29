@@ -1,10 +1,13 @@
 [package]
-name = "watch"
-version = "0.1.0"
-edition = "2021"
+name = "the-code-graph-watch"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "File system watcher for The Code Graph"
 
 [dependencies]
-domain = { path = "../domain" }
+domain = { path = "../domain", package = "the-code-graph-domain", version = "0.1.0" }
 notify = "8"
 notify-debouncer-full = "0.5"
 signal-hook = "0.3"

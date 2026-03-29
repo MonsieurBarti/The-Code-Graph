@@ -98,20 +98,26 @@ mod tests {
     use super::*;
     use std::fs;
 
+    /// Create a git Command that is isolated from any parent repo context.
+    /// Clears GIT_DIR/GIT_WORK_TREE/GIT_INDEX_FILE to prevent lefthook
+    /// env vars from leaking into test-created repos.
+    fn git(root: &std::path::Path) -> std::process::Command {
+        let mut cmd = std::process::Command::new("git");
+        cmd.current_dir(root)
+            .env_remove("GIT_DIR")
+            .env_remove("GIT_WORK_TREE")
+            .env_remove("GIT_INDEX_FILE");
+        cmd
+    }
+
     fn setup_git_repo(root: &std::path::Path) {
-        std::process::Command::new("git")
-            .args(["init"])
-            .current_dir(root)
-            .output()
-            .unwrap();
-        std::process::Command::new("git")
+        git(root).args(["init"]).output().unwrap();
+        git(root)
             .args(["config", "user.email", "test@test.com"])
-            .current_dir(root)
             .output()
             .unwrap();
-        std::process::Command::new("git")
+        git(root)
             .args(["config", "user.name", "Test"])
-            .current_dir(root)
             .output()
             .unwrap();
     }
@@ -170,14 +176,9 @@ mod tests {
         run_index(&args, OutputFormat::Compact).unwrap();
 
         // Commit the file so git status shows it as clean
-        std::process::Command::new("git")
-            .args(["add", "."])
-            .current_dir(root)
-            .output()
-            .unwrap();
-        std::process::Command::new("git")
+        git(root).args(["add", "."]).output().unwrap();
+        git(root)
             .args(["commit", "-m", "initial"])
-            .current_dir(root)
             .output()
             .unwrap();
 
@@ -225,14 +226,9 @@ mod tests {
         run_index(&args, OutputFormat::Compact).unwrap();
 
         // Commit everything
-        std::process::Command::new("git")
-            .args(["add", "."])
-            .current_dir(root)
-            .output()
-            .unwrap();
-        std::process::Command::new("git")
+        git(root).args(["add", "."]).output().unwrap();
+        git(root)
             .args(["commit", "-m", "initial"])
-            .current_dir(root)
             .output()
             .unwrap();
 
