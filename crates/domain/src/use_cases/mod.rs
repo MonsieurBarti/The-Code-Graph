@@ -1,4 +1,5 @@
 pub mod clones;
+pub mod community;
 pub mod flow;
 pub mod impact;
 pub mod index;
