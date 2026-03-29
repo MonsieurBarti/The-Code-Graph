@@ -7,7 +7,7 @@ repository.workspace = true
 description = "Code embedding generation for The Code Graph"
 
 [dependencies]
-domain = { path = "../domain", package = "the-code-graph-domain", version = "0.1.0" }
+domain = { path = "../domain", package = "the-code-graph-domain", version = "0.1.1" }
 ureq = "3"
 sha2 = "0.10"
 tracing = "0.1"

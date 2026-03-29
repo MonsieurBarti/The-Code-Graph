@@ -6,9 +6,9 @@ publish = false
 
 [dev-dependencies]
 criterion = { version = "0.5", features = ["html_reports"] }
-parser = { path = "../parser", package = "the-code-graph-parser", version = "0.1.0" }
-storage = { path = "../storage", package = "the-code-graph-storage", version = "0.1.0" }
-domain = { path = "../domain", package = "the-code-graph-domain", version = "0.1.0" }
+parser = { path = "../parser", package = "the-code-graph-parser", version = "0.1.1" }
+storage = { path = "../storage", package = "the-code-graph-storage", version = "0.1.1" }
+domain = { path = "../domain", package = "the-code-graph-domain", version = "0.1.1" }
 tempfile = "3"
 
 [[bench]]

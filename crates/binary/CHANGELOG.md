@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1](https://github.com/MonsieurBarti/The-Code-Graph/compare/v0.1.0...v0.1.1) - 2026-03-29
+
+### Added
+
+- *(M02-S07)* crates.io Release
+- *(M01)* v0.1 Core — Code Graph CLI ([#12](https://github.com/MonsieurBarti/The-Code-Graph/pull/12))
+
+### Other
+
+- release v0.1.0
+
 ## [0.1.0](https://github.com/MonsieurBarti/The-Code-Graph/releases/tag/v0.1.0) - 2026-03-29
 
 ### Added
