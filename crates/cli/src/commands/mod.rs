@@ -1,5 +1,6 @@
 pub mod callees;
 pub mod callers;
+pub mod clones;
 pub mod diff;
 pub mod eval;
 pub mod find;
@@ -64,6 +65,8 @@ pub enum Commands {
     Search(SearchArgs),
     /// Analyze execution flows and criticality
     Flows(FlowsArgs),
+    /// Detect code clones across the codebase
+    Clones(ClonesArgs),
     /// Show graph statistics
     Stats,
     /// Watch for file changes and re-index
@@ -199,6 +202,19 @@ pub struct FlowsArgs {
 }
 
 #[derive(clap::Args)]
+pub struct ClonesArgs {
+    /// Similarity threshold (0.0-1.0)
+    #[arg(long, default_value = "0.7")]
+    pub threshold: f64,
+    /// Minimum symbol body lines
+    #[arg(long, default_value = "5")]
+    pub min_lines: usize,
+    /// Show detailed members of a specific cluster
+    #[arg(long)]
+    pub cluster: Option<usize>,
+}
+
+#[derive(clap::Args)]
 pub struct SetupArgs {
     /// Target platform (currently: "claude")
     pub platform: Option<String>,
@@ -252,6 +268,18 @@ mod tests {
     }
 
     #[test]
+    fn parse_clones_command() {
+        let cli = Cli::parse_from(["code-graph", "clones"]);
+        if let Commands::Clones(args) = cli.command {
+            assert!((args.threshold - 0.7).abs() < f64::EPSILON);
+            assert_eq!(args.min_lines, 5);
+            assert!(args.cluster.is_none());
+        } else {
+            panic!("expected Clones command");
+        }
+    }
+
+    #[test]
     fn all_subcommands_parse() {
         let commands = [
             vec!["code-graph", "index"],
@@ -266,6 +294,20 @@ mod tests {
             vec!["code-graph", "flows", "--rank"],
             vec!["code-graph", "flows", "--symbol", "foo::bar"],
             vec!["code-graph", "flows", "--depth", "10", "--limit", "50"],
+            vec!["code-graph", "clones"],
+            vec!["code-graph", "clones", "--threshold", "0.8"],
+            vec!["code-graph", "clones", "--min-lines", "10"],
+            vec!["code-graph", "clones", "--cluster", "1"],
+            vec![
+                "code-graph",
+                "clones",
+                "--threshold",
+                "0.9",
+                "--min-lines",
+                "3",
+                "--cluster",
+                "2",
+            ],
             vec!["code-graph", "stats"],
             vec!["code-graph", "watch"],
             vec!["code-graph", "watch", "--daemon"],

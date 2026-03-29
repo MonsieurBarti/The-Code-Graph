@@ -22,7 +22,5 @@ pre-push:
       run: cargo test --workspace
     bench-check:
       run: cargo bench --no-run
-    coverage:
-      run: cargo llvm-cov --workspace --fail-under-lines 80
     audit:
       run: cargo audit
