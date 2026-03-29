@@ -24,6 +24,7 @@ impl SqliteStore {
             )
         });
         let pool = Pool::builder()
+            .max_size(1)
             .build(manager)
             .map_err(|e| CodeGraphError::Storage(e.to_string()))?;
         let conn = pool

@@ -1,0 +1,11 @@
+{
+  "repo": "express",
+  "suite": "analysis",
+  "type": "clones",
+  "ground_truth": [
+    {"source": "lib/router/route.js::Route.prototype.dispatch", "target": "lib/router/index.js::proto.handle"},
+    {"source": "lib/router/layer.js::Layer.prototype.handle_request", "target": "lib/router/layer.js::Layer.prototype.handle_error"},
+    {"source": "lib/application.js::app.get", "target": "lib/application.js::app.post"},
+    {"source": "lib/application.js::app.put", "target": "lib/application.js::app.delete"}
+  ]
+}

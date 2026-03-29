@@ -75,6 +75,102 @@
       "repo": "trpc",
       "query": "inferRouterOutputs",
       "expected": ["packages/server/src/unstable-core-do-not-import/clientish/inference.ts::inferRouterOutputs"]
+    },
+    {
+      "repo": "trpc",
+      "query": "createTRPCProxyClient",
+      "expected": ["packages/client/src/createTRPCClient.ts::createTRPCProxyClient"],
+      "category": "existence"
+    },
+    {
+      "repo": "trpc",
+      "query": "httpBatchLink",
+      "expected": ["packages/client/src/links/httpBatchLink.ts::httpBatchLink"],
+      "category": "existence"
+    },
+    {
+      "repo": "trpc",
+      "query": "httpBatchStreamLink",
+      "expected": ["packages/client/src/links/httpBatchStreamLink.ts::httpBatchStreamLink"],
+      "category": "existence"
+    },
+    {
+      "repo": "trpc",
+      "query": "createFlatProxy",
+      "expected": ["packages/server/src/unstable-core-do-not-import/createProxy.ts::createFlatProxy"],
+      "category": "existence"
+    },
+    {
+      "repo": "trpc",
+      "query": "createRecursiveProxy",
+      "expected": ["packages/server/src/unstable-core-do-not-import/createProxy.ts::createRecursiveProxy"],
+      "category": "existence"
+    },
+    {
+      "repo": "trpc",
+      "query": "mergeRouters",
+      "expected": ["packages/server/src/unstable-core-do-not-import/router.ts::mergeRouters"],
+      "category": "existence"
+    },
+    {
+      "repo": "trpc",
+      "query": "TRPCRouter",
+      "expected": ["packages/server/src/unstable-core-do-not-import/router.ts::TRPCRouter"],
+      "category": "existence"
+    },
+    {
+      "repo": "trpc",
+      "query": "observable",
+      "expected": ["packages/server/src/observable/observable.ts::observable"],
+      "category": "existence"
+    },
+    {
+      "repo": "trpc",
+      "query": "getTRPCErrorFromUnknown",
+      "expected": ["packages/server/src/unstable-core-do-not-import/error/TRPCError.ts::getTRPCErrorFromUnknown"],
+      "category": "existence"
+    },
+    {
+      "repo": "trpc",
+      "query": "getHTTPStatusCodeFromError",
+      "expected": ["packages/server/src/unstable-core-do-not-import/http/getHTTPStatusCode.ts::getHTTPStatusCodeFromError"],
+      "category": "existence"
+    },
+    {
+      "repo": "trpc",
+      "query": "transformResult",
+      "expected": ["packages/server/src/unstable-core-do-not-import/transformResult.ts::transformResult"],
+      "category": "existence"
+    },
+    {
+      "repo": "trpc",
+      "query": "createMiddlewareFactory",
+      "expected": ["packages/server/src/unstable-core-do-not-import/middleware.ts::createMiddlewareFactory"],
+      "category": "existence"
+    },
+    {
+      "repo": "trpc",
+      "query": "defaultFormatter",
+      "expected": ["packages/server/src/unstable-core-do-not-import/error/formatter.ts::defaultFormatter"],
+      "category": "existence"
+    },
+    {
+      "repo": "trpc",
+      "query": "Unsubscribable",
+      "expected": ["packages/server/src/observable/types.ts::Unsubscribable"],
+      "category": "existence"
+    },
+    {
+      "repo": "trpc",
+      "query": "isObject",
+      "expected": ["packages/server/src/unstable-core-do-not-import/utils.ts::isObject"],
+      "category": "existence"
+    },
+    {
+      "repo": "trpc",
+      "query": "createChain",
+      "expected": ["packages/client/src/links/internals/createChain.ts::createChain"],
+      "category": "existence"
     }
   ]
 }

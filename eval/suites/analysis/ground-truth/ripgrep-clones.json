@@ -1,0 +1,10 @@
+{
+  "repo": "ripgrep",
+  "suite": "analysis",
+  "type": "clones",
+  "ground_truth": [
+    {"source": "crates/grep-searcher/src/searcher/mod.rs::Searcher::search_path", "target": "crates/grep-searcher/src/searcher/mod.rs::Searcher::search_reader"},
+    {"source": "crates/ignore/src/walk.rs::WalkBuilder::build", "target": "crates/ignore/src/walk.rs::WalkParallel::run"},
+    {"source": "crates/grep-regex/src/config.rs::Config::build", "target": "crates/globset/src/lib.rs::GlobSetBuilder::build"}
+  ]
+}

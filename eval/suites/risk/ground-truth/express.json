@@ -1,0 +1,14 @@
+{
+  "repo": "express",
+  "suite": "risk",
+  "ground_truth": [
+    {"symbol": "lib/router/index.js::proto.handle", "risk": "high", "reason": "Central dispatch for all routes — every request passes through this function"},
+    {"symbol": "lib/application.js::app.handle", "risk": "high", "reason": "Top-level request handler; delegates to the router stack"},
+    {"symbol": "lib/router/layer.js::Layer.prototype.handle_request", "risk": "high", "reason": "Executes each middleware/route handler in the stack"},
+    {"symbol": "lib/router/route.js::Route.prototype.dispatch", "risk": "high", "reason": "Dispatches a matched route through its handler chain"},
+    {"symbol": "lib/application.js::app.use", "risk": "medium", "reason": "Registers middleware into the global router stack"},
+    {"symbol": "lib/utils.js::setPrototypeOf", "risk": "low", "reason": "Utility for prototype setup; called once at init time"},
+    {"symbol": "lib/utils.js::flatten", "risk": "low", "reason": "Simple array flattening utility"},
+    {"symbol": "lib/middleware/query.js::query", "risk": "low", "reason": "Parses query strings; stateless and well-isolated"}
+  ]
+}

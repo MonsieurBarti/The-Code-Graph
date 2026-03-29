@@ -216,12 +216,15 @@ pub struct SearchArgs {
 
 #[derive(clap::Args)]
 pub struct EvalArgs {
-    /// Which suite to run: search, impact, or all
+    /// Which suite to run
     #[arg(long, default_value = "all")]
     pub suite: String,
     /// Force re-clone of eval repos (ignore cache)
     #[arg(long)]
     pub no_cache: bool,
+    /// Compare bench results against a baseline file
+    #[arg(long)]
+    pub compare: Option<std::path::PathBuf>,
 }
 
 #[derive(clap::Args)]

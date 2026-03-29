@@ -1,0 +1,13 @@
+{
+  "repo": "ripgrep",
+  "suite": "risk",
+  "ground_truth": [
+    {"symbol": "crates/core/src/app.rs::run", "risk": "high", "reason": "Top-level execution entry; orchestrates all search, walk, and output operations"},
+    {"symbol": "crates/ignore/src/walk.rs::WalkParallel::run", "risk": "high", "reason": "Drives the parallel directory walker; any bug here affects all file traversal"},
+    {"symbol": "crates/grep-searcher/src/searcher/mod.rs::Searcher::search_path", "risk": "high", "reason": "Core search routine per file; called for every matched path"},
+    {"symbol": "crates/globset/src/lib.rs::GlobSet::is_match", "risk": "medium", "reason": "Pattern matching hot path; correctness critical for include/exclude logic"},
+    {"symbol": "crates/grep-regex/src/config.rs::Config::build", "risk": "medium", "reason": "Compiles user-supplied regex; misconfiguration can cause panics or incorrect matches"},
+    {"symbol": "crates/printer/src/standard.rs::Standard::matched", "risk": "low", "reason": "Formats a single match for output; purely presentational"},
+    {"symbol": "crates/globset/src/glob.rs::Glob::new", "risk": "low", "reason": "Parses a single glob pattern at build time, not on the hot path"}
+  ]
+}

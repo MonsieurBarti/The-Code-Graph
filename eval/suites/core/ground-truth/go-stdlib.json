@@ -1,0 +1,17 @@
+{
+  "repo": "go-stdlib",
+  "suite": "core",
+  "ground_truth": [
+    {"source_file": "src/net/http/server.go", "source_symbol": "ListenAndServe", "target_file": "src/net/http/server.go", "target_symbol": "(*Server).ListenAndServe"},
+    {"source_file": "src/net/http/server.go", "source_symbol": "(*Server).ListenAndServe", "target_file": "src/net/http/server.go", "target_symbol": "(*Server).Serve"},
+    {"source_file": "src/net/http/server.go", "source_symbol": "(*Server).Serve", "target_file": "src/net/http/server.go", "target_symbol": "(*ServeMux).ServeHTTP"},
+    {"source_file": "src/net/http/server.go", "source_symbol": "(*ServeMux).ServeHTTP", "target_file": "src/net/http/server.go", "target_symbol": "(*ServeMux).Handler"},
+    {"source_file": "src/net/http/server.go", "source_symbol": "Handle", "target_file": "src/net/http/server.go", "target_symbol": "(*ServeMux).Handle"},
+    {"source_file": "src/net/http/server.go", "source_symbol": "HandleFunc", "target_file": "src/net/http/server.go", "target_symbol": "(*ServeMux).HandleFunc"},
+    {"source_file": "src/net/http/client.go", "source_symbol": "Get", "target_file": "src/net/http/client.go", "target_symbol": "(*Client).Do"},
+    {"source_file": "src/net/http/client.go", "source_symbol": "Post", "target_file": "src/net/http/client.go", "target_symbol": "(*Client).Do"},
+    {"source_file": "src/net/http/client.go", "source_symbol": "(*Client).Do", "target_file": "src/net/http/transport.go", "target_symbol": "(*Transport).RoundTrip"},
+    {"source_file": "src/net/http/client.go", "source_symbol": "(*Client).Do", "target_file": "src/net/http/request.go", "target_symbol": "NewRequest"},
+    {"source_file": "src/net/http/server.go", "source_symbol": "ListenAndServeTLS", "target_file": "src/net/http/server.go", "target_symbol": "(*Server).Serve"}
+  ]
+}

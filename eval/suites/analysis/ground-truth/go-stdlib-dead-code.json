@@ -1,0 +1,15 @@
+{
+  "repo": "go-stdlib",
+  "suite": "analysis",
+  "type": "dead_code",
+  "ground_truth": [
+    {"symbol": "src/net/http/server.go::ListenAndServe", "expected_dead": false},
+    {"symbol": "src/net/http/server.go::ListenAndServeTLS", "expected_dead": false},
+    {"symbol": "src/net/http/server.go::(*Server).Serve", "expected_dead": false},
+    {"symbol": "src/net/http/server.go::(*ServeMux).ServeHTTP", "expected_dead": false},
+    {"symbol": "src/net/http/server.go::(*ServeMux).Handle", "expected_dead": false},
+    {"symbol": "src/net/http/client.go::(*Client).Do", "expected_dead": false},
+    {"symbol": "src/net/http/transport.go::(*Transport).RoundTrip", "expected_dead": false},
+    {"symbol": "src/net/http/request.go::NewRequest", "expected_dead": false}
+  ]
+}

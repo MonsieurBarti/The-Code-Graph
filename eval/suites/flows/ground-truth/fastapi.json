@@ -1,0 +1,20 @@
+{
+  "repo": "fastapi",
+  "suite": "flows",
+  "ground_truth": [
+    {"type": "entry_point", "symbol": "fastapi/applications.py::FastAPI", "category": "PublicExport", "file": "fastapi/applications.py"},
+    {"type": "entry_point", "symbol": "fastapi/routing.py::APIRouter", "category": "Router", "file": "fastapi/routing.py"},
+    {"type": "entry_point", "symbol": "fastapi/routing.py::APIRouter.include_router", "category": "Router", "file": "fastapi/routing.py"},
+    {"type": "entry_point", "symbol": "fastapi/routing.py::APIRouter.get", "category": "HttpHandler", "file": "fastapi/routing.py"},
+    {"type": "entry_point", "symbol": "fastapi/routing.py::APIRouter.post", "category": "HttpHandler", "file": "fastapi/routing.py"},
+    {"type": "entry_point", "symbol": "fastapi/routing.py::APIRouter.put", "category": "HttpHandler", "file": "fastapi/routing.py"},
+    {"type": "entry_point", "symbol": "fastapi/routing.py::APIRouter.delete", "category": "HttpHandler", "file": "fastapi/routing.py"},
+    {"type": "entry_point", "symbol": "fastapi/params.py::Depends", "category": "PublicExport", "file": "fastapi/params.py"},
+    {"type": "entry_point", "symbol": "fastapi/params.py::Query", "category": "PublicExport", "file": "fastapi/params.py"},
+    {"type": "entry_point", "symbol": "fastapi/params.py::Body", "category": "PublicExport", "file": "fastapi/params.py"},
+    {"type": "entry_point", "symbol": "fastapi/params.py::Path", "category": "PublicExport", "file": "fastapi/params.py"},
+    {"type": "entry_point", "symbol": "fastapi/applications.py::FastAPI.add_middleware", "category": "Middleware", "file": "fastapi/applications.py"},
+    {"type": "entry_point", "symbol": "fastapi/exceptions.py::HTTPException", "category": "PublicExport", "file": "fastapi/exceptions.py"},
+    {"type": "entry_point", "symbol": "fastapi/security/oauth2.py::OAuth2PasswordBearer", "category": "PublicExport", "file": "fastapi/security/oauth2.py"}
+  ]
+}

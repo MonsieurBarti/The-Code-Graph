@@ -1,0 +1,18 @@
+{
+  "repo": "trpc",
+  "suite": "flows",
+  "ground_truth": [
+    {"type": "entry_point", "symbol": "packages/server/src/initTRPC.ts::initTRPC", "category": "PublicExport", "file": "packages/server/src/initTRPC.ts"},
+    {"type": "entry_point", "symbol": "packages/client/src/createTRPCClient.ts::createTRPCClient", "category": "PublicExport", "file": "packages/client/src/createTRPCClient.ts"},
+    {"type": "entry_point", "symbol": "packages/client/src/createTRPCProxyClient.ts::createTRPCProxyClient", "category": "PublicExport", "file": "packages/client/src/createTRPCProxyClient.ts"},
+    {"type": "entry_point", "symbol": "packages/client/src/links/httpBatchLink.ts::httpBatchLink", "category": "PublicExport", "file": "packages/client/src/links/httpBatchLink.ts"},
+    {"type": "entry_point", "symbol": "packages/client/src/links/httpLink.ts::httpLink", "category": "PublicExport", "file": "packages/client/src/links/httpLink.ts"},
+    {"type": "entry_point", "symbol": "packages/server/src/adapters/express.ts::createExpressMiddleware", "category": "HttpHandler", "file": "packages/server/src/adapters/express.ts"},
+    {"type": "entry_point", "symbol": "packages/server/src/adapters/fetch/index.ts::fetchRequestHandler", "category": "HttpHandler", "file": "packages/server/src/adapters/fetch/index.ts"},
+    {"type": "entry_point", "symbol": "packages/server/src/router.ts::createRouter", "category": "Router", "file": "packages/server/src/router.ts"},
+    {"type": "entry_point", "symbol": "packages/server/src/procedure.ts::createProcedureBuilder", "category": "PublicExport", "file": "packages/server/src/procedure.ts"},
+    {"type": "entry_point", "symbol": "packages/server/src/middleware.ts::createMiddlewareFactory", "category": "Middleware", "file": "packages/server/src/middleware.ts"},
+    {"type": "entry_point", "symbol": "packages/react-query/src/createTRPCReact.tsx::createTRPCReact", "category": "PublicExport", "file": "packages/react-query/src/createTRPCReact.tsx"},
+    {"type": "entry_point", "symbol": "packages/next/src/withTRPC.tsx::withTRPC", "category": "PublicExport", "file": "packages/next/src/withTRPC.tsx"}
+  ]
+}

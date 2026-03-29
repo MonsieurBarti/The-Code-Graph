@@ -695,7 +695,7 @@ pub struct DeadCodeConfig {
 impl Default for DeadCodeConfig {
     fn default() -> Self {
         Self {
-            exclude_patterns: Vec::new(),
+            exclude_patterns: vec!["**/fixtures/**".into()],
             entry_point_patterns: Vec::new(),
             include_tests: false,
             migration_patterns: vec![

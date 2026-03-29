@@ -1,0 +1,13 @@
+{
+  "suite": {
+    "name": "risk",
+    "description": "Risk analysis evaluation — composite score and factor invariants"
+  },
+  "repos": [
+    { "name": "express", "url": "https://github.com/expressjs/express", "revision": "v4.22.1", "languages": ["javascript"] },
+    { "name": "trpc", "url": "https://github.com/trpc/trpc", "revision": "v11.0.0", "languages": ["typescript"] },
+    { "name": "ripgrep", "url": "https://github.com/BurntSushi/ripgrep", "revision": "14.1.1", "languages": ["rust"] },
+    { "name": "fastapi", "url": "https://github.com/fastapi/fastapi", "revision": "0.115.0", "languages": ["python"] },
+    { "name": "go-stdlib", "url": "https://github.com/golang/go", "revision": "go1.23.0", "languages": ["go"] }
+  ]
+}

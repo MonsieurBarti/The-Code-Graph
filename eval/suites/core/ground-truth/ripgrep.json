@@ -1,0 +1,17 @@
+{
+  "repo": "ripgrep",
+  "suite": "core",
+  "ground_truth": [
+    {"source_file": "crates/ripgrep/src/main.rs", "source_symbol": "main", "target_file": "crates/core/src/app.rs", "target_symbol": "run"},
+    {"source_file": "crates/core/src/app.rs", "source_symbol": "run", "target_file": "crates/ignore/src/walk.rs", "target_symbol": "WalkBuilder::build"},
+    {"source_file": "crates/core/src/app.rs", "source_symbol": "run", "target_file": "crates/grep-searcher/src/searcher/mod.rs", "target_symbol": "Searcher::search_path"},
+    {"source_file": "crates/core/src/app.rs", "source_symbol": "run", "target_file": "crates/printer/src/standard.rs", "target_symbol": "StandardBuilder::build"},
+    {"source_file": "crates/ignore/src/walk.rs", "source_symbol": "WalkParallel::run", "target_file": "crates/ignore/src/walk.rs", "target_symbol": "WalkBuilder::build"},
+    {"source_file": "crates/grep-searcher/src/searcher/mod.rs", "source_symbol": "Searcher::search_path", "target_file": "crates/grep-regex/src/lib.rs", "target_symbol": "RegexMatcher::new"},
+    {"source_file": "crates/grep-regex/src/lib.rs", "source_symbol": "RegexMatcher::new", "target_file": "crates/grep-regex/src/config.rs", "target_symbol": "Config::build"},
+    {"source_file": "crates/core/src/app.rs", "source_symbol": "run", "target_file": "crates/globset/src/lib.rs", "target_symbol": "GlobSetBuilder::build"},
+    {"source_file": "crates/globset/src/lib.rs", "source_symbol": "GlobSetBuilder::build", "target_file": "crates/globset/src/glob.rs", "target_symbol": "Glob::new"},
+    {"source_file": "crates/ignore/src/walk.rs", "source_symbol": "WalkBuilder::build", "target_file": "crates/globset/src/lib.rs", "target_symbol": "GlobSet::is_match"},
+    {"source_file": "crates/grep-searcher/src/searcher/mod.rs", "source_symbol": "Searcher::search_path", "target_file": "crates/printer/src/standard.rs", "target_symbol": "Standard::matched"}
+  ]
+}

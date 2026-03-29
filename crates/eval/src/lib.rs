@@ -3,6 +3,7 @@ pub mod dataset;
 pub mod metrics;
 pub mod report;
 pub mod runner;
+pub mod suites;
 
 use domain::error::Result;
 use report::SuiteResult;
@@ -12,6 +13,12 @@ use report::SuiteResult;
 pub enum Suite {
     Search,
     Impact,
+    Core,
+    Flows,
+    Risk,
+    Analysis,
+    Invariants,
+    Bench,
     All,
 }
 
@@ -22,6 +29,7 @@ pub struct SuiteConfig {
     pub no_cache: bool,
     pub suites_dir: std::path::PathBuf,
     pub search_limit: usize,
+    pub compare_baseline: Option<std::path::PathBuf>,
 }
 
 /// Run the evaluation suite. Entry point called by CLI.
@@ -34,9 +42,39 @@ pub fn run_suite(config: &SuiteConfig) -> Result<SuiteResult> {
         Suite::Impact | Suite::All => Some(runner::run_impact_suite(config)?),
         _ => None,
     };
+    let core_result = match config.suite {
+        Suite::Core | Suite::All => Some(runner::run_core_suite(config)?),
+        _ => None,
+    };
+    let flows_result = match config.suite {
+        Suite::Flows | Suite::All => Some(runner::run_flows_suite(config)?),
+        _ => None,
+    };
+    let risk_result = match config.suite {
+        Suite::Risk | Suite::All => Some(runner::run_risk_suite(config)?),
+        _ => None,
+    };
+    let analysis_result = match config.suite {
+        Suite::Analysis | Suite::All => Some(runner::run_analysis_suite(config)?),
+        _ => None,
+    };
+    let invariants_result = match config.suite {
+        Suite::Invariants | Suite::All => Some(runner::run_invariants_suite(config)?),
+        _ => None,
+    };
+    let bench_result = match config.suite {
+        Suite::Bench | Suite::All => Some(runner::run_bench_suite(config)?),
+        _ => None,
+    };
     Ok(SuiteResult {
         search: search_result,
         impact: impact_result,
+        core: core_result,
+        flows: flows_result,
+        risk: risk_result,
+        analysis: analysis_result,
+        invariants: invariants_result,
+        bench: bench_result,
     })
 }
 
@@ -85,6 +123,7 @@ mod tests {
             no_cache: false,
             suites_dir: PathBuf::from("/tmp/suites"),
             search_limit: 10,
+            compare_baseline: None,
         };
         assert!(matches!(config.suite, Suite::Search));
         assert!(!config.no_cache);
@@ -99,6 +138,7 @@ mod tests {
             no_cache: true,
             suites_dir: PathBuf::from("/tmp/suites"),
             search_limit: 5,
+            compare_baseline: None,
         };
         assert!(matches!(config.suite, Suite::Impact));
         assert!(config.no_cache);
@@ -171,6 +211,26 @@ mod tests {
             })
             .sum();
         assert!(total >= 50, "expected >= 50 search queries, found {total}");
+    }
+
+    #[test]
+    fn run_suite_dispatches_all_without_panic() {
+        // Suite::All should NOT panic (no todo!()) even though new suites aren't fully wired
+        // This test verifies the dispatch path fails with "manifest not found" rather than panicking
+        let config = SuiteConfig {
+            suite: Suite::Search,
+            no_cache: false,
+            suites_dir: PathBuf::from("/tmp/nonexistent"),
+            search_limit: 20,
+            compare_baseline: None,
+        };
+        // Should fail with "manifest not found" rather than "unknown suite" or panic
+        let err = run_suite(&config).unwrap_err();
+        let msg = format!("{err}");
+        assert!(
+            !msg.contains("not yet implemented"),
+            "dispatch should not contain todo!() text, got: {msg}"
+        );
     }
 
     #[test]

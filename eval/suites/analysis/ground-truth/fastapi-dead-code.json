@@ -1,0 +1,15 @@
+{
+  "repo": "fastapi",
+  "suite": "analysis",
+  "type": "dead_code",
+  "ground_truth": [
+    {"symbol": "fastapi/applications.py::FastAPI", "expected_dead": false},
+    {"symbol": "fastapi/routing.py::APIRouter", "expected_dead": false},
+    {"symbol": "fastapi/routing.py::APIRouter.add_api_route", "expected_dead": false},
+    {"symbol": "fastapi/dependencies/utils.py::solve_dependencies", "expected_dead": false},
+    {"symbol": "fastapi/routing.py::get_request_handler", "expected_dead": false},
+    {"symbol": "fastapi/encoders.py::jsonable_encoder", "expected_dead": false},
+    {"symbol": "fastapi/utils.py::generate_operation_id", "expected_dead": false},
+    {"symbol": "fastapi/exception_handlers.py::http_exception_handler", "expected_dead": false}
+  ]
+}

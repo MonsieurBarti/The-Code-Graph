@@ -1,0 +1,10 @@
+{
+  "repo": "trpc",
+  "suite": "analysis",
+  "type": "clones",
+  "ground_truth": [
+    {"source": "packages/server/src/adapters/express.ts::createExpressMiddleware", "target": "packages/server/src/adapters/fetch/index.ts::fetchRequestHandler"},
+    {"source": "packages/client/src/links/httpBatchLink.ts::httpBatchLink", "target": "packages/client/src/links/httpLink.ts::httpLink"},
+    {"source": "packages/server/src/router.ts::createRouter", "target": "packages/server/src/procedure.ts::createProcedureBuilder"}
+  ]
+}
