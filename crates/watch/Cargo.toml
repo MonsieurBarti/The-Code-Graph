@@ -7,7 +7,7 @@ repository.workspace = true
 description = "File system watcher for The Code Graph"
 
 [dependencies]
-domain = { path = "../domain", package = "the-code-graph-domain", version = "0.1.1" }
+domain = { path = "../domain", package = "the-code-graph-domain", version = "0.1.2" }
 notify = "8"
 notify-debouncer-full = "0.5"
 signal-hook = "0.3"
