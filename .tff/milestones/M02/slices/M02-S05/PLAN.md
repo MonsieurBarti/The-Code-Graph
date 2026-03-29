@@ -33,7 +33,7 @@
 **Files:** Modify `crates/domain/src/model.rs`
 **Traces to:** AC1, AC4, AC5, AC8
 
-- [ ] Step 1: Add `HashMap` import and dead code types to `model.rs`
+- [x] Step 1: Add `HashMap` import and dead code types to `model.rs`
 
 Add to imports at top of file:
 
@@ -109,8 +109,8 @@ pub enum ExclusionReason {
 }
 ```
 
-- [ ] Step 2: Run `cargo check -p domain`, verify PASS (types compile)
-- [ ] Step 3: Commit `docs(S05/T01): add dead code domain types`
+- [x] Step 2: Run `cargo check -p domain`, verify PASS (types compile)
+- [x] Step 3: Commit `docs(S05/T01): add dead code domain types`
 
 ---
 
@@ -119,14 +119,14 @@ pub enum ExclusionReason {
 **Files:** Modify `crates/domain/Cargo.toml`
 **Traces to:** AC3 (pattern matching support)
 
-- [ ] Step 1: Add `globset` to `[dependencies]` in `crates/domain/Cargo.toml`
+- [x] Step 1: Add `globset` to `[dependencies]` in `crates/domain/Cargo.toml`
 
 ```toml
 globset = "0.4"
 ```
 
-- [ ] Step 2: Run `cargo check -p domain`, verify PASS
-- [ ] Step 3: Commit `chore(S05/T02): add globset dependency`
+- [x] Step 2: Run `cargo check -p domain`, verify PASS
+- [x] Step 3: Commit `chore(S05/T02): add globset dependency`
 
 ---
 
@@ -135,7 +135,7 @@ globset = "0.4"
 **Files:** Modify `crates/cli/src/config.rs`
 **Traces to:** AC7
 
-- [ ] Step 1: Write failing test in `crates/cli/src/config.rs`
+- [x] Step 1: Write failing test in `crates/cli/src/config.rs`
 
 Add to the `#[cfg(test)] mod tests` block:
 
@@ -169,9 +169,9 @@ entry_point_patterns = ["*_handler", "*_endpoint"]
     }
 ```
 
-- [ ] Step 2: Run `cargo test -p cli -- dead_code_config_parses`, verify FAIL (field `dead_code` doesn't exist)
+- [x] Step 2: Run `cargo test -p cli -- dead_code_config_parses`, verify FAIL (field `dead_code` doesn't exist)
 
-- [ ] Step 3: Add `DeadCodeCliConfig` struct and field
+- [x] Step 3: Add `DeadCodeCliConfig` struct and field
 
 After `CommunitiesConfig` struct, add:
 
@@ -191,8 +191,8 @@ Add field to `CodeGraphConfig`:
     pub dead_code: Option<DeadCodeCliConfig>,
 ```
 
-- [ ] Step 4: Run `cargo test -p cli -- dead_code_config_parses`, verify PASS
-- [ ] Step 5: Commit `feat(S05/T03): add dead-code CLI config section`
+- [x] Step 4: Run `cargo test -p cli -- dead_code_config_parses`, verify PASS
+- [x] Step 5: Commit `feat(S05/T03): add dead-code CLI config section`
 
 ---
 
@@ -203,7 +203,7 @@ Add field to `CodeGraphConfig`:
 **Files:** Create `crates/domain/src/analysis/dead_code.rs`, Modify `crates/domain/src/analysis/mod.rs`
 **Traces to:** AC1, AC2, AC3, AC4, AC5
 
-- [ ] Step 1: Register module in `crates/domain/src/analysis/mod.rs`
+- [x] Step 1: Register module in `crates/domain/src/analysis/mod.rs`
 
 Add line (alphabetical order):
 
@@ -211,7 +211,7 @@ Add line (alphabetical order):
 pub mod dead_code;
 ```
 
-- [ ] Step 2: Create `crates/domain/src/analysis/dead_code.rs` with stub + tests
+- [x] Step 2: Create `crates/domain/src/analysis/dead_code.rs` with stub + tests
 
 ```rust
 use crate::analysis::flow::detect_entry_points;
@@ -518,9 +518,9 @@ mod tests {
 }
 ```
 
-- [ ] Step 3: Run `cargo test -p domain -- dead_code`, verify FAIL (13 tests fail — stub returns empty)
+- [x] Step 3: Run `cargo test -p domain -- dead_code`, verify FAIL (13 tests fail — stub returns empty)
 
-- [ ] Step 4: Implement `detect_dead_code()` — replace the `TODO: implement` stub body with:
+- [x] Step 4: Implement `detect_dead_code()` — replace the `TODO: implement` stub body with:
 
 ```rust
     // 1. Build alive set from usage edges
@@ -648,8 +648,8 @@ mod tests {
     }
 ```
 
-- [ ] Step 5: Run `cargo test -p domain -- dead_code`, verify PASS (all 13 tests green)
-- [ ] Step 6: Commit `feat(S05/T04): implement dead code detection algorithm`
+- [x] Step 5: Run `cargo test -p domain -- dead_code`, verify PASS (all 13 tests green)
+- [x] Step 6: Commit `feat(S05/T04): implement dead code detection algorithm`
 
 ---
 
@@ -658,7 +658,7 @@ mod tests {
 **Files:** Modify `crates/cli/src/commands/mod.rs`, Modify `crates/cli/src/lib.rs`, Create `crates/cli/src/commands/dead_code.rs`
 **Traces to:** AC4, AC5, AC6
 
-- [ ] Step 1: Write parse tests in `crates/cli/src/commands/mod.rs`
+- [x] Step 1: Write parse tests in `crates/cli/src/commands/mod.rs`
 
 Add to `#[cfg(test)] mod tests` block:
 
@@ -702,9 +702,9 @@ Add entries to the `all_subcommands_parse` test's `commands` array:
             vec!["code-graph", "dead-code", "--kind", "Function", "--limit", "10"],
 ```
 
-- [ ] Step 2: Run `cargo test -p cli -- parse_dead_code`, verify FAIL (variant doesn't exist)
+- [x] Step 2: Run `cargo test -p cli -- parse_dead_code`, verify FAIL (variant doesn't exist)
 
-- [ ] Step 3: Add module, args struct, enum variant, dispatch, and stub handler
+- [x] Step 3: Add module, args struct, enum variant, dispatch, and stub handler
 
 In `crates/cli/src/commands/mod.rs`, add to module list (alphabetical):
 
@@ -759,8 +759,8 @@ Add dispatch arm in `crates/cli/src/lib.rs` (alphabetical, after Diff):
         Commands::DeadCode(args) => commands::dead_code::run_dead_code(args, output_format),
 ```
 
-- [ ] Step 4: Run `cargo test -p cli -- parse_dead_code`, verify PASS
-- [ ] Step 5: Commit `feat(S05/T05): add dead-code CLI args and dispatch wiring`
+- [x] Step 4: Run `cargo test -p cli -- parse_dead_code`, verify PASS
+- [x] Step 5: Commit `feat(S05/T05): add dead-code CLI args and dispatch wiring`
 
 ---
 
@@ -771,7 +771,7 @@ Add dispatch arm in `crates/cli/src/lib.rs` (alphabetical, after Diff):
 **Files:** Create `crates/domain/src/use_cases/dead_code.rs`, Modify `crates/domain/src/use_cases/mod.rs`
 **Traces to:** AC1, AC2
 
-- [ ] Step 1: Register module in `crates/domain/src/use_cases/mod.rs`
+- [x] Step 1: Register module in `crates/domain/src/use_cases/mod.rs`
 
 Add (alphabetical):
 
@@ -779,7 +779,7 @@ Add (alphabetical):
 pub mod dead_code;
 ```
 
-- [ ] Step 2: Create `crates/domain/src/use_cases/dead_code.rs` with implementation + tests
+- [x] Step 2: Create `crates/domain/src/use_cases/dead_code.rs` with implementation + tests
 
 ```rust
 use crate::analysis::dead_code::detect_dead_code;
@@ -916,8 +916,8 @@ mod tests {
 }
 ```
 
-- [ ] Step 3: Run `cargo test -p domain -- use_cases::dead_code`, verify PASS
-- [ ] Step 4: Commit `feat(S05/T06): add dead code use case`
+- [x] Step 3: Run `cargo test -p domain -- use_cases::dead_code`, verify PASS
+- [x] Step 4: Commit `feat(S05/T06): add dead code use case`
 
 ---
 
@@ -926,7 +926,7 @@ mod tests {
 **Files:** Modify `crates/cli/src/output.rs`
 **Traces to:** AC6, AC8
 
-- [ ] Step 1: Add `DeadCodeAnalysis` to the import at top of `crates/cli/src/output.rs`
+- [x] Step 1: Add `DeadCodeAnalysis` to the import at top of `crates/cli/src/output.rs`
 
 Add to the existing `use domain::model::{...}` import:
 
@@ -934,7 +934,7 @@ Add to the existing `use domain::model::{...}` import:
     DeadCodeAnalysis,
 ```
 
-- [ ] Step 2: Implement `Displayable` for `DeadCodeAnalysis`
+- [x] Step 2: Implement `Displayable` for `DeadCodeAnalysis`
 
 Add before the final closing (at end of main impl section):
 
@@ -994,8 +994,8 @@ impl Displayable for DeadCodeAnalysis {
 }
 ```
 
-- [ ] Step 3: Run `cargo check -p cli`, verify PASS
-- [ ] Step 4: Commit `feat(S05/T07): implement dead code output formatting`
+- [x] Step 3: Run `cargo check -p cli`, verify PASS
+- [x] Step 4: Commit `feat(S05/T07): implement dead code output formatting`
 
 ---
 
@@ -1006,7 +1006,7 @@ impl Displayable for DeadCodeAnalysis {
 **Files:** Implement `crates/cli/src/commands/dead_code.rs` (replace stub)
 **Traces to:** AC1, AC3, AC4, AC5, AC6, AC7
 
-- [ ] Step 1: Replace stub in `crates/cli/src/commands/dead_code.rs` with full implementation
+- [x] Step 1: Replace stub in `crates/cli/src/commands/dead_code.rs` with full implementation
 
 ```rust
 use domain::error::Result;
@@ -1083,9 +1083,9 @@ pub fn run_dead_code(args: &DeadCodeArgs, output_format: OutputFormat) -> Result
 }
 ```
 
-- [ ] Step 2: Run `cargo build -p cli`, verify PASS
-- [ ] Step 3: Run `cargo test -p domain -p cli`, verify PASS (all tests green)
-- [ ] Step 4: Commit `feat(S05/T08): implement dead-code CLI handler with config merge`
+- [x] Step 2: Run `cargo build -p cli`, verify PASS
+- [x] Step 3: Run `cargo test -p domain -p cli`, verify PASS (all tests green)
+- [x] Step 4: Commit `feat(S05/T08): implement dead-code CLI handler with config merge`
 
 ---
 
