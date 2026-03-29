@@ -14,6 +14,6 @@ name = "tcg"
 path = "src/main.rs"
 
 [dependencies]
-cli = { path = "../cli", package = "the-code-graph-cli", version = "0.1.0" }
-domain = { path = "../domain", package = "the-code-graph-domain", version = "0.1.0" }
+cli = { path = "../cli", package = "the-code-graph-cli", version = "0.1.1" }
+domain = { path = "../domain", package = "the-code-graph-domain", version = "0.1.1" }
 clap = { version = "4", features = ["derive"] }
