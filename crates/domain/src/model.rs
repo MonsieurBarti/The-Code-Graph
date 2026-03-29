@@ -214,6 +214,14 @@ pub struct TraversalResult {
     pub edge_kind: EdgeKind,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ScoreSource {
+    Hybrid,
+    Fts5,
+    Semantic,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SearchResult {
     pub qualified_name: String,
@@ -221,6 +229,60 @@ pub struct SearchResult {
     pub kind: SymbolKind,
     pub file_path: PathBuf,
     pub score: f64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub score_source: Option<ScoreSource>,
+}
+
+#[derive(Debug, Clone)]
+pub struct EmbeddingEntry {
+    pub qualified_name: String,
+    pub vector: Vec<f32>,
+    pub text_hash: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct EmbeddingConfig {
+    pub model: String,
+    pub batch_size: usize,
+}
+
+impl Default for EmbeddingConfig {
+    fn default() -> Self {
+        Self {
+            model: "all-MiniLM-L6-v2".into(),
+            batch_size: 64,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct HybridSearchConfig {
+    pub rrf_k: usize,
+    pub kind_boost: bool,
+}
+
+impl Default for HybridSearchConfig {
+    fn default() -> Self {
+        Self {
+            rrf_k: 60,
+            kind_boost: true,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SearchMode {
+    Hybrid,
+    FtsOnly,
+    SemanticOnly,
+}
+
+pub struct EmbedStats {
+    pub total_symbols: usize,
+    pub embedded: usize,
+    pub skipped: usize,
+    pub removed: usize,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -912,7 +974,8 @@ mod tests {
                 name: "s".into(),
                 kind: SymbolKind::Function,
                 file_path: "f".into(),
-                score: 1.0
+                score: 1.0,
+                score_source: None,
             },
             SearchResult
         );

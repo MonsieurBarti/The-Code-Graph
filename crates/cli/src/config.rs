@@ -10,6 +10,7 @@ pub struct CodeGraphConfig {
     pub flows: Option<FlowsConfig>,
     pub risk: Option<RiskCliConfig>,
     pub communities: Option<CommunitiesConfig>,
+    pub embeddings: Option<EmbeddingsCliConfig>,
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]
@@ -20,6 +21,15 @@ pub struct IndexConfig {
 #[derive(Debug, Clone, Default, Deserialize)]
 pub struct SearchConfig {
     pub max_results: Option<usize>,
+    pub rrf_k: Option<usize>,
+    pub kind_boost: Option<bool>,
+}
+
+#[derive(Debug, Clone, Default, Deserialize)]
+pub struct EmbeddingsCliConfig {
+    pub enabled: Option<bool>,
+    pub model: Option<String>,
+    pub batch_size: Option<usize>,
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]
@@ -144,6 +154,35 @@ seed = 42
         assert!((cc.resolution.unwrap() - 1.5).abs() < f64::EPSILON);
         assert_eq!(cc.min_community_size.unwrap(), 3);
         assert_eq!(cc.seed.unwrap(), 42);
+    }
+
+    #[test]
+    fn embeddings_config_parses() {
+        let tmp = tempfile::tempdir().unwrap();
+        let dir = tmp.path().join(".code-graph");
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(
+            dir.join("config.toml"),
+            r#"
+[embeddings]
+enabled = true
+model = "all-MiniLM-L6-v2"
+batch_size = 32
+
+[search]
+rrf_k = 60
+kind_boost = true
+"#,
+        )
+        .unwrap();
+        let config = load_config(tmp.path()).unwrap();
+        let emb = config.embeddings.unwrap();
+        assert_eq!(emb.enabled.unwrap(), true);
+        assert_eq!(emb.model.unwrap(), "all-MiniLM-L6-v2");
+        assert_eq!(emb.batch_size.unwrap(), 32);
+        let search = config.search.unwrap();
+        assert_eq!(search.rrf_k.unwrap(), 60);
+        assert_eq!(search.kind_boost.unwrap(), true);
     }
 
     #[test]

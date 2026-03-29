@@ -96,6 +96,14 @@ pub struct IndexArgs {
     /// Specific files to re-index (implies --incremental)
     #[arg(long, value_delimiter = ',')]
     pub files: Option<Vec<std::path::PathBuf>>,
+
+    /// Generate embeddings for all symbols (enables semantic search)
+    #[arg(long)]
+    pub embed: bool,
+
+    /// ONNX model name for embeddings
+    #[arg(long, default_value = "all-MiniLM-L6-v2")]
+    pub embed_model: String,
 }
 
 #[derive(clap::Args)]
@@ -194,6 +202,12 @@ pub struct SearchArgs {
     /// Maximum results to return
     #[arg(long, default_value = "20")]
     pub limit: usize,
+    /// Use only vector similarity (skip FTS5)
+    #[arg(long)]
+    pub semantic_only: bool,
+    /// Use only FTS5 BM25 (skip vectors)
+    #[arg(long)]
+    pub fts_only: bool,
 }
 
 #[derive(clap::Args)]
@@ -332,6 +346,10 @@ mod tests {
             vec!["code-graph", "callers", "a::b"],
             vec!["code-graph", "callees", "a::b"],
             vec!["code-graph", "search", "foo"],
+            vec!["code-graph", "search", "foo", "--semantic-only"],
+            vec!["code-graph", "search", "foo", "--fts-only"],
+            vec!["code-graph", "index", "--embed"],
+            vec!["code-graph", "index", "--embed", "--embed-model", "custom"],
             vec!["code-graph", "flows"],
             vec!["code-graph", "flows", "--rank"],
             vec!["code-graph", "flows", "--symbol", "foo::bar"],
@@ -420,6 +438,56 @@ mod tests {
             assert!((args.min_score - 0.5).abs() < f64::EPSILON);
         } else {
             panic!("expected Risk command");
+        }
+    }
+
+    #[test]
+    fn parse_search_with_semantic_only() {
+        let cli = Cli::parse_from(["code-graph", "search", "foo", "--semantic-only"]);
+        if let Commands::Search(args) = cli.command {
+            assert!(args.semantic_only);
+            assert!(!args.fts_only);
+        } else {
+            panic!("expected Search");
+        }
+    }
+
+    #[test]
+    fn parse_search_with_fts_only() {
+        let cli = Cli::parse_from(["code-graph", "search", "foo", "--fts-only"]);
+        if let Commands::Search(args) = cli.command {
+            assert!(args.fts_only);
+            assert!(!args.semantic_only);
+        } else {
+            panic!("expected Search");
+        }
+    }
+
+    #[test]
+    fn parse_index_with_embed() {
+        let cli = Cli::parse_from(["code-graph", "index", "--embed"]);
+        if let Commands::Index(args) = cli.command {
+            assert!(args.embed);
+            assert_eq!(args.embed_model, "all-MiniLM-L6-v2");
+        } else {
+            panic!("expected Index");
+        }
+    }
+
+    #[test]
+    fn parse_index_with_embed_model() {
+        let cli = Cli::parse_from([
+            "code-graph",
+            "index",
+            "--embed",
+            "--embed-model",
+            "custom-model",
+        ]);
+        if let Commands::Index(args) = cli.command {
+            assert!(args.embed);
+            assert_eq!(args.embed_model, "custom-model");
+        } else {
+            panic!("expected Index");
         }
     }
 

@@ -5,7 +5,6 @@ use storage::SqliteStore;
 use crate::adapters::fs::RealFileSystem;
 use crate::adapters::git::ShellGitProvider;
 use crate::adapters::parse::RayonParseProvider;
-use crate::config::load_config;
 use crate::output::{print, OutputFormat};
 use crate::project::{ensure_data_dir, find_project_root};
 
@@ -23,8 +22,6 @@ pub fn run_index(args: &IndexArgs, output_format: OutputFormat) -> Result<()> {
     };
 
     let data_dir = ensure_data_dir(&root)?;
-    let _config = load_config(&root)?;
-
     let db_path = data_dir.join("graph.db");
     let store = SqliteStore::open(&db_path)
         .map_err(|e| domain::error::CodeGraphError::Storage(format!("{e}")))?;
@@ -33,7 +30,7 @@ pub fn run_index(args: &IndexArgs, output_format: OutputFormat) -> Result<()> {
     let git = ShellGitProvider::new(root.clone());
     let parser = RayonParseProvider::new();
 
-    let use_case = IndexUseCase::new(store, parser, fs, git);
+    let use_case = IndexUseCase::new(store.clone(), parser, fs, git);
     let stats = if let Some(files) = &args.files {
         use_case.incremental_files(&root, files.clone())?
     } else if args.incremental {
@@ -43,6 +40,55 @@ pub fn run_index(args: &IndexArgs, output_format: OutputFormat) -> Result<()> {
     };
 
     print(&stats, output_format);
+
+    if args.embed {
+        #[cfg(feature = "embeddings")]
+        {
+            let config = crate::config::load_config(&root)?;
+            let ep = embeddings::OnnxEmbeddingProvider::from_model_name(&args.embed_model, 384)
+                .map_err(|e| domain::error::CodeGraphError::Other(e.to_string()))?;
+
+            let embed_config = domain::model::EmbeddingConfig {
+                model: args.embed_model.clone(),
+                batch_size: config
+                    .embeddings
+                    .as_ref()
+                    .and_then(|e| e.batch_size)
+                    .unwrap_or(64),
+            };
+
+            let embed_uc =
+                domain::use_cases::embed::EmbedUseCase::new(store.clone(), ep, store.clone());
+
+            let pb = indicatif::ProgressBar::new(0);
+            pb.set_style(
+                indicatif::ProgressStyle::default_bar()
+                    .template("{spinner:.green} Embedding [{bar:40.cyan/blue}] {pos}/{len} symbols")
+                    .unwrap()
+                    .progress_chars("#>-"),
+            );
+            pb.set_draw_target(indicatif::ProgressDrawTarget::stderr());
+
+            let embed_stats = embed_uc.embed_all(&embed_config, |done, total| {
+                pb.set_length(total as u64);
+                pb.set_position(done as u64);
+            })?;
+            pb.finish_and_clear();
+
+            let removed = embed_uc.cleanup_orphans()?;
+            let embed_stats = domain::model::EmbedStats {
+                removed,
+                ..embed_stats
+            };
+            print(&embed_stats, output_format);
+        }
+        #[cfg(not(feature = "embeddings"))]
+        {
+            return Err(domain::error::CodeGraphError::Other(
+                "--embed requires the 'embeddings' feature; rebuild with `cargo build --features embeddings`".into(),
+            ));
+        }
+    }
 
     Ok(())
 }
@@ -93,6 +139,8 @@ mod tests {
             path: Some(root.to_path_buf()),
             incremental: false,
             files: None,
+            embed: false,
+            embed_model: "all-MiniLM-L6-v2".into(),
         };
         let result = run_index(&args, OutputFormat::Compact);
         assert!(result.is_ok(), "index failed: {:?}", result.err());
@@ -116,6 +164,8 @@ mod tests {
             path: Some(root.to_path_buf()),
             incremental: false,
             files: None,
+            embed: false,
+            embed_model: "all-MiniLM-L6-v2".into(),
         };
         run_index(&args, OutputFormat::Compact).unwrap();
 
@@ -143,6 +193,8 @@ mod tests {
             path: Some(root.to_path_buf()),
             incremental: true,
             files: None,
+            embed: false,
+            embed_model: "all-MiniLM-L6-v2".into(),
         };
         let result = run_index(&args, OutputFormat::Compact);
         assert!(
@@ -167,6 +219,8 @@ mod tests {
             path: Some(root.to_path_buf()),
             incremental: false,
             files: None,
+            embed: false,
+            embed_model: "all-MiniLM-L6-v2".into(),
         };
         run_index(&args, OutputFormat::Compact).unwrap();
 
@@ -187,6 +241,8 @@ mod tests {
             path: Some(root.to_path_buf()),
             incremental: true,
             files: None,
+            embed: false,
+            embed_model: "all-MiniLM-L6-v2".into(),
         };
         let result = run_index(&args, OutputFormat::Compact);
         assert!(
@@ -211,6 +267,8 @@ mod tests {
             path: Some(root.to_path_buf()),
             incremental: false,
             files: None,
+            embed: false,
+            embed_model: "all-MiniLM-L6-v2".into(),
         };
         run_index(&args, OutputFormat::Compact).unwrap();
 
@@ -226,6 +284,8 @@ mod tests {
             path: Some(root.to_path_buf()),
             incremental: false,
             files: Some(vec![std::path::PathBuf::from("src/main.ts")]),
+            embed: false,
+            embed_model: "all-MiniLM-L6-v2".into(),
         };
         let result = run_index(&args, OutputFormat::Compact);
         assert!(result.is_ok(), "index --files failed: {:?}", result.err());

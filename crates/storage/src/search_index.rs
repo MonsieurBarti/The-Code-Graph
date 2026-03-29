@@ -60,6 +60,7 @@ impl SearchIndex for SqliteStore {
                 kind: symbol_kind_from_str(&kind)?,
                 file_path: file.into(),
                 score: -score, // FTS5 rank is negative (lower = better), invert for display
+                score_source: None,
             });
         }
         Ok(results)

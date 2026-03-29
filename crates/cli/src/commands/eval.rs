@@ -112,6 +112,7 @@ mod tests {
                 precision_at_10: 0.60,
                 mrr_target: 0.30,
                 mrr_passed: true,
+                per_category: vec![],
             }),
             impact: Some(ImpactSuiteResult {
                 repos: 3,
