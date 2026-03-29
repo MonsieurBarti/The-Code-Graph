@@ -19,6 +19,7 @@ use crate::{metrics, SuiteConfig};
 
 const MRR_TARGET: f64 = 0.30;
 const BLAST_PRECISION_TARGET: f64 = 0.40;
+const EXISTENCE_RECALL_TARGET: f64 = 1.0;
 
 /// Ranked results paired with ground-truth expectations.
 type RankedVsTruth = (Vec<Vec<String>>, Vec<Vec<String>>);
@@ -146,6 +147,9 @@ pub fn run_search_suite(config: &SuiteConfig) -> Result<SearchSuiteResult> {
     // Per-category buckets: category -> (ranked_lists, truth_lists)
     let mut category_buckets: std::collections::HashMap<String, CategoryBucket> =
         std::collections::HashMap::new();
+    // Existence queries (category == "existence") tracked separately
+    let mut existence_ranked: Vec<Vec<String>> = Vec::new();
+    let mut existence_truth: Vec<Vec<String>> = Vec::new();
     let mut total_queries = 0;
     let mut setup_errors = Vec::new();
 
@@ -186,6 +190,11 @@ pub fn run_search_suite(config: &SuiteConfig) -> Result<SearchSuiteResult> {
                     .category
                     .clone()
                     .unwrap_or_else(|| "uncategorized".to_string());
+                // Existence queries get tracked in a dedicated bucket
+                if cat == "existence" {
+                    existence_ranked.push(r.clone());
+                    existence_truth.push(t.clone());
+                }
                 let bucket = category_buckets.entry(cat).or_default();
                 bucket.0.push(r.clone());
                 bucket.1.push(t.clone());
@@ -206,6 +215,7 @@ pub fn run_search_suite(config: &SuiteConfig) -> Result<SearchSuiteResult> {
     let mrr = metrics::mrr(&all_ranked, &all_truth);
     let p5 = metrics::precision_at_k(&all_ranked, &all_truth, 5);
     let p10 = metrics::precision_at_k(&all_ranked, &all_truth, 10);
+    let existence_recall = metrics::existence_recall(&existence_ranked, &existence_truth);
 
     // Build sorted per-category breakdown
     let mut per_category: Vec<CategoryMrr> = category_buckets
@@ -229,6 +239,9 @@ pub fn run_search_suite(config: &SuiteConfig) -> Result<SearchSuiteResult> {
         precision_at_10: p10,
         mrr_target: MRR_TARGET,
         mrr_passed: mrr >= MRR_TARGET,
+        existence_recall,
+        existence_recall_target: EXISTENCE_RECALL_TARGET,
+        existence_recall_passed: existence_recall >= EXISTENCE_RECALL_TARGET,
         per_category,
     })
 }
@@ -759,10 +772,103 @@ pub fn run_bench_suite(config: &SuiteConfig) -> Result<BenchSuiteResult> {
         tracing::info!("Baseline written to {}", path.display());
     }
 
+    // Compare against a previous baseline if requested
+    let comparison = if let Some(prev_path) = &config.compare_baseline {
+        match compare_baselines(prev_path, &baselines) {
+            Ok(delta) => Some(delta),
+            Err(e) => {
+                tracing::warn!("Baseline comparison failed: {e}");
+                None
+            }
+        }
+    } else {
+        None
+    };
+
     Ok(BenchSuiteResult {
         repos: baselines.len(),
         baselines: baselines_json,
+        comparison,
     })
+}
+
+/// Load a previous baseline JSON and produce a delta report comparing it to the
+/// newly recorded baselines.  Returns a `serde_json::Value` array where each
+/// element describes per-repo metric deltas.
+fn compare_baselines(
+    prev_path: &std::path::Path,
+    current: &[crate::suites::bench::BaselineEntry],
+) -> domain::error::Result<serde_json::Value> {
+    let content = std::fs::read_to_string(prev_path).map_err(|e| {
+        CodeGraphError::Other(format!("read baseline {}: {e}", prev_path.display()))
+    })?;
+    let prev: Vec<crate::suites::bench::BaselineEntry> = serde_json::from_str(&content)
+        .map_err(|e| CodeGraphError::Other(format!("parse baseline: {e}")))?;
+
+    let mut rows = Vec::new();
+    for cur in current {
+        // Find matching previous entry by repo name
+        let prev_entry = prev.iter().find(|p| p.repo == cur.repo);
+        let mut row = serde_json::json!({ "repo": cur.repo });
+        if let Some(p) = prev_entry {
+            let full_delta = cur.full_index_ms as i64 - p.full_index_ms as i64;
+            let inc_delta = cur.incremental_noop_ms as i64 - p.incremental_noop_ms as i64;
+            let search_p50_delta =
+                cur.query_latencies.search_p50_ms - p.query_latencies.search_p50_ms;
+            let search_p95_delta =
+                cur.query_latencies.search_p95_ms - p.query_latencies.search_p95_ms;
+            let impact_p50_delta =
+                cur.query_latencies.impact_p50_ms - p.query_latencies.impact_p50_ms;
+            let impact_p95_delta =
+                cur.query_latencies.impact_p95_ms - p.query_latencies.impact_p95_ms;
+            let symbols_delta = cur.graph_size.symbols as i64 - p.graph_size.symbols as i64;
+            let edges_delta = cur.graph_size.edges as i64 - p.graph_size.edges as i64;
+            row["full_index_ms"] = serde_json::json!({
+                "current": cur.full_index_ms,
+                "previous": p.full_index_ms,
+                "delta": format!("{:+}", full_delta),
+            });
+            row["incremental_noop_ms"] = serde_json::json!({
+                "current": cur.incremental_noop_ms,
+                "previous": p.incremental_noop_ms,
+                "delta": format!("{:+}", inc_delta),
+            });
+            row["search_p50_ms"] = serde_json::json!({
+                "current": cur.query_latencies.search_p50_ms,
+                "previous": p.query_latencies.search_p50_ms,
+                "delta": format!("{:+.2}", search_p50_delta),
+            });
+            row["search_p95_ms"] = serde_json::json!({
+                "current": cur.query_latencies.search_p95_ms,
+                "previous": p.query_latencies.search_p95_ms,
+                "delta": format!("{:+.2}", search_p95_delta),
+            });
+            row["impact_p50_ms"] = serde_json::json!({
+                "current": cur.query_latencies.impact_p50_ms,
+                "previous": p.query_latencies.impact_p50_ms,
+                "delta": format!("{:+.2}", impact_p50_delta),
+            });
+            row["impact_p95_ms"] = serde_json::json!({
+                "current": cur.query_latencies.impact_p95_ms,
+                "previous": p.query_latencies.impact_p95_ms,
+                "delta": format!("{:+.2}", impact_p95_delta),
+            });
+            row["symbols"] = serde_json::json!({
+                "current": cur.graph_size.symbols,
+                "previous": p.graph_size.symbols,
+                "delta": format!("{:+}", symbols_delta),
+            });
+            row["edges"] = serde_json::json!({
+                "current": cur.graph_size.edges,
+                "previous": p.graph_size.edges,
+                "delta": format!("{:+}", edges_delta),
+            });
+        } else {
+            row["note"] = serde_json::json!("no previous baseline for this repo");
+        }
+        rows.push(row);
+    }
+    Ok(serde_json::Value::Array(rows))
 }
 
 #[cfg(test)]

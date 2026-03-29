@@ -90,6 +90,33 @@ impl EvalSuite for FlowsSuite {
             },
         });
 
+        // Invariant: all enumerated flow paths must be acyclic
+        let cyclic_flows: Vec<String> = analysis
+            .flows
+            .iter()
+            .filter(|f| !is_acyclic(&f.path))
+            .map(|f| f.entry.clone())
+            .collect();
+        let all_acyclic = cyclic_flows.is_empty();
+        results.push(InvariantResult {
+            name: "flows_paths_acyclic".into(),
+            suite: "flows".into(),
+            passed: all_acyclic,
+            message: if all_acyclic {
+                None
+            } else {
+                Some(format!(
+                    "Cyclic flow paths detected from entries: {}",
+                    cyclic_flows
+                        .iter()
+                        .take(5)
+                        .cloned()
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                ))
+            },
+        });
+
         Ok(results)
     }
 }

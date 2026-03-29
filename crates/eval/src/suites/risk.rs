@@ -93,6 +93,33 @@ impl EvalSuite for RiskSuite {
             },
         });
 
+        // Invariant: zero-edge symbols must have composite risk < 0.2
+        // A symbol with no incoming or outgoing edges is isolated and should
+        // not be ranked as high-risk.
+        use domain::ports::GraphStore;
+        let mut violations: Vec<String> = Vec::new();
+        for score in &analysis.symbol_scores {
+            let outgoing = store.get_edges_from(&score.qualified_name)?.len();
+            let incoming = store.get_edges_to(&score.qualified_name)?.len();
+            if outgoing == 0 && incoming == 0 && score.composite >= 0.2 {
+                violations.push(format!("{}={:.4}", score.qualified_name, score.composite));
+            }
+        }
+        let zero_edge_ok = violations.is_empty();
+        results.push(InvariantResult {
+            name: "risk_zero_edge_below_threshold".into(),
+            suite: "risk".into(),
+            passed: zero_edge_ok,
+            message: if zero_edge_ok {
+                None
+            } else {
+                Some(format!(
+                    "Zero-edge symbols with composite >= 0.2: {}",
+                    violations.join(", ")
+                ))
+            },
+        });
+
         Ok(results)
     }
 }

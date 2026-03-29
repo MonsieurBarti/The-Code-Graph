@@ -29,6 +29,9 @@ pub struct SearchSuiteResult {
     pub precision_at_10: f64,
     pub mrr_target: f64,
     pub mrr_passed: bool,
+    pub existence_recall: f64,
+    pub existence_recall_target: f64,
+    pub existence_recall_passed: bool,
     pub per_category: Vec<CategoryMrr>,
 }
 
@@ -95,12 +98,16 @@ pub struct InvariantsSuiteResult {
 pub struct BenchSuiteResult {
     pub repos: usize,
     pub baselines: serde_json::Value,
+    pub comparison: Option<serde_json::Value>,
 }
 
 impl SuiteResult {
     /// Returns true if all quality targets are met.
     pub fn all_passed(&self) -> bool {
-        let search_ok = self.search.as_ref().is_none_or(|s| s.mrr_passed);
+        let search_ok = self
+            .search
+            .as_ref()
+            .is_none_or(|s| s.mrr_passed && s.existence_recall_passed);
         let impact_ok = self
             .impact
             .as_ref()
@@ -150,6 +157,16 @@ impl SuiteResult {
             )?;
             writeln!(w, "  Precision@5:  {:.2}", search.precision_at_5)?;
             writeln!(w, "  Precision@10: {:.2}", search.precision_at_10)?;
+            let er_status = if search.existence_recall_passed {
+                "PASS"
+            } else {
+                "FAIL"
+            };
+            writeln!(
+                w,
+                "  ExistRecall:  {:.2} (target: >={:.2}) {}",
+                search.existence_recall, search.existence_recall_target, er_status
+            )?;
             if !search.per_category.is_empty() {
                 writeln!(w, "  Per-category MRR:")?;
                 for cat in &search.per_category {
@@ -293,6 +310,10 @@ impl SuiteResult {
                 writeln!(w)?;
             }
             writeln!(w, "Bench Suite — {} repos", bench.repos)?;
+            if let Some(comparison) = &bench.comparison {
+                writeln!(w, "  Comparison:")?;
+                writeln!(w, "  {comparison}")?;
+            }
         }
         Ok(())
     }
@@ -317,6 +338,16 @@ impl SuiteResult {
                 w,
                 "Search  | Precision@10 | {:.2}  |        |",
                 search.precision_at_10
+            )?;
+            let er_status = if search.existence_recall_passed {
+                "PASS"
+            } else {
+                "FAIL"
+            };
+            writeln!(
+                w,
+                "Search  | ExistRecall  | {:.2}  | >{:.2}  | {}",
+                search.existence_recall, search.existence_recall_target, er_status
             )?;
             for cat in &search.per_category {
                 writeln!(
@@ -445,6 +476,9 @@ impl SuiteResult {
         }
         if let Some(bench) = &self.bench {
             writeln!(w, "Bench   | Repos        | {}     |        |", bench.repos)?;
+            if bench.comparison.is_some() {
+                writeln!(w, "Bench   | Comparison   | yes   |        |")?;
+            }
         }
         Ok(())
     }
@@ -469,6 +503,9 @@ mod tests {
             precision_at_10: 0.58,
             mrr_target: 0.30,
             mrr_passed: true,
+            existence_recall: 0.95,
+            existence_recall_target: 1.0,
+            existence_recall_passed: true,
             per_category: vec![
                 CategoryMrr {
                     category: "exact".into(),

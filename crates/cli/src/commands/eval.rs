@@ -155,6 +155,9 @@ mod tests {
                 precision_at_10: 0.60,
                 mrr_target: 0.30,
                 mrr_passed: true,
+                existence_recall: 1.0,
+                existence_recall_target: 1.0,
+                existence_recall_passed: true,
                 per_category: vec![],
             }),
             impact: Some(ImpactSuiteResult {
