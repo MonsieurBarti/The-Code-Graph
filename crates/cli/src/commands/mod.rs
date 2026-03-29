@@ -3,6 +3,7 @@ pub mod callers;
 pub mod diff;
 pub mod eval;
 pub mod find;
+pub mod flows;
 pub mod helpers;
 pub mod impact;
 pub mod index;
@@ -61,6 +62,8 @@ pub enum Commands {
     Callees(CalleesArgs),
     /// Full-text search across symbols
     Search(SearchArgs),
+    /// Analyze execution flows and criticality
+    Flows(FlowsArgs),
     /// Show graph statistics
     Stats,
     /// Watch for file changes and re-index
@@ -180,6 +183,22 @@ pub struct EvalArgs {
 }
 
 #[derive(clap::Args)]
+pub struct FlowsArgs {
+    /// Filter flows through a specific symbol
+    #[arg(long)]
+    pub symbol: Option<String>,
+    /// Show criticality ranking instead of flows
+    #[arg(long)]
+    pub rank: bool,
+    /// Maximum flow depth
+    #[arg(long, default_value = "20")]
+    pub depth: usize,
+    /// Maximum number of results to display
+    #[arg(long, default_value = "20")]
+    pub limit: usize,
+}
+
+#[derive(clap::Args)]
 pub struct SetupArgs {
     /// Target platform (currently: "claude")
     pub platform: Option<String>,
@@ -243,6 +262,10 @@ mod tests {
             vec!["code-graph", "callers", "a::b"],
             vec!["code-graph", "callees", "a::b"],
             vec!["code-graph", "search", "foo"],
+            vec!["code-graph", "flows"],
+            vec!["code-graph", "flows", "--rank"],
+            vec!["code-graph", "flows", "--symbol", "foo::bar"],
+            vec!["code-graph", "flows", "--depth", "10", "--limit", "50"],
             vec!["code-graph", "stats"],
             vec!["code-graph", "watch"],
             vec!["code-graph", "watch", "--daemon"],
