@@ -1,0 +1,17 @@
+{
+  "repo": "trpc",
+  "suite": "core",
+  "ground_truth": [
+    {"source_file": "packages/server/src/initTRPC.ts", "source_symbol": "initTRPC", "target_file": "packages/server/src/router.ts", "target_symbol": "createRouter"},
+    {"source_file": "packages/server/src/initTRPC.ts", "source_symbol": "initTRPC", "target_file": "packages/server/src/procedure.ts", "target_symbol": "createProcedureBuilder"},
+    {"source_file": "packages/server/src/adapters/express.ts", "source_symbol": "createExpressMiddleware", "target_file": "packages/server/src/internals/procedure.ts", "target_symbol": "callProcedure"},
+    {"source_file": "packages/server/src/adapters/fetch/index.ts", "source_symbol": "fetchRequestHandler", "target_file": "packages/server/src/internals/procedure.ts", "target_symbol": "callProcedure"},
+    {"source_file": "packages/client/src/createTRPCProxyClient.ts", "source_symbol": "createTRPCProxyClient", "target_file": "packages/client/src/createTRPCClient.ts", "target_symbol": "createTRPCClient"},
+    {"source_file": "packages/client/src/createTRPCClient.ts", "source_symbol": "createTRPCClient", "target_file": "packages/client/src/links/httpBatchLink.ts", "target_symbol": "httpBatchLink"},
+    {"source_file": "packages/server/src/router.ts", "source_symbol": "createCallerFactory", "target_file": "packages/server/src/internals/procedure.ts", "target_symbol": "callProcedure"},
+    {"source_file": "packages/server/src/procedure.ts", "source_symbol": "createProcedureBuilder", "target_file": "packages/server/src/middleware.ts", "target_symbol": "createMiddlewareFactory"},
+    {"source_file": "packages/react-query/src/createTRPCReact.tsx", "source_symbol": "createTRPCReact", "target_file": "packages/client/src/createTRPCProxyClient.ts", "target_symbol": "createTRPCProxyClient"},
+    {"source_file": "packages/next/src/withTRPC.tsx", "source_symbol": "withTRPC", "target_file": "packages/client/src/createTRPCProxyClient.ts", "target_symbol": "createTRPCProxyClient"},
+    {"source_file": "packages/server/src/adapters/express.ts", "source_symbol": "createExpressMiddleware", "target_file": "packages/server/src/router.ts", "target_symbol": "createRouter"}
+  ]
+}

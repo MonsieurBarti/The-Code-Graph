@@ -1,0 +1,20 @@
+{
+  "repo": "express",
+  "suite": "flows",
+  "ground_truth": [
+    {"type": "entry_point", "symbol": "lib/express.js::createApplication", "category": "PublicExport", "file": "lib/express.js"},
+    {"type": "entry_point", "symbol": "lib/application.js::app.listen", "category": "HttpHandler", "file": "lib/application.js"},
+    {"type": "entry_point", "symbol": "lib/application.js::app.use", "category": "Middleware", "file": "lib/application.js"},
+    {"type": "entry_point", "symbol": "lib/application.js::app.get", "category": "HttpHandler", "file": "lib/application.js"},
+    {"type": "entry_point", "symbol": "lib/application.js::app.post", "category": "HttpHandler", "file": "lib/application.js"},
+    {"type": "entry_point", "symbol": "lib/application.js::app.put", "category": "HttpHandler", "file": "lib/application.js"},
+    {"type": "entry_point", "symbol": "lib/application.js::app.delete", "category": "HttpHandler", "file": "lib/application.js"},
+    {"type": "entry_point", "symbol": "lib/router/index.js::proto.handle", "category": "Router", "file": "lib/router/index.js"},
+    {"type": "entry_point", "symbol": "lib/router/index.js::proto.use", "category": "Router", "file": "lib/router/index.js"},
+    {"type": "entry_point", "symbol": "lib/router/route.js::Route.prototype.dispatch", "category": "Router", "file": "lib/router/route.js"},
+    {"type": "entry_point", "symbol": "lib/middleware/query.js::query", "category": "Middleware", "file": "lib/middleware/query.js"},
+    {"type": "entry_point", "symbol": "lib/middleware/init.js::init", "category": "Middleware", "file": "lib/middleware/init.js"},
+    {"type": "entry_point", "symbol": "lib/application.js::app.render", "category": "PublicExport", "file": "lib/application.js"},
+    {"type": "entry_point", "symbol": "lib/application.js::app.set", "category": "PublicExport", "file": "lib/application.js"}
+  ]
+}

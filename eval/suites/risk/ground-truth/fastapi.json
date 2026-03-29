@@ -1,0 +1,13 @@
+{
+  "repo": "fastapi",
+  "suite": "risk",
+  "ground_truth": [
+    {"symbol": "fastapi/routing.py::APIRouter.add_api_route", "risk": "high", "reason": "Registers every route into the router; incorrect registration silently breaks endpoints"},
+    {"symbol": "fastapi/dependencies/utils.py::solve_dependencies", "risk": "high", "reason": "Resolves the full dependency injection graph for each request"},
+    {"symbol": "fastapi/routing.py::get_request_handler", "risk": "high", "reason": "Builds the async request handler closure wrapping user endpoints"},
+    {"symbol": "fastapi/applications.py::FastAPI.add_middleware", "risk": "medium", "reason": "Inserts middleware into the ASGI stack; order and configuration affect all requests"},
+    {"symbol": "fastapi/exception_handlers.py::http_exception_handler", "risk": "medium", "reason": "Global error handler; shapes all HTTP error responses"},
+    {"symbol": "fastapi/encoders.py::jsonable_encoder", "risk": "low", "reason": "Serializes response data; operates on output only"},
+    {"symbol": "fastapi/utils.py::generate_operation_id", "risk": "low", "reason": "Generates OpenAPI operation IDs at startup, not at request time"}
+  ]
+}

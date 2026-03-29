@@ -1,0 +1,17 @@
+{
+  "repo": "express",
+  "suite": "analysis",
+  "type": "dead_code",
+  "ground_truth": [
+    {"symbol": "lib/utils.js::deprecate", "expected_dead": false},
+    {"symbol": "lib/utils.js::flatten", "expected_dead": false},
+    {"symbol": "lib/utils.js::normalizeType", "expected_dead": false},
+    {"symbol": "lib/utils.js::normalizeTypes", "expected_dead": false},
+    {"symbol": "lib/router/layer.js::Layer.prototype.handle_request", "expected_dead": false},
+    {"symbol": "lib/router/layer.js::Layer.prototype.handle_error", "expected_dead": false},
+    {"symbol": "lib/router/layer.js::Layer.prototype.match", "expected_dead": false},
+    {"symbol": "lib/router/index.js::proto.handle", "expected_dead": false},
+    {"symbol": "lib/router/route.js::Route.prototype.dispatch", "expected_dead": false},
+    {"symbol": "lib/application.js::app.render", "expected_dead": false}
+  ]
+}

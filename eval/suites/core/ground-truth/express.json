@@ -1,0 +1,18 @@
+{
+  "repo": "express",
+  "suite": "core",
+  "ground_truth": [
+    {"source_file": "lib/express.js", "source_symbol": "createApplication", "target_file": "lib/application.js", "target_symbol": "app"},
+    {"source_file": "lib/express.js", "source_symbol": "createApplication", "target_file": "lib/router/index.js", "target_symbol": "Router"},
+    {"source_file": "lib/application.js", "source_symbol": "app.use", "target_file": "lib/router/index.js", "target_symbol": "proto.use"},
+    {"source_file": "lib/application.js", "source_symbol": "app.handle", "target_file": "lib/router/index.js", "target_symbol": "proto.handle"},
+    {"source_file": "lib/application.js", "source_symbol": "app.route", "target_file": "lib/router/route.js", "target_symbol": "Route"},
+    {"source_file": "lib/router/index.js", "source_symbol": "proto.handle", "target_file": "lib/router/layer.js", "target_symbol": "Layer.prototype.handle_request"},
+    {"source_file": "lib/router/index.js", "source_symbol": "proto.route", "target_file": "lib/router/route.js", "target_symbol": "Route"},
+    {"source_file": "lib/router/route.js", "source_symbol": "Route.prototype.dispatch", "target_file": "lib/router/layer.js", "target_symbol": "Layer.prototype.handle_request"},
+    {"source_file": "lib/express.js", "source_symbol": "createApplication", "target_file": "lib/middleware/init.js", "target_symbol": "init"},
+    {"source_file": "lib/application.js", "source_symbol": "app.listen", "target_file": "lib/application.js", "target_symbol": "app.handle"},
+    {"source_file": "lib/express.js", "source_symbol": "createApplication", "target_file": "lib/middleware/query.js", "target_symbol": "query"},
+    {"source_file": "lib/router/index.js", "source_symbol": "proto.process_params", "target_file": "lib/router/layer.js", "target_symbol": "Layer.prototype.match"}
+  ]
+}

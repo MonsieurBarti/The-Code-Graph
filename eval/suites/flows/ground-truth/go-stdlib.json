@@ -1,0 +1,18 @@
+{
+  "repo": "go-stdlib",
+  "suite": "flows",
+  "ground_truth": [
+    {"type": "entry_point", "symbol": "src/net/http/server.go::ListenAndServe", "category": "PublicExport", "file": "src/net/http/server.go"},
+    {"type": "entry_point", "symbol": "src/net/http/server.go::ListenAndServeTLS", "category": "PublicExport", "file": "src/net/http/server.go"},
+    {"type": "entry_point", "symbol": "src/net/http/server.go::Serve", "category": "HttpHandler", "file": "src/net/http/server.go"},
+    {"type": "entry_point", "symbol": "src/net/http/server.go::ServeMux.ServeHTTP", "category": "HttpHandler", "file": "src/net/http/server.go"},
+    {"type": "entry_point", "symbol": "src/net/http/server.go::ServeMux.Handle", "category": "Router", "file": "src/net/http/server.go"},
+    {"type": "entry_point", "symbol": "src/net/http/server.go::ServeMux.HandleFunc", "category": "Router", "file": "src/net/http/server.go"},
+    {"type": "entry_point", "symbol": "src/net/http/server.go::Server.ListenAndServe", "category": "HttpHandler", "file": "src/net/http/server.go"},
+    {"type": "entry_point", "symbol": "src/net/http/client.go::Get", "category": "PublicExport", "file": "src/net/http/client.go"},
+    {"type": "entry_point", "symbol": "src/net/http/client.go::Post", "category": "PublicExport", "file": "src/net/http/client.go"},
+    {"type": "entry_point", "symbol": "src/net/http/client.go::Client.Do", "category": "PublicExport", "file": "src/net/http/client.go"},
+    {"type": "entry_point", "symbol": "src/net/http/transport.go::RoundTripper.RoundTrip", "category": "PublicExport", "file": "src/net/http/transport.go"},
+    {"type": "entry_point", "symbol": "src/net/http/request.go::NewRequest", "category": "PublicExport", "file": "src/net/http/request.go"}
+  ]
+}

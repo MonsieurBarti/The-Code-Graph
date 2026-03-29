@@ -1,0 +1,15 @@
+{
+  "repo": "trpc",
+  "suite": "analysis",
+  "type": "dead_code",
+  "ground_truth": [
+    {"symbol": "packages/server/src/internals/procedure.ts::callProcedure", "expected_dead": false},
+    {"symbol": "packages/server/src/router.ts::createRouter", "expected_dead": false},
+    {"symbol": "packages/server/src/router.ts::createCallerFactory", "expected_dead": false},
+    {"symbol": "packages/client/src/links/httpBatchLink.ts::httpBatchLink", "expected_dead": false},
+    {"symbol": "packages/client/src/links/httpLink.ts::httpLink", "expected_dead": false},
+    {"symbol": "packages/server/src/transformer.ts::transformTRPCResponse", "expected_dead": false},
+    {"symbol": "packages/server/src/utils.ts::getErrorShape", "expected_dead": false},
+    {"symbol": "packages/server/src/middleware.ts::createMiddlewareFactory", "expected_dead": false}
+  ]
+}

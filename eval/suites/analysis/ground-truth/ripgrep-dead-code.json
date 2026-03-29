@@ -1,0 +1,15 @@
+{
+  "repo": "ripgrep",
+  "suite": "analysis",
+  "type": "dead_code",
+  "ground_truth": [
+    {"symbol": "crates/core/src/app.rs::run", "expected_dead": false},
+    {"symbol": "crates/ripgrep/src/main.rs::main", "expected_dead": false},
+    {"symbol": "crates/ignore/src/walk.rs::WalkParallel::run", "expected_dead": false},
+    {"symbol": "crates/ignore/src/walk.rs::WalkBuilder::build", "expected_dead": false},
+    {"symbol": "crates/grep-searcher/src/searcher/mod.rs::Searcher::search_path", "expected_dead": false},
+    {"symbol": "crates/grep-regex/src/lib.rs::RegexMatcher::new", "expected_dead": false},
+    {"symbol": "crates/globset/src/lib.rs::GlobSet::is_match", "expected_dead": false},
+    {"symbol": "crates/printer/src/standard.rs::Standard::matched", "expected_dead": false}
+  ]
+}

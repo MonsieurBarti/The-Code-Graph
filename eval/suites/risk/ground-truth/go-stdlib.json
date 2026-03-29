@@ -1,0 +1,13 @@
+{
+  "repo": "go-stdlib",
+  "suite": "risk",
+  "ground_truth": [
+    {"symbol": "src/net/http/server.go::(*ServeMux).ServeHTTP", "risk": "high", "reason": "Central HTTP dispatch; all inbound requests pass through the mux"},
+    {"symbol": "src/net/http/server.go::(*Server).Serve", "risk": "high", "reason": "Accept loop for incoming connections; failure stops the server"},
+    {"symbol": "src/net/http/transport.go::(*Transport).RoundTrip", "risk": "high", "reason": "All outbound HTTP requests go through this; connection pooling lives here"},
+    {"symbol": "src/net/http/server.go::(*ServeMux).Handler", "risk": "medium", "reason": "Route lookup for each request; correctness affects handler dispatch"},
+    {"symbol": "src/net/http/client.go::(*Client).Do", "risk": "medium", "reason": "Executes an HTTP request; shared by Get, Post, and all client methods"},
+    {"symbol": "src/net/http/request.go::NewRequest", "risk": "low", "reason": "Constructs request structs; called at call-site, not on the hot path"},
+    {"symbol": "src/net/http/header.go::Header.Set", "risk": "low", "reason": "Simple header mutation; no routing or side effects"}
+  ]
+}

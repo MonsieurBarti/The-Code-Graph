@@ -1,0 +1,10 @@
+{
+  "repo": "go-stdlib",
+  "suite": "analysis",
+  "type": "clones",
+  "ground_truth": [
+    {"source": "src/net/http/server.go::ListenAndServe", "target": "src/net/http/server.go::ListenAndServeTLS"},
+    {"source": "src/net/http/server.go::(*ServeMux).Handle", "target": "src/net/http/server.go::(*ServeMux).HandleFunc"},
+    {"source": "src/net/http/client.go::Get", "target": "src/net/http/client.go::Post"}
+  ]
+}

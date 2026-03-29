@@ -1,0 +1,17 @@
+{
+  "repo": "fastapi",
+  "suite": "core",
+  "ground_truth": [
+    {"source_file": "fastapi/applications.py", "source_symbol": "FastAPI", "target_file": "fastapi/routing.py", "target_symbol": "APIRouter"},
+    {"source_file": "fastapi/routing.py", "source_symbol": "APIRouter.include_router", "target_file": "fastapi/routing.py", "target_symbol": "APIRouter.add_api_route"},
+    {"source_file": "fastapi/routing.py", "source_symbol": "APIRouter.get", "target_file": "fastapi/routing.py", "target_symbol": "APIRouter.add_api_route"},
+    {"source_file": "fastapi/routing.py", "source_symbol": "APIRouter.post", "target_file": "fastapi/routing.py", "target_symbol": "APIRouter.add_api_route"},
+    {"source_file": "fastapi/routing.py", "source_symbol": "get_request_handler", "target_file": "fastapi/dependencies/utils.py", "target_symbol": "solve_dependencies"},
+    {"source_file": "fastapi/routing.py", "source_symbol": "APIRouter.add_api_route", "target_file": "fastapi/routing.py", "target_symbol": "get_request_handler"},
+    {"source_file": "fastapi/dependencies/utils.py", "source_symbol": "solve_dependencies", "target_file": "fastapi/params.py", "target_symbol": "Depends"},
+    {"source_file": "fastapi/routing.py", "source_symbol": "get_request_handler", "target_file": "fastapi/encoders.py", "target_symbol": "jsonable_encoder"},
+    {"source_file": "fastapi/applications.py", "source_symbol": "FastAPI.add_middleware", "target_file": "fastapi/middleware/cors.py", "target_symbol": "CORSMiddleware"},
+    {"source_file": "fastapi/exception_handlers.py", "source_symbol": "http_exception_handler", "target_file": "fastapi/exceptions.py", "target_symbol": "HTTPException"},
+    {"source_file": "fastapi/applications.py", "source_symbol": "FastAPI", "target_file": "fastapi/openapi/utils.py", "target_symbol": "get_openapi"}
+  ]
+}

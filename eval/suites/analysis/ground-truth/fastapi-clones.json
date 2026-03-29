@@ -1,0 +1,11 @@
+{
+  "repo": "fastapi",
+  "suite": "analysis",
+  "type": "clones",
+  "ground_truth": [
+    {"source": "fastapi/routing.py::APIRouter.get", "target": "fastapi/routing.py::APIRouter.post"},
+    {"source": "fastapi/routing.py::APIRouter.put", "target": "fastapi/routing.py::APIRouter.delete"},
+    {"source": "fastapi/routing.py::APIRouter.get", "target": "fastapi/routing.py::APIRouter.patch"},
+    {"source": "fastapi/params.py::Query", "target": "fastapi/params.py::Path"}
+  ]
+}

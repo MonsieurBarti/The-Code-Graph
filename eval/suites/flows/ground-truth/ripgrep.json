@@ -1,0 +1,18 @@
+{
+  "repo": "ripgrep",
+  "suite": "flows",
+  "ground_truth": [
+    {"type": "entry_point", "symbol": "crates/ripgrep/src/main.rs::main", "category": "PublicExport", "file": "crates/ripgrep/src/main.rs"},
+    {"type": "entry_point", "symbol": "crates/core/src/app.rs::run", "category": "PublicExport", "file": "crates/core/src/app.rs"},
+    {"type": "entry_point", "symbol": "crates/core/src/search.rs::Searcher::search_path", "category": "PublicExport", "file": "crates/core/src/search.rs"},
+    {"type": "entry_point", "symbol": "crates/core/src/search.rs::Searcher::search_reader", "category": "PublicExport", "file": "crates/core/src/search.rs"},
+    {"type": "entry_point", "symbol": "crates/grep/src/lib.rs::Searcher::search_path", "category": "PublicExport", "file": "crates/grep/src/lib.rs"},
+    {"type": "entry_point", "symbol": "crates/globset/src/lib.rs::GlobSet::is_match", "category": "PublicExport", "file": "crates/globset/src/lib.rs"},
+    {"type": "entry_point", "symbol": "crates/globset/src/lib.rs::GlobSetBuilder::build", "category": "PublicExport", "file": "crates/globset/src/lib.rs"},
+    {"type": "entry_point", "symbol": "crates/grep-regex/src/lib.rs::RegexMatcher::new", "category": "PublicExport", "file": "crates/grep-regex/src/lib.rs"},
+    {"type": "entry_point", "symbol": "crates/grep-searcher/src/searcher/mod.rs::Searcher::build", "category": "PublicExport", "file": "crates/grep-searcher/src/searcher/mod.rs"},
+    {"type": "entry_point", "symbol": "crates/ignore/src/walk.rs::WalkBuilder::build", "category": "PublicExport", "file": "crates/ignore/src/walk.rs"},
+    {"type": "entry_point", "symbol": "crates/ignore/src/walk.rs::WalkParallel::run", "category": "PublicExport", "file": "crates/ignore/src/walk.rs"},
+    {"type": "entry_point", "symbol": "crates/printer/src/standard.rs::StandardBuilder::build", "category": "PublicExport", "file": "crates/printer/src/standard.rs"}
+  ]
+}

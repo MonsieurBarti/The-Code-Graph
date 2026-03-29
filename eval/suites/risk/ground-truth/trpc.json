@@ -1,0 +1,13 @@
+{
+  "repo": "trpc",
+  "suite": "risk",
+  "ground_truth": [
+    {"symbol": "packages/server/src/internals/procedure.ts::callProcedure", "risk": "high", "reason": "Central procedure invocation — all RPC calls route through this"},
+    {"symbol": "packages/server/src/router.ts::createCallerFactory", "risk": "high", "reason": "Creates server-side callers; path validation and type safety depend on it"},
+    {"symbol": "packages/server/src/adapters/fetch/index.ts::fetchRequestHandler", "risk": "high", "reason": "HTTP adapter entry point; handles all inbound fetch requests"},
+    {"symbol": "packages/server/src/middleware.ts::createMiddlewareFactory", "risk": "medium", "reason": "Constructs the middleware pipeline for each procedure"},
+    {"symbol": "packages/client/src/links/httpBatchLink.ts::httpBatchLink", "risk": "medium", "reason": "Client link that batches requests; failure breaks all batched calls"},
+    {"symbol": "packages/server/src/transformer.ts::transformTRPCResponse", "risk": "low", "reason": "Serialization utility; operates on final output only"},
+    {"symbol": "packages/server/src/utils.ts::getErrorShape", "risk": "low", "reason": "Formats error objects for client consumption"}
+  ]
+}
