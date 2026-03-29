@@ -4,7 +4,14 @@
 # Publish order is resolved from the dependency graph.
 dependencies_update = true
 
-# Use a single version tag so release.yml (triggers on v*) fires correctly.
-# Default would be {{ package }}-v{{ version }} which does NOT match the v* glob.
-# Tera template syntax: double braces required.
+# Disable per-package git tags/releases at workspace level.
+# Only the main binary package creates a single v* tag (see [[package]] below).
+git_tag_enable = false
+git_release_enable = false
+
+# Main binary — single version tag so release.yml (triggers on v*) fires correctly.
+[[package]]
+name = "the-code-graph"
 git_tag_name = "v{{ version }}"
+git_tag_enable = true
+git_release_enable = true
