@@ -2,6 +2,7 @@ pub mod callees;
 pub mod callers;
 pub mod clones;
 pub mod communities;
+pub mod dead_code;
 pub mod diff;
 pub mod eval;
 pub mod find;
@@ -59,6 +60,9 @@ pub enum Commands {
     Risk(RiskArgs),
     /// Analyze blast radius of changes
     Impact(ImpactArgs),
+    /// Detect unused symbols in the codebase
+    #[command(name = "dead-code")]
+    DeadCode(DeadCodeArgs),
     /// Show symbols affected by git diff
     Diff(DiffArgs),
     /// Show callers of a symbol
@@ -291,6 +295,22 @@ pub struct SetupArgs {
     pub purge: bool,
 }
 
+#[derive(clap::Args)]
+pub struct DeadCodeArgs {
+    /// Additional exclusion patterns (repeatable)
+    #[arg(long = "exclude-pattern")]
+    pub exclude_pattern: Vec<String>,
+    /// Include test functions as dead code candidates
+    #[arg(long)]
+    pub include_tests: bool,
+    /// Filter to specific symbol kinds (repeatable)
+    #[arg(long)]
+    pub kind: Vec<String>,
+    /// Maximum results to display
+    #[arg(long)]
+    pub limit: Option<usize>,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -398,9 +418,49 @@ mod tests {
             ],
             vec!["code-graph", "communities", "1"],
             vec!["code-graph", "communities", "--symbol", "src/main.rs::main"],
+            vec!["code-graph", "dead-code"],
+            vec!["code-graph", "dead-code", "--include-tests"],
+            vec!["code-graph", "dead-code", "--exclude-pattern", "**/gen/**"],
+            vec![
+                "code-graph",
+                "dead-code",
+                "--kind",
+                "Function",
+                "--limit",
+                "10",
+            ],
         ];
         for args in &commands {
             Cli::parse_from(args.iter());
+        }
+    }
+
+    #[test]
+    fn parse_dead_code_command() {
+        let cli = Cli::parse_from(["code-graph", "dead-code"]);
+        assert!(matches!(cli.command, Commands::DeadCode(_)));
+    }
+
+    #[test]
+    fn parse_dead_code_with_flags() {
+        let cli = Cli::parse_from([
+            "code-graph",
+            "dead-code",
+            "--include-tests",
+            "--exclude-pattern",
+            "**/generated/**",
+            "--kind",
+            "Function",
+            "--limit",
+            "50",
+        ]);
+        if let Commands::DeadCode(args) = cli.command {
+            assert!(args.include_tests);
+            assert_eq!(args.exclude_pattern, vec!["**/generated/**"]);
+            assert_eq!(args.kind, vec!["Function"]);
+            assert_eq!(args.limit, Some(50));
+        } else {
+            panic!("expected DeadCode command");
         }
     }
 
