@@ -80,6 +80,24 @@ pub fn blast_recall(predicted: &[String], actual: &[String]) -> f64 {
     intersection as f64 / actual.len() as f64
 }
 
+/// Existence recall: for each query, check if the expected symbol appears
+/// anywhere in the search results. Returns fraction of queries where it does.
+pub fn existence_recall(ranked_results: &[Vec<String>], ground_truth: &[Vec<String>]) -> f64 {
+    if ranked_results.is_empty() {
+        return 0.0;
+    }
+    let hits: usize = ranked_results
+        .iter()
+        .zip(ground_truth.iter())
+        .filter(|(ranked, truth)| {
+            let truth_set: std::collections::HashSet<&str> =
+                truth.iter().map(|s| s.as_str()).collect();
+            ranked.iter().any(|name| truth_set.contains(name.as_str()))
+        })
+        .count();
+    hits as f64 / ranked_results.len() as f64
+}
+
 /// Harmonic mean of precision and recall.
 pub fn f1(precision: f64, recall: f64) -> f64 {
     if precision + recall == 0.0 {
@@ -202,6 +220,36 @@ mod tests {
         let predicted = vec![s("a")];
         let actual: Vec<String> = vec![];
         assert!((blast_recall(&predicted, &actual) - 0.0).abs() < f64::EPSILON);
+    }
+
+    // ── Existence recall tests ────────────────────────────────────
+
+    #[test]
+    fn existence_recall_perfect() {
+        let results = vec![vec![s("a"), s("b")], vec![s("c")]];
+        let truth = vec![vec![s("a")], vec![s("c")]];
+        assert!((existence_recall(&results, &truth) - 1.0).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn existence_recall_miss() {
+        let results = vec![vec![s("b")]];
+        let truth = vec![vec![s("a")]];
+        assert!((existence_recall(&results, &truth) - 0.0).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn existence_recall_partial() {
+        let results = vec![vec![s("a")], vec![s("x")]];
+        let truth = vec![vec![s("a")], vec![s("b")]];
+        assert!((existence_recall(&results, &truth) - 0.5).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn existence_recall_empty() {
+        let results: Vec<Vec<String>> = vec![];
+        let truth: Vec<Vec<String>> = vec![];
+        assert!((existence_recall(&results, &truth) - 0.0).abs() < f64::EPSILON);
     }
 
     // ── F1 tests ───────────────────────────────────────────────
