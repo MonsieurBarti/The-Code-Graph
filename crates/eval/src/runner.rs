@@ -1,7 +1,7 @@
 use std::path::Path;
 
 use domain::error::{CodeGraphError, Result};
-use domain::model::{Confidence, ImpactTarget};
+use domain::model::{Confidence, HybridSearchConfig, ImpactTarget, SearchMode};
 use domain::ports::GraphStore;
 use domain::use_cases::impact::ImpactUseCase;
 use domain::use_cases::index::IndexUseCase;
@@ -10,7 +10,7 @@ use storage::SqliteStore;
 
 use crate::adapters::{EvalFileSystem, EvalParseProvider, NoOpGitProvider};
 use crate::dataset::{ImpactScenario, SearchQuery};
-use crate::report::{ImpactSuiteResult, SearchSuiteResult};
+use crate::report::{CategoryMrr, ImpactSuiteResult, SearchSuiteResult};
 use crate::{metrics, SuiteConfig};
 
 const MRR_TARGET: f64 = 0.30;
@@ -18,6 +18,9 @@ const BLAST_PRECISION_TARGET: f64 = 0.40;
 
 /// Ranked results paired with ground-truth expectations.
 type RankedVsTruth = (Vec<Vec<String>>, Vec<Vec<String>>);
+
+/// Per-category bucket: (ranked lists, truth lists).
+type CategoryBucket = (Vec<Vec<String>>, Vec<Vec<String>>);
 
 pub fn confidence_from_str(s: &str) -> Result<Confidence> {
     match s.to_lowercase().as_str() {
@@ -65,12 +68,17 @@ pub fn run_search_queries(
     store: &SqliteStore,
     queries: &[SearchQuery],
     limit: usize,
+    mode: Option<SearchMode>,
 ) -> Result<RankedVsTruth> {
     let query_uc = QueryUseCase::new(store.clone(), store.clone());
+    let config = HybridSearchConfig::default();
     let mut all_ranked = Vec::new();
     let mut all_truth = Vec::new();
     for q in queries {
-        let results = query_uc.search(&q.query, limit)?;
+        let results = match mode {
+            Some(m) => query_uc.hybrid_search(&q.query, limit, m, &config)?,
+            None => query_uc.search(&q.query, limit)?,
+        };
         let ranked: Vec<String> = results.iter().map(|r| r.qualified_name.clone()).collect();
         all_ranked.push(ranked);
         all_truth.push(q.expected.clone());
@@ -131,6 +139,9 @@ pub fn run_search_suite(config: &SuiteConfig) -> Result<SearchSuiteResult> {
 
     let mut all_ranked = Vec::new();
     let mut all_truth = Vec::new();
+    // Per-category buckets: category -> (ranked_lists, truth_lists)
+    let mut category_buckets: std::collections::HashMap<String, CategoryBucket> =
+        std::collections::HashMap::new();
     let mut total_queries = 0;
     let mut setup_errors = Vec::new();
 
@@ -157,8 +168,25 @@ pub fn run_search_suite(config: &SuiteConfig) -> Result<SearchSuiteResult> {
 
             // Run queries
             let filtered: Vec<SearchQuery> = repo_queries.into_iter().cloned().collect();
-            let (ranked, truth) = run_search_queries(&store, &filtered, config.search_limit)?;
+            let (ranked, truth) = run_search_queries(&store, &filtered, config.search_limit, None)?;
             total_queries += ranked.len();
+
+            // Collect per-category data
+            for (q, r, t) in filtered
+                .iter()
+                .zip(ranked.iter())
+                .zip(truth.iter())
+                .map(|((q, r), t)| (q, r, t))
+            {
+                let cat = q
+                    .category
+                    .clone()
+                    .unwrap_or_else(|| "uncategorized".to_string());
+                let bucket = category_buckets.entry(cat).or_default();
+                bucket.0.push(r.clone());
+                bucket.1.push(t.clone());
+            }
+
             all_ranked.extend(ranked);
             all_truth.extend(truth);
         }
@@ -175,6 +203,20 @@ pub fn run_search_suite(config: &SuiteConfig) -> Result<SearchSuiteResult> {
     let p5 = metrics::precision_at_k(&all_ranked, &all_truth, 5);
     let p10 = metrics::precision_at_k(&all_ranked, &all_truth, 10);
 
+    // Build sorted per-category breakdown
+    let mut per_category: Vec<CategoryMrr> = category_buckets
+        .into_iter()
+        .map(|(cat, (ranked, truth))| {
+            let cat_mrr = metrics::mrr(&ranked, &truth);
+            CategoryMrr {
+                queries: ranked.len(),
+                category: cat,
+                mrr: cat_mrr,
+            }
+        })
+        .collect();
+    per_category.sort_by(|a, b| a.category.cmp(&b.category));
+
     Ok(SearchSuiteResult {
         repos: manifest.repos.len(),
         queries: total_queries,
@@ -183,6 +225,7 @@ pub fn run_search_suite(config: &SuiteConfig) -> Result<SearchSuiteResult> {
         precision_at_10: p10,
         mrr_target: MRR_TARGET,
         mrr_passed: mrr >= MRR_TARGET,
+        per_category,
     })
 }
 

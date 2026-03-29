@@ -37,6 +37,8 @@ pub struct SearchQuery {
     pub repo: String,
     pub query: String,
     pub expected: Vec<String>,
+    #[serde(default)]
+    pub category: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -238,6 +240,23 @@ mod tests {
             }
         ]
     }"#;
+
+    // -- SearchQuery category field ----------------------------------------
+
+    #[test]
+    fn search_query_category_deserialization() {
+        let json =
+            r#"{"repo": "test", "query": "foo", "expected": ["a::b"], "category": "semantic"}"#;
+        let q: SearchQuery = serde_json::from_str(json).unwrap();
+        assert_eq!(q.category.unwrap(), "semantic");
+    }
+
+    #[test]
+    fn search_query_category_optional() {
+        let json = r#"{"repo": "test", "query": "foo", "expected": ["a::b"]}"#;
+        let q: SearchQuery = serde_json::from_str(json).unwrap();
+        assert!(q.category.is_none());
+    }
 
     // -- Manifest parsing ---------------------------------------------------
 

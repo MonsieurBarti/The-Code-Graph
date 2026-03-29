@@ -1,0 +1,16 @@
+[package]
+name = "embeddings"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+domain = { path = "../domain" }
+ureq = "3"
+sha2 = "0.10"
+tracing = "0.1"
+thiserror = "2"
+ort = "2.0.0-rc.12"
+tokenizers = { version = "0.22", default-features = false, features = ["fancy-regex"] }
+
+[dev-dependencies]
+tempfile = "3"

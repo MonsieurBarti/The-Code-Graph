@@ -1,3 +1,4 @@
+pub mod embedding_store;
 pub mod graph_store;
 pub mod mapping;
 pub mod schema;
@@ -77,7 +78,7 @@ mod tests {
         let version: i32 = conn
             .query_row("PRAGMA user_version", [], |r| r.get(0))
             .unwrap();
-        assert_eq!(version, 1);
+        assert_eq!(version, 2);
     }
 
     #[test]
