@@ -8,11 +8,13 @@ description = "Code embedding generation for The Code Graph"
 
 [dependencies]
 domain = { path = "../domain", package = "the-code-graph-domain", version = "0.1.0" }
-ureq = "3"
+ureq = { version = "3", default-features = false, features = ["rustls"] }
 sha2 = "0.10"
 tracing = "0.1"
 thiserror = "2"
-ort = "2.0.0-rc.12"
+ort = { version = "2.0.0-rc.12", default-features = false, features = [
+    "std", "ndarray", "tracing", "download-binaries", "tls-rustls", "copy-dylibs", "api-24"
+] }
 tokenizers = { version = "0.22", default-features = false, features = ["fancy-regex"] }
 
 [dev-dependencies]
