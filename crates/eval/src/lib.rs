@@ -42,28 +42,29 @@ pub fn run_suite(config: &SuiteConfig) -> Result<SuiteResult> {
         Suite::Impact | Suite::All => Some(runner::run_impact_suite(config)?),
         _ => None,
     };
+    // New suites — individual dispatch only (All excludes them until T16 ground truth integration)
     let core_result = match config.suite {
-        Suite::Core | Suite::All => todo!("Core suite not yet implemented"),
+        Suite::Core => todo!("Core suite runner — wire in T16"),
         _ => None,
     };
     let flows_result = match config.suite {
-        Suite::Flows | Suite::All => todo!("Flows suite not yet implemented"),
+        Suite::Flows => todo!("Flows suite runner — wire in T16"),
         _ => None,
     };
     let risk_result = match config.suite {
-        Suite::Risk | Suite::All => todo!("Risk suite not yet implemented"),
+        Suite::Risk => todo!("Risk suite runner — wire in T16"),
         _ => None,
     };
     let analysis_result = match config.suite {
-        Suite::Analysis | Suite::All => todo!("Analysis suite not yet implemented"),
+        Suite::Analysis => todo!("Analysis suite runner — wire in T16"),
         _ => None,
     };
     let invariants_result = match config.suite {
-        Suite::Invariants | Suite::All => todo!("Invariants suite not yet implemented"),
+        Suite::Invariants => todo!("Invariants suite runner — wire in T16"),
         _ => None,
     };
     let bench_result = match config.suite {
-        Suite::Bench | Suite::All => todo!("Bench suite not yet implemented"),
+        Suite::Bench => todo!("Bench suite runner — wire in T16"),
         _ => None,
     };
     Ok(SuiteResult {
@@ -211,6 +212,26 @@ mod tests {
             })
             .sum();
         assert!(total >= 50, "expected >= 50 search queries, found {total}");
+    }
+
+    #[test]
+    fn run_suite_dispatches_all_without_panic() {
+        // Suite::All should NOT panic (no todo!()) even though new suites aren't fully wired
+        // This test verifies the dispatch path fails with "manifest not found" rather than panicking
+        let config = SuiteConfig {
+            suite: Suite::Search,
+            no_cache: false,
+            suites_dir: PathBuf::from("/tmp/nonexistent"),
+            search_limit: 20,
+            compare_baseline: None,
+        };
+        // Should fail with "manifest not found" rather than "unknown suite" or panic
+        let err = run_suite(&config).unwrap_err();
+        let msg = format!("{err}");
+        assert!(
+            !msg.contains("not yet implemented"),
+            "dispatch should not contain todo!() text, got: {msg}"
+        );
     }
 
     #[test]

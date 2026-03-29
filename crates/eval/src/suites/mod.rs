@@ -36,9 +36,18 @@ pub trait EvalSuite {
     ) -> Result<Vec<InvariantResult>>;
 }
 
-/// Registry of all available suites. Populated as suites are implemented.
+/// Registry of all available suites.
 pub fn all_suites() -> Vec<Box<dyn EvalSuite>> {
-    vec![] // Tasks 5-12 will add entries here
+    vec![
+        Box::new(search::SearchSuite),
+        Box::new(impact::ImpactSuite),
+        Box::new(core::CoreSuite),
+        Box::new(flows::FlowsSuite),
+        Box::new(risk::RiskSuite),
+        Box::new(analysis::AnalysisSuite),
+        Box::new(invariants::InvariantsSuite),
+        Box::new(bench::BenchSuite::new(None)),
+    ]
 }
 
 pub mod analysis;
@@ -93,6 +102,25 @@ mod tests {
         };
         let json = serde_json::to_string(&m).unwrap();
         assert!(json.contains("\"mrr\""));
+    }
+
+    #[test]
+    fn all_suites_registry_complete() {
+        let suites = all_suites();
+        assert!(
+            suites.len() >= 8,
+            "Expected at least 8 suites, got {}",
+            suites.len()
+        );
+        let names: Vec<&str> = suites.iter().map(|s| s.name()).collect();
+        assert!(names.contains(&"search"));
+        assert!(names.contains(&"impact"));
+        assert!(names.contains(&"core"));
+        assert!(names.contains(&"flows"));
+        assert!(names.contains(&"risk"));
+        assert!(names.contains(&"analysis"));
+        assert!(names.contains(&"invariants"));
+        assert!(names.contains(&"bench"));
     }
 
     #[test]
